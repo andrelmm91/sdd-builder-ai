@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-007
 title: Implement spec lifecycle state machine
-status: draft
+status: done
 priority: high
 complexity: low
 tags: [phase-0, backend]
@@ -45,13 +45,13 @@ Specs follow a strict lifecycle: `draft → ready → in_progress → review →
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Unit tests pass: all valid transitions return success
-- [ ] Unit tests pass: all invalid transitions return error with descriptive message
-- [ ] Unit tests pass: `getValidTransitions` returns correct options for each status
-- [ ] TypeScript compilation passes
+- [x] Unit tests pass: all valid transitions return success
+- [x] Unit tests pass: all invalid transitions return error with descriptive message
+- [x] Unit tests pass: `getValidTransitions` returns correct options for each status
+- [x] TypeScript compilation passes
 
 ### Manual
-- [ ] Transition rules match the lifecycle documented in the product spec
+- [x] Transition rules match the lifecycle documented in the product spec
 
 ## Constraints
 - No I/O, no VS Code API — pure logic module
