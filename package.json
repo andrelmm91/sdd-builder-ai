@@ -7,7 +7,9 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "activationEvents": [
     "workspaceContains:**/*.sdd.md",
     "workspaceContains:.sdd/config.json"
@@ -59,8 +61,13 @@
     "languages": [
       {
         "id": "sdd-spec",
-        "aliases": ["SDD Spec", "sdd"],
-        "extensions": [".sdd.md"],
+        "aliases": [
+          "SDD Spec",
+          "sdd"
+        ],
+        "extensions": [
+          ".sdd.md"
+        ],
         "configuration": "./language-configuration.json"
       }
     ]
@@ -73,9 +80,12 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^20.19.35",
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.20.0",
     "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "yaml": "^2.8.2"
   }
 }

@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-003
 title: Create frontmatter parser and file system utilities
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-0, backend]
@@ -42,12 +42,12 @@ Most modules need to read/write YAML frontmatter from `.sdd.md` files and perfor
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Unit tests pass for frontmatter parsing: valid YAML, missing frontmatter, empty body, malformed YAML
-- [ ] Unit tests pass for frontmatter serialization round-trip (parse → serialize → parse yields same data)
-- [ ] TypeScript compilation passes
+- [x] Unit tests pass for frontmatter parsing: valid YAML, missing frontmatter, empty body, malformed YAML
+- [x] Unit tests pass for frontmatter serialization round-trip (parse → serialize → parse yields same data)
+- [x] TypeScript compilation passes
 
 ### Manual
-- [ ] File system utilities work in Extension Development Host
+- [x] File system utilities work in Extension Development Host
 
 ## Constraints
 - Must add `yaml` npm package for YAML parsing (do not hand-roll YAML parser)
