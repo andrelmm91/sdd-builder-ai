@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-006
 title: Create VS Code diagnostics provider for spec validation
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-0, frontend]
@@ -43,7 +43,7 @@ VS Code's diagnostics system shows errors and warnings as red/yellow squiggles i
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
+- [x] TypeScript compilation passes
 - [ ] Unit tests pass: diagnostics are generated for invalid specs
 - [ ] Unit tests pass: diagnostics are cleared when document is valid
 
