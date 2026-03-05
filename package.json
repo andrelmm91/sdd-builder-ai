@@ -55,6 +55,26 @@
           "type": "string",
           "default": ".sdd/conventions.md",
           "description": "Path to the project conventions file"
+        },
+        "sdd.testCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Command used to run tests (e.g. npm test). Falls back to project config when empty."
+        },
+        "sdd.claudeCliBinary": {
+          "type": "string",
+          "default": "claude",
+          "description": "Path or name of the Claude CLI binary to use for spec execution"
+        },
+        "sdd.defaultBudget": {
+          "type": "number",
+          "default": 100000,
+          "description": "Default token budget for spec execution"
+        },
+        "sdd.autoValidate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically run post-execution validation after a spec is executed"
         }
       }
     },

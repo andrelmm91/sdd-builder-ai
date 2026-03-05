@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-010
 title: Create project config and extension settings management
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-0, backend]
@@ -41,13 +41,13 @@ The SDD extension needs two layers of configuration: project-level config stored
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Unit tests pass: default config returns expected values
-- [ ] Unit tests pass: reading a valid config.json returns correct values
-- [ ] Unit tests pass: missing config.json falls back to defaults
-- [ ] TypeScript compilation passes
+- [x] Unit tests pass: default config returns expected values
+- [x] Unit tests pass: reading a valid config.json returns correct values
+- [x] Unit tests pass: missing config.json falls back to defaults
+- [x] TypeScript compilation passes
 
 ### Manual
-- [ ] VS Code settings (sdd.* namespace) appear in Settings UI
+- [x] VS Code settings (sdd.* namespace) appear in Settings UI
 
 ## Constraints
 - Must use VS Code `workspace.getConfiguration('sdd')` for extension settings
