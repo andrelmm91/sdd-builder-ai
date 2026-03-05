@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-008
 title: Create spec templates for feature, bugfix, and refactor
-status: draft
+status: done
 priority: medium
 complexity: low
 tags: [phase-0, backend]
@@ -43,13 +43,13 @@ When a builder runs "SDD: New Spec from Template", the extension generates a pre
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Unit tests pass: each template type generates valid YAML frontmatter
-- [ ] Unit tests pass: generated content includes all required markdown sections
-- [ ] Unit tests pass: specId is correctly embedded in frontmatter
-- [ ] TypeScript compilation passes
+- [x] Unit tests pass: each template type generates valid YAML frontmatter
+- [x] Unit tests pass: generated content includes all required markdown sections
+- [x] Unit tests pass: specId is correctly embedded in frontmatter
+- [x] TypeScript compilation passes
 
 ### Manual
-- [ ] Generated templates are readable and provide useful guidance to builders
+- [x] Generated templates are readable and provide useful guidance to builders
 
 ## Constraints
 - Pure string generation — no file I/O, no VS Code API
