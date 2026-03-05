@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-004
 title: Implement spec file parser
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-0, backend]
@@ -43,14 +43,14 @@ The spec parser is the core module that transforms raw `.sdd.md` file content in
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Unit tests pass: valid spec parses to correct SpecDocument
-- [ ] Unit tests pass: missing frontmatter fields produce ParseError
-- [ ] Unit tests pass: missing optional sections produce empty strings (not errors)
-- [ ] Unit tests pass: malformed YAML returns ParseError (not exception)
-- [ ] TypeScript compilation passes
+- [x] Unit tests pass: valid spec parses to correct SpecDocument
+- [x] Unit tests pass: missing frontmatter fields produce ParseError
+- [x] Unit tests pass: missing optional sections produce empty strings (not errors)
+- [x] Unit tests pass: malformed YAML returns ParseError (not exception)
+- [x] TypeScript compilation passes
 
 ### Manual
-- [ ] Parser output matches the spec format documented in the product spec
+- [x] Parser output matches the spec format documented in the product spec
 
 ## Constraints
 - No file I/O — parser is a pure function operating on string content
