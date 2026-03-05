@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-002
 title: Define core spec types and constants
-status: draft
+status: done
 priority: high
 complexity: low
 tags: [phase-0, backend]
@@ -50,11 +50,11 @@ All modules in the SDD extension operate on structured spec data parsed from `.s
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes with no errors
-- [ ] All types and constants are importable from their respective modules
+- [x] TypeScript compilation passes with no errors
+  - [x] All types and constants are importable from their respective modules
 
 ### Manual
-- [ ] Types accurately model the spec format documented in the product spec
+- [x] Types accurately model the spec format documented in the product spec
 
 ## Constraints
 - Pure type definitions and constants only — no runtime logic, no I/O
