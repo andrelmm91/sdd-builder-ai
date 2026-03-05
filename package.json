@@ -24,8 +24,22 @@
       {
         "command": "sdd.newSpec",
         "title": "SDD: New Spec"
+      },
+      {
+        "command": "sdd.refreshSpecs",
+        "title": "SDD: Refresh Specs",
+        "icon": "$(refresh)"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "sdd.refreshSpecs",
+          "when": "view == sdd.specsTree",
+          "group": "navigation"
+        }
+      ]
+    },
     "viewsContainers": {
       "activitybar": [
         {

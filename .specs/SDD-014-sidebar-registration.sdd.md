@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-014
 title: Register sidebar views and wire tree providers in extension
-status: draft
+status: done
 priority: high
 complexity: low
 tags: [phase-1, frontend]
@@ -37,7 +37,7 @@ The tree providers (SDD-013) exist but aren't wired into the extension yet. This
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
+- [x] TypeScript compilation passes
 
 ### Manual
 - [ ] SDD icon appears in the Activity Bar
