@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-009
 title: Implement spec ID auto-generator
-status: draft
+status: done
 priority: medium
 complexity: low
 tags: [phase-0, backend]
@@ -38,15 +38,15 @@ Each spec needs a unique human-readable ID in the format `PREFIX-NNN` (e.g., `SP
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Unit tests pass: first ID for empty list is `{PREFIX}-001`
-- [ ] Unit tests pass: next ID after `SPEC-005` is `SPEC-006`
-- [ ] Unit tests pass: gaps are skipped (after 001, 003 → next is 004)
-- [ ] Unit tests pass: batch generation returns correct sequential IDs
-- [ ] Unit tests pass: parseSpecId correctly extracts prefix and number
-- [ ] TypeScript compilation passes
+- [x] Unit tests pass: first ID for empty list is `{PREFIX}-001`
+- [x] Unit tests pass: next ID after `SPEC-005` is `SPEC-006`
+- [x] Unit tests pass: gaps are skipped (after 001, 003 → next is 004)
+- [x] Unit tests pass: batch generation returns correct sequential IDs
+- [x] Unit tests pass: parseSpecId correctly extracts prefix and number
+- [x] TypeScript compilation passes
 
 ### Manual
-- [ ] ID format matches spec format documented in the product spec
+- [x] ID format matches spec format documented in the product spec
 
 ## Constraints
 - No file I/O — caller must provide the list of existing IDs
