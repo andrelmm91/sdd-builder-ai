@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-015
 title: Add context menu actions and lifecycle commands
-status: draft
+status: done
 priority: medium
 complexity: medium
 tags: [phase-1, frontend]
@@ -47,8 +47,8 @@ Builders interact with specs through right-click context menus in the sidebar tr
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: Mark Ready command validates before transitioning
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: Mark Ready command validates before transitioning
 
 ### Manual
 - [ ] Right-clicking a draft spec shows "Mark Ready" in context menu

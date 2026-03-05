@@ -29,6 +29,22 @@
         "command": "sdd.refreshSpecs",
         "title": "SDD: Refresh Specs",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "sdd.markReady",
+        "title": "SDD: Mark Ready"
+      },
+      {
+        "command": "sdd.validateSpec",
+        "title": "SDD: Validate Spec"
+      },
+      {
+        "command": "sdd.executeSpec",
+        "title": "SDD: Execute Spec"
+      },
+      {
+        "command": "sdd.reviewSpec",
+        "title": "SDD: Review Spec"
       }
     ],
     "menus": {
@@ -37,6 +53,28 @@
           "command": "sdd.refreshSpecs",
           "when": "view == sdd.specsTree",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "sdd.markReady",
+          "when": "view == sdd.specsTree && viewItem == 'draft'",
+          "group": "sdd@1"
+        },
+        {
+          "command": "sdd.validateSpec",
+          "when": "view == sdd.specsTree && (viewItem == 'draft' || viewItem == 'ready')",
+          "group": "sdd@2"
+        },
+        {
+          "command": "sdd.executeSpec",
+          "when": "view == sdd.specsTree && viewItem == 'ready'",
+          "group": "sdd@1"
+        },
+        {
+          "command": "sdd.reviewSpec",
+          "when": "view == sdd.specsTree && viewItem == 'in_progress'",
+          "group": "sdd@1"
         }
       ]
     },
