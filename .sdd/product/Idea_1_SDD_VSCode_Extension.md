@@ -214,10 +214,10 @@ project-repo/
 │
 ├── .claude/                         # (Optional) Claude CLI config, if we want to manage it from the extension
 │    └── skills/                    # Agent persona files
-│       ├── sdd-planner.md
-│       ├── backend-dev.md
-│       ├── frontend-dev.md
-│       └── tester.md
+│       ├── sdd-planner
+│       │   └── SKILL.md 
+│       ├── backend-dev
+│           └── SKILL.md
 ├── .specs/                         # Spec files (the source of truth)
 │   ├── PROJ-040-user-login.sdd.md
 │   ├── PROJ-041-api-rate-limit.sdd.md
