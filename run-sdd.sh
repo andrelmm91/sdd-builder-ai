@@ -148,11 +148,7 @@ run_copilot() {
   spec_content=$(cat "$spec_file")
 
   # Standard task prompt — spec_id is injected so every run is self-describing.
-  task_prompt="lets implement ${spec_id} in #file:.specs .Update the open tasks in the spec document after completion. Add unit tests if necessary. Make a commit and push it to the main branch with only the name of the SDD file.
-
----
-
-${spec_content}"
+  task_prompt="lets implement ${spec_id} in #file:.specs .Update the open tasks in the spec document after completion. Add unit tests if necessary. Make a commit and push it to the main branch with only the name of the SDD file."
 
   echo ""
   echo -e "${BOLD}${GREEN}${SYM_RUN}  Launching Copilot CLI — fresh context, all permissions enabled${RESET}"
