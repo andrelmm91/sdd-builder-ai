@@ -59,6 +59,19 @@ export async function listFiles(pattern: string): Promise<string[]> {
 }
 
 /**
+ * Creates a directory relative to the workspace root (including parent directories).
+ */
+export async function createWorkspaceDirectory(relativePath: string): Promise<void> {
+  const root = getWorkspaceRoot();
+  if (!root) {
+    throw new Error('No workspace folder is open');
+  }
+
+  const uri = vscode.Uri.file(path.join(root, relativePath));
+  await vscode.workspace.fs.createDirectory(uri);
+}
+
+/**
  * Returns true if the file at the given workspace-relative path exists.
  */
 export async function fileExists(relativePath: string): Promise<boolean> {

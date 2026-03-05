@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-012
 title: Implement project initialization command
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-0, frontend]
@@ -45,9 +45,9 @@ created: 2026-03-05
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: init creates expected directory structure
-- [ ] Unit tests pass: health check correctly detects available/missing CLI tools
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: init creates expected directory structure
+- [x] Unit tests pass: health check correctly detects available/missing CLI tools
 
 ### Manual
 - [ ] Running "SDD: Initialize Project" from command palette creates the full folder structure
