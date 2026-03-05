@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-005
 title: Implement spec validator with JSON Schema
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-0, backend]
@@ -56,14 +56,14 @@ The validator ensures that spec files conform to the SDD format before they can 
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Unit tests pass: valid spec returns `{ valid: true, errors: [] }`
-- [ ] Unit tests pass: each missing required field produces a corresponding error
-- [ ] Unit tests pass: boundary violations produce warnings (not errors)
-- [ ] Unit tests pass: invalid spec_id format produces error
-- [ ] TypeScript compilation passes
+- [x] Unit tests pass: valid spec returns `{ valid: true, errors: [] }`
+- [x] Unit tests pass: each missing required field produces a corresponding error
+- [x] Unit tests pass: boundary violations produce warnings (not errors)
+- [x] Unit tests pass: invalid spec_id format produces error
+- [x] TypeScript compilation passes
 
 ### Manual
-- [ ] Validation rules match the spec format documented in the product spec
+- [x] Validation rules match the spec format documented in the product spec
 
 ## Constraints
 - Must add `ajv` npm package for JSON Schema validation
