@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-013
 title: Implement spec tree view provider for sidebar
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-1, frontend]
@@ -51,9 +51,9 @@ The SDD sidebar is the primary navigation interface. It shows all specs in the p
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: tree provider returns correct groups with correct spec counts
-- [ ] Unit tests pass: specs are sorted by spec_id within each group
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: tree provider returns correct groups with correct spec counts
+- [x] Unit tests pass: specs are sorted by spec_id within each group
 
 ### Manual
 - [ ] SDD sidebar shows specs grouped by status
