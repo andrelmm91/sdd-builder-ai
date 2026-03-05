@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-011
 title: Create shell command execution utility
-status: draft
+status: done
 priority: medium
 complexity: low
 tags: [phase-0, backend]
@@ -40,11 +40,11 @@ Multiple modules need to execute shell commands: the execution engine runs Claud
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Unit tests pass: successful command returns stdout and exitCode 0
-- [ ] Unit tests pass: failing command returns stderr and non-zero exitCode
-- [ ] Unit tests pass: timeout produces appropriate error
-- [ ] Unit tests pass: `isCommandAvailable` returns true for `git`, false for nonexistent command
-- [ ] TypeScript compilation passes
+- [x] Unit tests pass: successful command returns stdout and exitCode 0
+- [x] Unit tests pass: failing command returns stderr and non-zero exitCode
+- [x] Unit tests pass: timeout produces appropriate error
+- [x] Unit tests pass: `isCommandAvailable` returns true for `git`, false for nonexistent command
+- [x] TypeScript compilation passes
 
 ### Manual
 - [ ] Shell utility works correctly in Extension Development Host
