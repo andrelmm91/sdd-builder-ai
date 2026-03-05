@@ -1,0 +1,81 @@
+{
+  "name": "sdd-platform",
+  "displayName": "SDD Platform",
+  "description": "Spec-Driven Development for VS Code — AI-assisted structured development workflow",
+  "version": "0.0.1",
+  "publisher": "andrelmm91",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "workspaceContains:**/*.sdd.md",
+    "workspaceContains:.sdd/config.json"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "sdd.initProject",
+        "title": "SDD: Initialize Project"
+      },
+      {
+        "command": "sdd.newSpec",
+        "title": "SDD: New Spec"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sdd-sidebar",
+          "title": "SDD Platform",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "sdd-sidebar": [
+        {
+          "id": "sdd.specsTree",
+          "name": "Specs"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "SDD Platform",
+      "properties": {
+        "sdd.specPrefix": {
+          "type": "string",
+          "default": "SDD",
+          "description": "Prefix used for spec IDs (e.g. SDD → SDD-001)"
+        },
+        "sdd.conventionsPath": {
+          "type": "string",
+          "default": ".sdd/conventions.md",
+          "description": "Path to the project conventions file"
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "sdd-spec",
+        "aliases": ["SDD Spec", "sdd"],
+        "extensions": [".sdd.md"],
+        "configuration": "./language-configuration.json"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "dev": "node esbuild.config.mjs --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0"
+  }
+}

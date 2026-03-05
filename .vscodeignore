@@ -1,0 +1,16 @@
+src/
+out/
+.specs/
+.sdd/
+.vscode/
+.claude/
+*.test.ts
+**/*.test.ts
+tsconfig.json
+esbuild.config.mjs
+.eslintrc*
+.prettierrc*
+.gitignore
+.vscodeignore
+README.md
+node_modules/

@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-001
 title: Scaffold VS Code extension project
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-0, infra]
@@ -40,9 +40,9 @@ This is the very first spec for the SDD VS Code extension. Before any feature co
 ## Acceptance Criteria
 
 ### Automated
-- [ ] `npm install` completes without errors
-- [ ] `npm run build` produces a bundled output file
-- [ ] TypeScript compilation (`npx tsc --noEmit`) passes with no errors
+- [x] `npm install` completes without errors
+- [x] `npm run build` produces a bundled output file
+- [x] TypeScript compilation (`npx tsc --noEmit`) passes with no errors
 
 ### Manual
 - [ ] Extension loads in VS Code Extension Development Host (F5)
