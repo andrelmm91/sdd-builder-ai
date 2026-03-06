@@ -7,15 +7,12 @@
   "engines": {
     "vscode": "^1.85.0"
   },
+  "icon": "resources/icon.png",
   "categories": [
     "Other"
   ],
   "activationEvents": [
-    "workspaceContains:.sdd/config.json",
-    "onCommand:sdd.initProject",
-    "onCommand:sdd.newSpec",
-    "onCommand:sdd.planFromRequirements",
-    "onCommand:sdd.openDashboard"
+    "workspaceContains:.sdd/config.json"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -106,7 +103,8 @@
       "sdd-sidebar": [
         {
           "id": "sdd.specsTree",
-          "name": "Specs"
+          "name": "Specs",
+          "icon": "resources/icon.svg"
         }
       ]
     },
@@ -170,7 +168,7 @@
     "@types/node": "^20.19.35",
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.20.0",
-    "typescript": "^5.3.0",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },
   "dependencies": {
