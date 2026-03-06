@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-024
 title: Define execution types and implement context assembler
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-2, backend]
@@ -46,10 +46,10 @@ When a spec is executed, the extension must assemble a comprehensive context doc
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: context includes all sections when all inputs are provided
-- [ ] Unit tests pass: missing relevant files produce "File not found" notes (not errors)
-- [ ] Unit tests pass: feedback section is only included when feedback is provided
+- [x] TypeScript compilation passes
+  - [x] Unit tests pass: context includes all sections when all inputs are provided
+  - [x] Unit tests pass: missing relevant files produce "File not found" notes (not errors)
+  - [x] Unit tests pass: feedback section is only included when feedback is provided
 
 ### Manual
 - [ ] Context document provides sufficient information for Claude CLI to implement a spec
