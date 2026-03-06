@@ -15,7 +15,7 @@ vi.mock('../utils/fileSystem', () => ({
 import { captureResults, getExecutionHistory, getLatestExecution } from './resultCapture';
 import { execCommand, isCommandAvailable } from '../utils/shell';
 import { writeWorkspaceFile, readWorkspaceFile, listFiles, getWorkspaceRoot } from '../utils/fileSystem';
-import type { ExecutionResult } from './cliRunner';
+import type { ExecutionResult } from './types';
 
 const mockExecCommand = vi.mocked(execCommand);
 const mockIsCommandAvailable = vi.mocked(isCommandAvailable);

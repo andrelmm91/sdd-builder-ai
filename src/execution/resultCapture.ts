@@ -3,8 +3,7 @@ import { writeWorkspaceFile, readWorkspaceFile, listFiles, getWorkspaceRoot } fr
 import { EXECUTIONS_FOLDER, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
 import { parseFrontmatter } from '../utils/frontmatter';
 import { estimateCost } from './budgetEnforcer';
-import type { ExecutionRecord } from './types';
-import type { ExecutionResult } from './cliRunner';
+import type { ExecutionRecord, ExecutionResult } from './types';
 
 export type CaptureResult = {
   record: ExecutionRecord;
@@ -73,7 +72,6 @@ export async function captureResults(
     duration: executionResult.duration,
     testsPassed: null,
     prUrl: null,
-    scopeViolation,
   };
 
   // Write record JSON

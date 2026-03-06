@@ -21,7 +21,8 @@ export class SpecGroupItem extends vscode.TreeItem {
   readonly kind = 'group' as const;
 
   constructor(public readonly status: SpecStatus, count: number) {
-    super(`${STATUS_LABELS[status]} (${count})`, vscode.TreeItemCollapsibleState.Expanded);
+    super(STATUS_LABELS[status], vscode.TreeItemCollapsibleState.Expanded);
+    this.description = `(${count})`;
     this.contextValue = `sdd-group-${status}`;
     this.iconPath = new vscode.ThemeIcon(STATUS_ICONS[status]);
   }

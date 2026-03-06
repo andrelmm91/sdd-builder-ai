@@ -3,19 +3,15 @@ import { parse as yamlParse, stringify as yamlStringify } from 'yaml';
 export interface ParseResult {
   data: Record<string, unknown>;
   body: string;
-}
-
-export interface ParseError {
-  error: string;
-  data: Record<string, unknown>;
-  body: string;
+  /** Set when the YAML block is present but fails to parse. The caller may surface this as a diagnostic warning. */
+  parseError?: string;
 }
 
 /**
  * Extracts YAML frontmatter between --- delimiters and returns parsed data + remaining markdown body.
  * Returns error info instead of throwing on malformed YAML.
  */
-export function parseFrontmatter(content: string): ParseResult & { parseError?: string } {
+export function parseFrontmatter(content: string): ParseResult {
   const DELIMITER = '---';
 
   if (!content.startsWith(DELIMITER)) {

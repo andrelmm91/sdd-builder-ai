@@ -9,7 +9,21 @@ export interface ExecutionRecord {
   duration: number;
   testsPassed: boolean | null;
   prUrl: string | null;
-  scopeViolation: boolean;
+}
+
+export interface ExecutionResult {
+  success: boolean;
+  output: string;
+  tokensIn: number;
+  tokensOut: number;
+  duration: number;
+  error?: string;
+}
+
+export interface ExecutionRunner {
+  execute(spec: import('../specs/types').SpecDocument, context: string, config: ExecutionConfig): Promise<ExecutionResult>;
+  abort(): void;
+  isRunning(): boolean;
 }
 
 export interface ExecutionConfig {

@@ -82,14 +82,3 @@ export class StatusBarManager implements vscode.Disposable {
   }
 }
 
-let manager: StatusBarManager | undefined;
-
-export function activate(context: vscode.ExtensionContext): void {
-  manager = new StatusBarManager();
-  context.subscriptions.push(manager);
-}
-
-export function dispose(): void {
-  manager?.dispose();
-  manager = undefined;
-}

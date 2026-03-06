@@ -173,10 +173,15 @@ export async function assemblePlanContext(request: PlanningRequest): Promise<str
 
   const document = sections.join('\n\n---\n\n');
 
-  // Truncate to stay within the 50 KB limit
-  if (Buffer.byteLength(document, 'utf8') > MAX_CONTEXT_BYTES) {
-    return Buffer.from(document, 'utf8').slice(0, MAX_CONTEXT_BYTES).toString('utf8');
+  // Truncate to stay within the 50 KB limit, respecting UTF-8 character boundaries.
+  const raw = Buffer.from(document, 'utf8');
+  if (raw.length <= MAX_CONTEXT_BYTES) {
+    return document;
   }
-
-  return document;
+  let end = MAX_CONTEXT_BYTES;
+  // Walk back over UTF-8 continuation bytes (0x80–0xBF) to avoid splitting a multi-byte sequence.
+  while (end > 0 && (raw[end] & 0xC0) === 0x80) {
+    end--;
+  }
+  return raw.subarray(0, end).toString('utf8');
 }

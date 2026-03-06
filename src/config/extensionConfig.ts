@@ -6,6 +6,10 @@ export function getExtensionConfig(): vscode.WorkspaceConfiguration {
   return vscode.workspace.getConfiguration('sdd');
 }
 
+/**
+ * Returns the spec ID prefix. Async because it falls back to reading `.sdd/config.json`
+ * when the VS Code workspace setting is not set.
+ */
 export async function getSpecPrefix(): Promise<string> {
   const val = getExtensionConfig().get<string>('specPrefix');
   if (val) {
@@ -15,6 +19,10 @@ export async function getSpecPrefix(): Promise<string> {
   return projectConfig.prefix;
 }
 
+/**
+ * Returns the test command. Async because it falls back to reading `.sdd/config.json`
+ * when the VS Code workspace setting is not set.
+ */
 export async function getTestCommand(): Promise<string> {
   const val = getExtensionConfig().get<string>('testCommand');
   if (val) {

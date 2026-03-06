@@ -19,14 +19,14 @@ created: 2026-03-05
 
 ## Context
 
-The tree providers (SDD-013) exist but aren't wired into the extension yet. This spec registers the sidebar views in `extension.ts`, connects the `SpecTreeProvider` to the `sdd.specTree` view declared in `package.json`, and adds a refresh command.
+The tree providers (SDD-013) exist but aren't wired into the extension yet. This spec registers the sidebar views in `extension.ts`, connects the `SpecTreeProvider` to the `sdd.specsTree` view declared in `package.json`, and adds a refresh command.
 
 ## Requirements
 
 ### Functional
 - In `extension.ts` `activate()`:
   - Create `SpecTreeProvider` instance
-  - Register it with `vscode.window.registerTreeDataProvider('sdd.specTree', provider)`
+  - Register it with `vscode.window.registerTreeDataProvider('sdd.specsTree', provider)`
   - Register `sdd.refreshSpecs` command that calls `provider.refresh()`
 - Add `sdd.refreshSpecs` command to `package.json` contributes.commands with title "SDD: Refresh Specs"
 - Add a refresh button (inline icon) to the Specs view title bar using `view/title` menu contribution in `package.json`

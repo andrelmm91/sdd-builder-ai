@@ -20,7 +20,7 @@ const FRONTMATTER_SCHEMA = {
   type: 'object',
   required: [
     'spec_id', 'title', 'status', 'priority', 'complexity',
-    'tags', 'relevant_files', 'depends_on', 'budget_max_tokens', 'agent_skills', 'created',
+    'tags', 'relevant_files', 'must_not_touch', 'depends_on', 'budget_max_tokens', 'agent_skills', 'created',
   ],
   properties: {
     spec_id:           { type: 'string', pattern: '^[A-Za-z0-9]+-[0-9]+$' },

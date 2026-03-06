@@ -4,22 +4,7 @@ import * as path from 'path';
 import { writeWorkspaceFile, fileExists, getWorkspaceRoot } from '../utils/fileSystem';
 import { isCommandAvailable } from '../utils/shell';
 import type { SpecDocument } from '../specs/types';
-import type { ExecutionConfig } from './types';
-
-export interface ExecutionResult {
-  success: boolean;
-  output: string;
-  tokensIn: number;
-  tokensOut: number;
-  duration: number;
-  error?: string;
-}
-
-export interface ExecutionRunner {
-  execute(spec: SpecDocument, context: string, config: ExecutionConfig): Promise<ExecutionResult>;
-  abort(): void;
-  isRunning(): boolean;
-}
+import type { ExecutionConfig, ExecutionResult, ExecutionRunner } from './types';
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
