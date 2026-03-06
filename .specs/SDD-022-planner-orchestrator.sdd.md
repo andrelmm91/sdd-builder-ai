@@ -48,9 +48,9 @@ The planner orchestrator is the main entry point for the "SDD: Plan Specs from R
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: orchestrator calls all pipeline steps in order
-- [ ] Unit tests pass: Claude CLI failure produces meaningful error in PlanningResult
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: orchestrator calls all pipeline steps in order
+- [x] Unit tests pass: Claude CLI failure produces meaningful error in PlanningResult
 
 ### Manual
 - [ ] Running the planner with sample requirements produces valid spec files in .specs/
