@@ -3,6 +3,7 @@ import { initProject } from "./commands/initProject";
 import { newSpec } from "./commands/newSpec";
 import { createMarkReadyCommand } from "./commands/markReady";
 import { createValidateSpecCommand } from "./commands/validateSpec";
+import { createExecuteSpecCommand } from "./commands/executeSpec";
 import { planFromRequirements } from "./commands/planFromRequirements";
 import { refinePlan } from "./commands/refinePlan";
 import { SpecTreeProvider } from "./views/sidebar/specTreeProvider";
@@ -29,8 +30,9 @@ export function activate(context: vscode.ExtensionContext): void {
       "sdd.validateSpec",
       createValidateSpecCommand()
     ),
-    vscode.commands.registerCommand("sdd.executeSpec", () =>
-      vscode.window.showInformationMessage("Execute: Coming soon (Phase 2)")
+    vscode.commands.registerCommand(
+      "sdd.executeSpec",
+      createExecuteSpecCommand(() => specTreeProvider.refresh())
     ),
     vscode.commands.registerCommand("sdd.reviewSpec", () =>
       vscode.window.showInformationMessage("Review: Coming soon (Phase 3)")

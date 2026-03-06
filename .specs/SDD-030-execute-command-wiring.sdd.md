@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-030
 title: Wire spec execution command to VS Code UI
-status: draft
+status: review
 priority: high
 complexity: medium
 tags: [phase-2, frontend]
@@ -52,7 +52,7 @@ All execution engine modules are built (context assembler, CLI runner, budget en
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
+- [x] TypeScript compilation passes
 
 ### Manual
 - [ ] Right-clicking a "ready" spec and choosing "Execute" starts execution in terminal
