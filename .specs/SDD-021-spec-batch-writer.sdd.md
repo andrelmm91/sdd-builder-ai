@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-021
 title: Implement spec batch writer for planner output
-status: draft
+status: ready
 priority: high
 complexity: medium
 tags: [phase-2, backend]
@@ -40,10 +40,10 @@ After the SDD Planner agent generates spec content, the output needs to be parse
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Unit tests pass: planner output is correctly parsed into individual specs
-- [ ] Unit tests pass: slug generation produces valid file names
-- [ ] Unit tests pass: existing file conflicts are reported as errors (not overwritten)
-- [ ] TypeScript compilation passes
+- [x] Unit tests pass: planner output is correctly parsed into individual specs
+- [x] Unit tests pass: slug generation produces valid file names
+- [x] Unit tests pass: existing file conflicts are reported as errors (not overwritten)
+- [x] TypeScript compilation passes
 
 ### Manual
 - [ ] Written files are valid `.sdd.md` files that can be parsed by the spec parser
