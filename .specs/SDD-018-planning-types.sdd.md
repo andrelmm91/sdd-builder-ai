@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-018
 title: Define planning types and requirements parser
-status: draft
+status: done
 priority: high
 complexity: low
 tags: [phase-2, backend]
@@ -38,12 +38,12 @@ The planning module decomposes builder requirements into spec files using the SD
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: requirements parser normalizes whitespace correctly
-- [ ] Unit tests pass: validation rejects empty or too-short requirements
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: requirements parser normalizes whitespace correctly
+- [x] Unit tests pass: validation rejects empty or too-short requirements
 
 ### Manual
-- [ ] Types cover all planning workflow data needs
+- [x] Types cover all planning workflow data needs
 
 ## Constraints
 - Pure types and string processing — no I/O, no VS Code API
