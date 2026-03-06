@@ -38,11 +38,11 @@ Each spec has a `budget_max_tokens` field that limits how many tokens an executi
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Unit tests pass: budget below minimum is invalid
-- [ ] Unit tests pass: budget above 200000 returns warning
-- [ ] Unit tests pass: cost estimation returns reasonable values
-- [ ] Unit tests pass: formatTokenCount produces readable output
-- [ ] TypeScript compilation passes
+- [x] Unit tests pass: budget below minimum is invalid
+- [x] Unit tests pass: budget above 200000 returns warning
+- [x] Unit tests pass: cost estimation returns reasonable values
+- [x] Unit tests pass: formatTokenCount produces readable output
+- [x] TypeScript compilation passes
 
 ### Manual
 - [ ] Budget recommendations align with complexity guidelines in the product spec
