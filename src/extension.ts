@@ -5,10 +5,12 @@ import { createMarkReadyCommand } from "./commands/markReady";
 import { createValidateSpecCommand } from "./commands/validateSpec";
 import { SpecTreeProvider } from "./views/sidebar/specTreeProvider";
 import { SpecCompletionProvider } from "./specs/completionProvider";
+import { StatusBarManager } from "./views/statusBar";
 
 export function activate(context: vscode.ExtensionContext): void {
   // SDD Platform extension activated
   const specTreeProvider = new SpecTreeProvider();
+  const statusBarManager = new StatusBarManager();
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("sdd.specsTree", specTreeProvider),
@@ -31,7 +33,11 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("sdd.reviewSpec", () =>
       vscode.window.showInformationMessage("Review: Coming soon (Phase 3)")
     ),
+    vscode.commands.registerCommand("sdd.openDashboard", () =>
+      vscode.commands.executeCommand("workbench.view.extension.sdd-sidebar")
+    ),
     specTreeProvider,
+    statusBarManager,
     vscode.languages.registerCompletionItemProvider(
       { language: "sdd-spec" },
       new SpecCompletionProvider(),

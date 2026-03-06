@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-017
 title: Add status bar item for spec overview
-status: draft
+status: done
 priority: low
 complexity: low
 tags: [phase-1, frontend]
@@ -39,7 +39,7 @@ A status bar item provides at-a-glance visibility of the project's SDD status wi
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
+- [x] TypeScript compilation passes
 
 ### Manual
 - [ ] Status bar shows spec counts

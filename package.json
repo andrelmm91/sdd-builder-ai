@@ -45,6 +45,10 @@
       {
         "command": "sdd.reviewSpec",
         "title": "SDD: Review Spec"
+      },
+      {
+        "command": "sdd.openDashboard",
+        "title": "SDD: Open Dashboard"
       }
     ],
     "menus": {
