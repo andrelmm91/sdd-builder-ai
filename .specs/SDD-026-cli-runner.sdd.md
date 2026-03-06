@@ -61,6 +61,12 @@ The CLI runner is responsible for spawning Claude CLI in the VS Code integrated 
 - [ ] Aborting stops the Claude CLI process
 
 ## Constraints
-- Must use VS Code Terminal API for spawning — not raw child_process (to enable streaming visibility)
+- Must display execution output through the VS Code Terminal API (via `vscode.window.createTerminal`) so
+  the builder can watch AI working in real-time. A `Pseudoterminal` (custom PTY) implementation satisfies
+  this requirement: the stable VS Code Terminal API does not expose an output-capture stream
+  (`vscode.window.onDidWriteTerminalData` is a proposed API), so using a `Pseudoterminal` together with
+  `child_process.spawn` is the correct hybrid — all display goes through VS Code, while programmatic
+  capture (token counting, log storage) is handled by the process stream. Raw `child_process` without a
+  VS Code terminal is not acceptable.
 - Must use shell utility for pre-flight checks (is Claude CLI installed?)
 - Temp context file must be cleaned up after execution

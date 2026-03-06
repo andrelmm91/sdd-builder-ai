@@ -17,6 +17,8 @@ export interface ExecutionConfig {
   claudeCliBinary: string;
   testCommand: string;
   autoValidate: boolean;
+  /** Override the default 10-minute execution timeout. */
+  timeoutMs?: number;
 }
 
 export type LogEvent = {

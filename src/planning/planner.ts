@@ -1,9 +1,9 @@
 import * as path from 'path';
-import { getWorkspaceRoot, readWorkspaceFile, writeWorkspaceFile } from '../utils/fileSystem';
+import { getWorkspaceRoot, writeWorkspaceFile } from '../utils/fileSystem';
 import { execCommand, isCommandAvailable } from '../utils/shell';
 import { parseFrontmatter } from '../utils/frontmatter';
-import { SKILLS_FOLDER } from '../utils/constants';
 import { assemblePlanContext } from './planContextAssembler';
+import { getSkillsPath } from '../execution/skillsLoader';
 import { parsePlannerOutput, writeSpecBatch } from './specBatchWriter';
 import { validateDependencies } from './dependencyResolver';
 import type { PlanningRequest, PlanningResult, GeneratedSpec } from './types';
@@ -11,12 +11,6 @@ import type { SpecData } from '../specs/types';
 
 const PLANNING_TIMEOUT_MS = 5 * 60 * 1_000; // 5 minutes
 const CONTEXT_FILE = '.sdd/plan-context.md';
-
-/** Candidate skill file paths, checked in order. */
-const SKILLS_CANDIDATES = [
-  `${SKILLS_FOLDER}/sdd-planner.md`,
-  '.claude/skills/sdd-planner.md',
-];
 
 export type ProgressCallback = (message: string) => void;
 
@@ -36,6 +30,9 @@ export class PlannerOrchestrator {
 
   /** Re-runs the planning pipeline using feedback from a previous attempt. */
   refine(request: PlanningRequest): Promise<PlanningResult> {
+    if (!request.feedback?.trim()) {
+      return Promise.resolve({ success: false, error: 'refine() requires feedback from a prior planning attempt' });
+    }
     return this.runPipeline(request);
   }
 
@@ -158,13 +155,8 @@ export class PlannerOrchestrator {
   }
 
   private async findSkillsFile(workspaceRoot: string): Promise<string | undefined> {
-    for (const relativePath of SKILLS_CANDIDATES) {
-      const content = await readWorkspaceFile(relativePath);
-      if (content !== undefined) {
-        return path.join(workspaceRoot, relativePath);
-      }
-    }
-    return undefined;
+    const relativePath = await getSkillsPath('sdd-planner');
+    return relativePath ? path.join(workspaceRoot, relativePath) : undefined;
   }
 
   private progress(message: string): void {

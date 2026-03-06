@@ -1,6 +1,7 @@
 import { execCommand, isCommandAvailable } from '../utils/shell';
 import { writeWorkspaceFile, readWorkspaceFile, listFiles, getWorkspaceRoot } from '../utils/fileSystem';
-import { EXECUTIONS_FOLDER } from '../utils/constants';
+import { EXECUTIONS_FOLDER, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
+import { parseFrontmatter } from '../utils/frontmatter';
 import { estimateCost } from './budgetEnforcer';
 import type { ExecutionRecord } from './types';
 import type { ExecutionResult } from './cliRunner';
@@ -13,13 +14,13 @@ export type CaptureResult = {
 
 /**
  * Captures and stores execution results to `.sdd/executions/{specId}/exec-{NNN}.json` and `.log`.
- * @param mustNotTouch Optional list of files that should not have been modified (scope violation detection).
+ * Reads `must_not_touch` from the spec file to detect scope violations.
  */
 export async function captureResults(
   specId: string,
   executionResult: ExecutionResult,
-  mustNotTouch: string[] = [],
 ): Promise<CaptureResult> {
+  const mustNotTouch = await loadMustNotTouch(specId);
   const root = getWorkspaceRoot();
 
   // Capture git diff info
@@ -143,6 +144,28 @@ export async function getLatestExecution(specId: string): Promise<ExecutionRecor
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Loads the `must_not_touch` list from the spec file matching `specId`.
+ * Returns an empty array if the spec cannot be found or parsed.
+ */
+async function loadMustNotTouch(specId: string): Promise<string[]> {
+  const pattern = `${SPECS_FOLDER}/**/*${SPEC_FILE_EXTENSION}`;
+  const files = await listFiles(pattern);
+  for (const file of files) {
+    const content = await readWorkspaceFile(file);
+    if (!content) continue;
+    try {
+      const { data } = parseFrontmatter(content);
+      if (data.spec_id === specId) {
+        return Array.isArray(data.must_not_touch) ? (data.must_not_touch as string[]) : [];
+      }
+    } catch {
+      // skip unparseable files
+    }
+  }
+  return [];
+}
 
 async function nextExecutionNumber(specId: string): Promise<number> {
   const pattern = `${EXECUTIONS_FOLDER}/${specId}/exec-*.json`;

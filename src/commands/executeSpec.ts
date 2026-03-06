@@ -152,7 +152,7 @@ export function createExecuteSpecCommand(refresh: () => void) {
               ...executionResult,
               success: false,
               error: executionResult.error ?? 'Cancelled by user',
-            }, spec.frontmatter.must_not_touch);
+            });
             await patchExecutionRecord(capture, { status: 'aborted' });
 
             await updateSpecStatus(uri, content, 'ready');
@@ -163,7 +163,7 @@ export function createExecuteSpecCommand(refresh: () => void) {
 
           // Capture results
           progress.report({ message: 'Capturing results…', increment: 20 });
-          const capture = await captureResults(specId, executionResult, spec.frontmatter.must_not_touch);
+          const capture = await captureResults(specId, executionResult);
 
           if (!executionResult.success) {
             throw new Error(executionResult.error ?? 'CLI execution failed');
@@ -200,7 +200,7 @@ export function createExecuteSpecCommand(refresh: () => void) {
                 ...executionResult,
                 success: false,
                 error: message,
-              }, spec.frontmatter.must_not_touch);
+              });
             } catch {
               // best-effort capture
             }

@@ -1,5 +1,6 @@
 import { readWorkspaceFile } from '../utils/fileSystem';
-import { CONVENTIONS_FILE, SKILLS_FOLDER } from '../utils/constants';
+import { CONVENTIONS_FILE } from '../utils/constants';
+import { loadSkills } from './skillsLoader';
 import type { SpecDocument } from '../specs/types';
 
 const MAX_CONTEXT_BYTES = 100 * 1024;
@@ -94,7 +95,7 @@ export async function assembleExecutionContext(
   // 4. Agent Skills
   const skillsContent =
     options.skills ??
-    (fm.agent_skills ? await readWorkspaceFile(`${SKILLS_FOLDER}/${fm.agent_skills}.md`) : undefined);
+    (fm.agent_skills ? await loadSkills(fm.agent_skills) : undefined);
   if (skillsContent) {
     sections.push(`## Agent Skills\n\n${skillsContent}`);
   }

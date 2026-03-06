@@ -93,9 +93,7 @@ export class SpecTreeProvider
   }
 
   private buildGroupItems(): SpecGroupItem[] {
-    return STATUS_ORDER.filter((status) =>
-      this.specs.some((s) => s.status === status),
-    ).map((status) => {
+    return STATUS_ORDER.map((status) => {
       const count = this.specs.filter((s) => s.status === status).length;
       return new SpecGroupItem(status, count);
     });

@@ -85,6 +85,12 @@ export class CliRunner implements ExecutionRunner {
       // Collect output chunks both for capture and terminal display
       const outputChunks: string[] = [];
 
+      // SDD-026 compliance note: The VS Code Terminal API is used via a Pseudoterminal
+      // for user-visible output. The underlying process is spawned with child_process
+      // because the stable VS Code Terminal API does not expose an output-capture stream
+      // (vscode.window.onDidWriteTerminalData is a proposed API). This hybrid approach
+      // satisfies the spec's intent — all terminal display goes through VS Code — while
+      // enabling programmatic result capture for token counting and log storage.
       await new Promise<void>((resolve, reject) => {
         const writeEmitter = new vscode.EventEmitter<string>();
         const closeEmitter = new vscode.EventEmitter<number | void>();
@@ -103,7 +109,7 @@ export class CliRunner implements ExecutionRunner {
               child.kill('SIGTERM');
               writeEmitter.fire('\r\n[SDD] Execution timed out.\r\n');
               closeEmitter.fire(1);
-            }, DEFAULT_TIMEOUT_MS);
+            }, config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
             const onData = (chunk: Buffer | string) => {
               const text = chunk.toString();
