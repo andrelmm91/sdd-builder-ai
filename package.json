@@ -49,6 +49,14 @@
       {
         "command": "sdd.openDashboard",
         "title": "SDD: Open Dashboard"
+      },
+      {
+        "command": "sdd.planFromRequirements",
+        "title": "SDD: Plan Specs from Requirements"
+      },
+      {
+        "command": "sdd.refinePlan",
+        "title": "SDD: Refine Plan"
       }
     ],
     "menus": {

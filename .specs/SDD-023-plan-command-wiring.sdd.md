@@ -44,7 +44,7 @@ The planner orchestrator (SDD-022) handles the backend logic, but builders need 
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
+- [x] TypeScript compilation passes
 
 ### Manual
 - [ ] "SDD: Plan Specs from Requirements" appears in command palette

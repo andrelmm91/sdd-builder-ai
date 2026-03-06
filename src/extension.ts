@@ -3,6 +3,8 @@ import { initProject } from "./commands/initProject";
 import { newSpec } from "./commands/newSpec";
 import { createMarkReadyCommand } from "./commands/markReady";
 import { createValidateSpecCommand } from "./commands/validateSpec";
+import { planFromRequirements } from "./commands/planFromRequirements";
+import { refinePlan } from "./commands/refinePlan";
 import { SpecTreeProvider } from "./views/sidebar/specTreeProvider";
 import { SpecCompletionProvider } from "./specs/completionProvider";
 import { StatusBarManager } from "./views/statusBar";
@@ -36,6 +38,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("sdd.openDashboard", () =>
       vscode.commands.executeCommand("workbench.view.extension.sdd-sidebar")
     ),
+    vscode.commands.registerCommand("sdd.planFromRequirements", planFromRequirements),
+    vscode.commands.registerCommand("sdd.refinePlan", refinePlan),
     specTreeProvider,
     statusBarManager,
     vscode.languages.registerCompletionItemProvider(
