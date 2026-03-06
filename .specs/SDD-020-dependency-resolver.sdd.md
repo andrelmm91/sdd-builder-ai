@@ -42,12 +42,12 @@ Specs have `depends_on` fields that express execution order. Before executing a 
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Unit tests pass: linear dependency chain produces correct order
-- [ ] Unit tests pass: circular dependency is detected and reported
-- [ ] Unit tests pass: broken reference is detected and reported
-- [ ] Unit tests pass: independent specs are included in output
-- [ ] Unit tests pass: getReadyToExecute returns only specs with all deps done
-- [ ] TypeScript compilation passes
+- [x] Unit tests pass: linear dependency chain produces correct order
+- [x] Unit tests pass: circular dependency is detected and reported
+- [x] Unit tests pass: broken reference is detected and reported
+- [x] Unit tests pass: independent specs are included in output
+- [x] Unit tests pass: getReadyToExecute returns only specs with all deps done
+- [x] TypeScript compilation passes
 
 ### Manual
 - [ ] Dependency ordering matches expected behavior for sample spec sets
