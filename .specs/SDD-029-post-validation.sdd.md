@@ -45,10 +45,10 @@ After an AI agent executes a spec and modifies code, the extension should automa
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: successful test returns passed=true
-- [ ] Unit tests pass: failing test returns passed=false with output
-- [ ] Unit tests pass: timeout is handled correctly
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: successful test returns passed=true
+- [x] Unit tests pass: failing test returns passed=false with output
+- [x] Unit tests pass: timeout is handled correctly
 
 ### Manual
 - [ ] Post-validation correctly runs `npm test` after spec execution
