@@ -51,9 +51,9 @@ The CLI runner is responsible for spawning Claude CLI in the VS Code integrated 
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: CLI command is correctly constructed from config
-- [ ] Unit tests pass: abort sets running state to false
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: CLI command is correctly constructed from config
+- [x] Unit tests pass: abort sets running state to false
 
 ### Manual
 - [ ] Execution appears in VS Code terminal with streaming output
