@@ -41,10 +41,10 @@ Each spec references an `agent_skills` value (e.g., "backend-dev", "frontend-dev
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: skills file found in .sdd/skills/ is loaded correctly
-- [ ] Unit tests pass: fallback to .claude/skills/ works
-- [ ] Unit tests pass: missing skills returns undefined
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: skills file found in .sdd/skills/ is loaded correctly
+- [x] Unit tests pass: fallback to .claude/skills/ works
+- [x] Unit tests pass: missing skills returns undefined
 
 ### Manual
 - [ ] Skills loader correctly finds the sdd-planner skills file in the project
