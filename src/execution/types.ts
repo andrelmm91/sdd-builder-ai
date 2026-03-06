@@ -9,6 +9,7 @@ export interface ExecutionRecord {
   duration: number;
   testsPassed: boolean | null;
   prUrl: string | null;
+  scopeViolation: boolean;
 }
 
 export interface ExecutionConfig {

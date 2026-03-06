@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-028
 title: Implement execution result capture and storage
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-2, backend]
@@ -45,10 +45,10 @@ After Claude CLI finishes executing a spec, the extension needs to capture and s
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: execution record JSON is correctly structured
-- [ ] Unit tests pass: scope violations are detected when must_not_touch files are modified
-- [ ] Unit tests pass: execution numbering is sequential
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: execution record JSON is correctly structured
+- [x] Unit tests pass: scope violations are detected when must_not_touch files are modified
+- [x] Unit tests pass: execution numbering is sequential
 
 ### Manual
 - [ ] Execution records appear in `.sdd/executions/{spec_id}/` after running a spec
