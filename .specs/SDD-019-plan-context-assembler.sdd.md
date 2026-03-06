@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-019
 title: Build planner context assembler
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-2, backend]
@@ -43,10 +43,10 @@ Before the SDD Planner agent can decompose requirements, it needs full project c
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: assembled context includes all required sections
-- [ ] Unit tests pass: missing conventions file doesn't cause an error
-- [ ] Unit tests pass: feedback section is included only when feedback is provided
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: assembled context includes all required sections
+- [x] Unit tests pass: missing conventions file doesn't cause an error
+- [x] Unit tests pass: feedback section is included only when feedback is provided
 
 ### Manual
 - [ ] Assembled context provides enough information for the planner agent to generate valid specs
