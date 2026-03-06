@@ -12,7 +12,11 @@
   ],
   "activationEvents": [
     "workspaceContains:**/*.sdd.md",
-    "workspaceContains:.sdd/config.json"
+    "workspaceContains:.sdd/config.json",
+    "onCommand:sdd.initProject",
+    "onCommand:sdd.newSpec",
+    "onCommand:sdd.planFromRequirements",
+    "onCommand:sdd.openDashboard"
   ],
   "main": "./dist/extension.js",
   "contributes": {

@@ -1,4 +1,3 @@
-import Ajv from 'ajv';
 import type { SpecDocument } from './types';
 
 export interface ValidationError {
@@ -12,75 +11,10 @@ export interface ValidationResult {
   errors: ValidationError[];
 }
 
-const frontmatterSchema = {
-  type: 'object',
-  properties: {
-    spec_id: {
-      type: 'string',
-      pattern: '^[A-Za-z0-9]+-[0-9]+$',
-    },
-    title: {
-      type: 'string',
-      minLength: 1,
-    },
-    status: {
-      type: 'string',
-      enum: ['draft', 'ready', 'in_progress', 'review', 'done'],
-    },
-    priority: {
-      type: 'string',
-      enum: ['high', 'medium', 'low'],
-    },
-    complexity: {
-      type: 'string',
-      enum: ['low', 'medium', 'high'],
-    },
-    tags: {
-      type: 'array',
-      items: { type: 'string' },
-      minItems: 1,
-    },
-    relevant_files: {
-      type: 'array',
-      items: { type: 'string' },
-      minItems: 1,
-    },
-    depends_on: {
-      type: 'array',
-      items: { type: 'string' },
-    },
-    budget_max_tokens: {
-      type: 'number',
-      exclusiveMinimum: 0,
-    },
-    agent_skills: {
-      type: 'string',
-      minLength: 1,
-    },
-    created: {
-      type: 'string',
-      pattern: '^\\d{4}-\\d{2}-\\d{2}$',
-    },
-  },
-  required: [
-    'spec_id',
-    'title',
-    'status',
-    'priority',
-    'complexity',
-    'tags',
-    'relevant_files',
-    'depends_on',
-    'budget_max_tokens',
-    'agent_skills',
-    'created',
-  ],
-  additionalProperties: true,
-} as const;
-
-const ajv = new Ajv({ allErrors: true });
-const validateFrontmatter = ajv.compile(frontmatterSchema);
-
+const VALID_STATUSES = new Set(['draft', 'ready', 'in_progress', 'review', 'done']);
+const VALID_PRIORITIES = new Set(['high', 'medium', 'low']);
+const VALID_COMPLEXITIES = new Set(['low', 'medium', 'high']);
+const SPEC_ID_PATTERN = /^[A-Za-z0-9]+-[0-9]+$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function isValidDate(dateStr: string): boolean {
@@ -91,55 +25,72 @@ function isValidDate(dateStr: string): boolean {
   return !isNaN(date.getTime());
 }
 
-function resolveFriendlyMessage(keyword: string, field: string, params: Record<string, unknown>): string {
-  switch (keyword) {
-    case 'pattern':
-      if (field === 'spec_id') {
-        return 'spec_id must match pattern {PREFIX}-{NNN} (e.g. SDD-001)';
-      }
-      if (field === 'created') {
-        return 'created must be a valid date string (YYYY-MM-DD)';
-      }
-      return `${field} has an invalid format`;
-    case 'minLength':
-      return `${field} must be non-empty`;
-    case 'enum':
-      return `${field} must be one of: ${(params.allowedValues as string[]).join(', ')}`;
-    case 'minItems':
-      return `${field} must be a non-empty array`;
-    case 'exclusiveMinimum':
-      return 'budget_max_tokens must be a positive number';
-    case 'required':
-      return `Missing required frontmatter field: ${params.missingProperty as string}`;
-    case 'type':
-      return `${field} has an invalid type`;
-    default:
-      return `${field}: validation failed (${keyword})`;
+function validateFrontmatterFields(fm: SpecDocument['frontmatter'], errors: ValidationError[]): void {
+  const required: (keyof typeof fm)[] = [
+    'spec_id', 'title', 'status', 'priority', 'complexity',
+    'tags', 'relevant_files', 'depends_on', 'budget_max_tokens', 'agent_skills', 'created',
+  ];
+
+  for (const field of required) {
+    if (fm[field] === undefined || fm[field] === null) {
+      errors.push({ field, message: `Missing required frontmatter field: ${field}`, severity: 'error' });
+    }
+  }
+
+  if (fm.spec_id && !SPEC_ID_PATTERN.test(fm.spec_id)) {
+    errors.push({ field: 'spec_id', message: 'spec_id must match pattern {PREFIX}-{NNN} (e.g. SDD-001)', severity: 'error' });
+  }
+
+  if (fm.title !== undefined && (typeof fm.title !== 'string' || fm.title.trim() === '')) {
+    errors.push({ field: 'title', message: 'title must be non-empty', severity: 'error' });
+  }
+
+  if (fm.status !== undefined && !VALID_STATUSES.has(fm.status)) {
+    errors.push({ field: 'status', message: `status must be one of: ${[...VALID_STATUSES].join(', ')}`, severity: 'error' });
+  }
+
+  if (fm.priority !== undefined && !VALID_PRIORITIES.has(fm.priority)) {
+    errors.push({ field: 'priority', message: `priority must be one of: ${[...VALID_PRIORITIES].join(', ')}`, severity: 'error' });
+  }
+
+  if (fm.complexity !== undefined && !VALID_COMPLEXITIES.has(fm.complexity)) {
+    errors.push({ field: 'complexity', message: `complexity must be one of: ${[...VALID_COMPLEXITIES].join(', ')}`, severity: 'error' });
+  }
+
+  if (fm.tags !== undefined && (!Array.isArray(fm.tags) || fm.tags.length === 0)) {
+    errors.push({ field: 'tags', message: 'tags must be a non-empty array', severity: 'error' });
+  }
+
+  if (fm.relevant_files !== undefined && (!Array.isArray(fm.relevant_files) || fm.relevant_files.length === 0)) {
+    errors.push({ field: 'relevant_files', message: 'relevant_files must be a non-empty array', severity: 'error' });
+  }
+
+  if (fm.depends_on !== undefined && !Array.isArray(fm.depends_on)) {
+    errors.push({ field: 'depends_on', message: 'depends_on must be an array', severity: 'error' });
+  }
+
+  if (fm.budget_max_tokens !== undefined && (typeof fm.budget_max_tokens !== 'number' || fm.budget_max_tokens <= 0)) {
+    errors.push({ field: 'budget_max_tokens', message: 'budget_max_tokens must be a positive number', severity: 'error' });
+  }
+
+  if (fm.agent_skills !== undefined && (typeof fm.agent_skills !== 'string' || fm.agent_skills.trim() === '')) {
+    errors.push({ field: 'agent_skills', message: 'agent_skills must be non-empty', severity: 'error' });
+  }
+
+  if (fm.created !== undefined) {
+    if (!DATE_PATTERN.test(fm.created)) {
+      errors.push({ field: 'created', message: 'created must be a valid date string (YYYY-MM-DD)', severity: 'error' });
+    } else if (!isValidDate(fm.created)) {
+      errors.push({ field: 'created', message: 'created must be a valid calendar date', severity: 'error' });
+    }
   }
 }
 
 export function validateSpec(spec: SpecDocument): ValidationResult {
   const errors: ValidationError[] = [];
 
-  // --- JSON Schema validation of frontmatter ---
-  const schemaValid = validateFrontmatter(spec.frontmatter);
-  if (!schemaValid && validateFrontmatter.errors) {
-    for (const err of validateFrontmatter.errors) {
-      const params = (err.params ?? {}) as Record<string, unknown>;
-      const field = err.instancePath
-        ? err.instancePath.replace(/^\//, '')
-        : ((params.missingProperty as string) ?? 'frontmatter');
-      const message = resolveFriendlyMessage(err.keyword, field, params);
-      errors.push({ field, message, severity: 'error' });
-    }
-  }
-
-  // Additional date validity check (pattern match is not enough for e.g. 2026-02-31)
-  if (spec.frontmatter.created && DATE_PATTERN.test(spec.frontmatter.created)) {
-    if (!isValidDate(spec.frontmatter.created)) {
-      errors.push({ field: 'created', message: 'created must be a valid calendar date', severity: 'error' });
-    }
-  }
+  // --- Frontmatter validation ---
+  validateFrontmatterFields(spec.frontmatter, errors);
 
   // --- Markdown section completeness (errors) ---
   if (!spec.context || spec.context.trim() === '') {
