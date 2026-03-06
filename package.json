@@ -89,7 +89,7 @@
         },
         {
           "command": "sdd.reviewSpec",
-          "when": "view == sdd.specsTree && viewItem == 'in_progress'",
+          "when": "view == sdd.specsTree && viewItem == 'review'",
           "group": "sdd@1"
         }
       ]

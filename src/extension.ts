@@ -9,9 +9,11 @@ import { refinePlan } from "./commands/refinePlan";
 import { SpecTreeProvider } from "./views/sidebar/specTreeProvider";
 import { SpecCompletionProvider } from "./specs/completionProvider";
 import { StatusBarManager } from "./views/statusBar";
+import { activate as activateDiagnostics } from "./specs/diagnostics";
 
 export function activate(context: vscode.ExtensionContext): void {
   // SDD Platform extension activated
+  activateDiagnostics(context);
   const specTreeProvider = new SpecTreeProvider();
   const statusBarManager = new StatusBarManager();
 

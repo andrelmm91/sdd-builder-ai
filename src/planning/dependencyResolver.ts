@@ -122,7 +122,7 @@ export function getReadyToExecute(specs: SpecData[]): string[] {
   const doneIds = new Set(specs.filter((s) => s.status === 'done').map((s) => s.spec_id));
 
   return specs
-    .filter((spec) => spec.status !== 'done' && spec.depends_on.every((dep) => doneIds.has(dep)))
+    .filter((spec) => spec.status === 'ready' && spec.depends_on.every((dep) => doneIds.has(dep)))
     .map((s) => s.spec_id)
     .sort();
 }

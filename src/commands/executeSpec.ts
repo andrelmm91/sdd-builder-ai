@@ -130,6 +130,7 @@ export function createExecuteSpecCommand(refresh: () => void) {
 
 
 
+        let executionResult: Awaited<ReturnType<typeof _runner.execute>> | undefined;
         try {
           // Load skills
           progress.report({ message: 'Loading skills…', increment: 10 });
@@ -143,7 +144,7 @@ export function createExecuteSpecCommand(refresh: () => void) {
 
           // Execute via CliRunner
           progress.report({ message: 'Running Claude CLI…', increment: 20 });
-          const executionResult = await _runner.execute(spec, context, config);
+          executionResult = await _runner.execute(spec, context, config);
 
           if (token.isCancellationRequested) {
             // Save partial results then revert status
@@ -191,6 +192,19 @@ export function createExecuteSpecCommand(refresh: () => void) {
             return; // already handled above
           }
           const message = err instanceof Error ? err.message : String(err);
+
+          // Save partial results if execution ran
+          if (executionResult) {
+            try {
+              await captureResults(specId, {
+                ...executionResult,
+                success: false,
+                error: message,
+              }, spec.frontmatter.must_not_touch);
+            } catch {
+              // best-effort capture
+            }
+          }
 
           // Revert to "ready" on failure
           try {
