@@ -68,7 +68,7 @@ export class SpecTreeProvider
       root,
       `${SPECS_FOLDER}/**/*${SPEC_FILE_EXTENSION}`,
     );
-    const uris = await vscode.workspace.findFiles(pattern);
+    const uris = await vscode.workspace.findFiles(pattern, null);
 
     const results: SpecData[] = [];
     this.specFilePaths.clear();
