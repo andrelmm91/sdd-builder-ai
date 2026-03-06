@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-016
 title: Add file path IntelliSense for spec editing
-status: draft
+status: done
 priority: low
 complexity: medium
 tags: [phase-1, frontend]
@@ -39,7 +39,7 @@ When editing `relevant_files` or `must_not_touch` fields in a `.sdd.md` file, bu
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
+- [x] TypeScript compilation passes
 
 ### Manual
 - [ ] Typing in `relevant_files` array shows file path suggestions

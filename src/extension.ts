@@ -4,6 +4,7 @@ import { newSpec } from "./commands/newSpec";
 import { createMarkReadyCommand } from "./commands/markReady";
 import { createValidateSpecCommand } from "./commands/validateSpec";
 import { SpecTreeProvider } from "./views/sidebar/specTreeProvider";
+import { SpecCompletionProvider } from "./specs/completionProvider";
 
 export function activate(context: vscode.ExtensionContext): void {
   // SDD Platform extension activated
@@ -30,7 +31,12 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("sdd.reviewSpec", () =>
       vscode.window.showInformationMessage("Review: Coming soon (Phase 3)")
     ),
-    specTreeProvider
+    specTreeProvider,
+    vscode.languages.registerCompletionItemProvider(
+      { language: "sdd-spec" },
+      new SpecCompletionProvider(),
+      "-", " "
+    )
   );
 }
 
