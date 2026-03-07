@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-034
 title: Wire review commands to VS Code UI
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-3, frontend]

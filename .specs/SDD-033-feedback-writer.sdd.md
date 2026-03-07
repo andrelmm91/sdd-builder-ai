@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-033
 title: Implement review feedback writer and re-execution loop
-status: draft
+status: done
 priority: medium
 complexity: low
 tags: [phase-3, backend]

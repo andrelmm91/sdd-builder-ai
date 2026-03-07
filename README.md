@@ -252,9 +252,10 @@ Output: 200 {message: "Reset email sent"}
 | `SDD: Validate Current Spec` | Manually trigger validation on the open spec file |
 | `SDD: Mark Spec as Ready` | Transition spec from draft → ready (validation must pass) |
 | `SDD: Execute Spec` | Run Claude CLI against a ready spec |
-| `SDD: Review Spec` | Open split view: spec + diff |
-| `SDD: Approve & Create PR` | Approve review and ship to GitHub |
+| `SDD: Review Spec` | Open split view: spec + diff (available for `in_progress` and `review` specs) |
+| `SDD: Approve Spec` | Approve review and proceed to GitHub flow |
 | `SDD: Request Changes` | Write feedback and send spec back for re-execution |
+| `SDD: Reject Spec` | Revert agent changes and transition spec back to `draft` |
 | `SDD: Open Dashboard` | Open project analytics webview (Pro) |
 | `SDD: Open Kanban Board` | Open the 5-column kanban webview (Pro) |
 | `SDD: New Spec Form` | Open structured spec form in create mode (Pro) |

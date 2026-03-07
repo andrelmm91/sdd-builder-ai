@@ -47,6 +47,18 @@
         "title": "SDD: Review Spec"
       },
       {
+        "command": "sdd.approveSpec",
+        "title": "SDD: Approve Spec"
+      },
+      {
+        "command": "sdd.requestChanges",
+        "title": "SDD: Request Changes"
+      },
+      {
+        "command": "sdd.rejectSpec",
+        "title": "SDD: Reject Spec"
+      },
+      {
         "command": "sdd.openDashboard",
         "title": "SDD: Open Dashboard"
       },
@@ -85,8 +97,23 @@
         },
         {
           "command": "sdd.reviewSpec",
-          "when": "view == sdd.specsTree && viewItem == 'review'",
+          "when": "view == sdd.specsTree && (viewItem == 'in_progress' || viewItem == 'review')",
           "group": "sdd@1"
+        },
+        {
+          "command": "sdd.approveSpec",
+          "when": "view == sdd.specsTree && viewItem == 'review'",
+          "group": "sdd@2"
+        },
+        {
+          "command": "sdd.requestChanges",
+          "when": "view == sdd.specsTree && viewItem == 'review'",
+          "group": "sdd@3"
+        },
+        {
+          "command": "sdd.rejectSpec",
+          "when": "view == sdd.specsTree && viewItem == 'review'",
+          "group": "sdd@4"
         }
       ]
     },

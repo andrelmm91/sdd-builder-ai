@@ -6,6 +6,12 @@ import { createValidateSpecCommand } from "./commands/validateSpec";
 import { createExecuteSpecCommand } from "./commands/executeSpec";
 import { planFromRequirements } from "./commands/planFromRequirements";
 import { refinePlan } from "./commands/refinePlan";
+import {
+  createReviewSpecCommand,
+  createApproveSpecCommand,
+  createRequestChangesCommand,
+  createRejectSpecCommand,
+} from "./commands/reviewCommands";
 import { SpecTreeProvider } from "./views/sidebar/specTreeProvider";
 import { SpecCompletionProvider } from "./specs/completionProvider";
 import { StatusBarManager } from "./views/statusBar";
@@ -36,8 +42,21 @@ export function activate(context: vscode.ExtensionContext): void {
       "sdd.executeSpec",
       createExecuteSpecCommand(() => specTreeProvider.refresh())
     ),
-    vscode.commands.registerCommand("sdd.reviewSpec", () =>
-      vscode.window.showInformationMessage("Review: Coming soon (Phase 3)")
+    vscode.commands.registerCommand(
+      "sdd.reviewSpec",
+      createReviewSpecCommand(() => specTreeProvider.refresh())
+    ),
+    vscode.commands.registerCommand(
+      "sdd.approveSpec",
+      createApproveSpecCommand(() => specTreeProvider.refresh())
+    ),
+    vscode.commands.registerCommand(
+      "sdd.requestChanges",
+      createRequestChangesCommand(() => specTreeProvider.refresh())
+    ),
+    vscode.commands.registerCommand(
+      "sdd.rejectSpec",
+      createRejectSpecCommand(() => specTreeProvider.refresh())
     ),
     vscode.commands.registerCommand("sdd.openDashboard", () =>
       vscode.commands.executeCommand("workbench.view.extension.sdd-sidebar")
