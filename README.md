@@ -315,6 +315,28 @@ Every spec, execution, and review lives in Git history — clone the repo and ge
 
 ---
 
+## Building from Source
+
+```bash
+npm install
+
+# Build the VS Code extension (esbuild)
+npm run build
+
+# Build webview assets — Svelte components compiled by Vite into dist/webviews/
+npm run build:webview
+
+# Type-check all extension TypeScript
+npm run type-check
+
+# Run tests
+npm test
+```
+
+The extension build (`npm run build`) and the webview build (`npm run build:webview`) are independent pipelines — esbuild for Node/extension code, Vite+Svelte for browser webview code.
+
+---
+
 ## Feedback & Issues
 
 Report bugs and feature requests at [GitHub Issues](https://github.com/your-org/sdd-platform/issues).

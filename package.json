@@ -186,16 +186,20 @@
   },
   "scripts": {
     "build": "node esbuild.config.mjs",
+    "build:webview": "vite build --config webview-ui/vite.config.ts",
     "dev": "node esbuild.config.mjs --watch",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
     "test": "vitest run"
   },
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.0.0",
     "@types/node": "^20.19.35",
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.20.0",
+    "svelte": "^5.0.0",
     "typescript": "^5.9.3",
+    "vite": "^7.0.0",
     "vitest": "^4.0.18"
   },
   "dependencies": {

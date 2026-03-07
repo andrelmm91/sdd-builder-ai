@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-038
 title: Set up webview build infrastructure with Svelte and Vite
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-4, infra, frontend]

@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-037
 title: Wire approve and ship-to-GitHub command
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-3, frontend]
