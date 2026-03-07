@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-039
 title: Implement dashboard webview panel
-status: draft
+status: done
 priority: medium
 complexity: high
 tags: [phase-4, frontend]

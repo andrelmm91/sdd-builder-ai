@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-040
 title: Implement kanban board webview panel
-status: draft
+status: done
 priority: medium
 complexity: high
 tags: [phase-4, frontend]

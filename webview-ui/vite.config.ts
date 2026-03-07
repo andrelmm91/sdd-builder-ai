@@ -9,12 +9,12 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        dashboard: resolve(__dirname, 'src/dashboard/main.ts'),
-        kanban: resolve(__dirname, 'src/kanban/main.ts'),
-        specForm: resolve(__dirname, 'src/specForm/main.ts'),
+        sddDashboard: resolve(__dirname, 'src/dashboard/index.ts'),
+        sddKanban: resolve(__dirname, 'src/kanban/index.ts'),
+        sddSpecForm: resolve(__dirname, 'src/specForm/index.ts'),
       },
       output: {
-        entryFileNames: '[name]-[hash].js',
+        entryFileNames: '[name].js',
         chunkFileNames: 'chunks/[name]-[hash].js',
         assetFileNames: '[name]-[hash].[ext]',
       },

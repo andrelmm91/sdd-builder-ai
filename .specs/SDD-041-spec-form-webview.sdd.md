@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-041
 title: Implement structured spec form webview
-status: draft
+status: done
 priority: medium
 complexity: high
 tags: [phase-4, frontend]

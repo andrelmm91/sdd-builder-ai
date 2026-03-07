@@ -1,0 +1,422 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { onMessage, postMessage } from '../lib/vscode';
+
+  type SpecStatus = 'draft' | 'ready' | 'in_progress' | 'review' | 'done';
+
+  interface SpecCard {
+    spec_id: string;
+    title: string;
+    status: SpecStatus;
+    priority: string;
+    complexity: string;
+    tags: string[];
+    depends_on: string[];
+  }
+
+  const COLUMNS: { id: SpecStatus; label: string }[] = [
+    { id: 'draft', label: 'Draft' },
+    { id: 'ready', label: 'Ready' },
+    { id: 'in_progress', label: 'In Progress' },
+    { id: 'review', label: 'Review' },
+    { id: 'done', label: 'Done' },
+  ];
+
+  // Valid forward transitions (client-side pre-validation only)
+  const VALID_TRANSITIONS: Record<SpecStatus, SpecStatus[]> = {
+    draft: ['ready'],
+    ready: ['in_progress'],
+    in_progress: ['review'],
+    review: ['done', 'ready', 'draft'],
+    done: ['draft'],
+  };
+
+  let specs: SpecCard[] = $state([]);
+  let filterText = $state('');
+  let draggedId = $state<string | null>(null);
+  let errorMap = $state<Map<string, string>>(new Map());
+
+  const filtered = $derived(
+    filterText.trim() === ''
+      ? specs
+      : specs.filter((s) => {
+          const q = filterText.toLowerCase();
+          return (
+            s.spec_id.toLowerCase().includes(q) ||
+            s.title.toLowerCase().includes(q) ||
+            s.tags.some((t) => t.toLowerCase().includes(q))
+          );
+        }),
+  );
+
+  function cardsForColumn(status: SpecStatus): SpecCard[] {
+    return filtered.filter((s) => s.status === status);
+  }
+
+  onMount(() => {
+    onMessage((msg) => {
+      if (msg.type === 'specList') {
+        const d = msg.data as { specs: SpecCard[] };
+        specs = d.specs ?? [];
+      } else if (msg.type === 'moveError') {
+        const d = msg.data as { specId: string; message: string };
+        showError(d.specId, d.message);
+      }
+    });
+  });
+
+  function showError(specId: string, message: string) {
+    errorMap = new Map(errorMap).set(specId, message);
+    setTimeout(() => {
+      errorMap = new Map([...errorMap].filter(([k]) => k !== specId));
+    }, 3000);
+  }
+
+  // Drag and drop
+  function onDragStart(event: DragEvent, specId: string) {
+    draggedId = specId;
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', specId);
+    }
+  }
+
+  function onDragEnd() {
+    draggedId = null;
+  }
+
+  function isValidDrop(targetStatus: SpecStatus): boolean {
+    if (!draggedId) return false;
+    const card = specs.find((s) => s.spec_id === draggedId);
+    if (!card) return false;
+    return VALID_TRANSITIONS[card.status]?.includes(targetStatus) ?? false;
+  }
+
+  function onDrop(event: DragEvent, targetStatus: SpecStatus) {
+    event.preventDefault();
+    const specId = event.dataTransfer?.getData('text/plain') ?? draggedId;
+    if (!specId) return;
+    postMessage('kanbanMove', { specId, newStatus: targetStatus });
+    draggedId = null;
+  }
+
+  function onDragOver(event: DragEvent, targetStatus: SpecStatus) {
+    if (isValidDrop(targetStatus)) {
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  // Actions
+  function openSpec(specId: string) {
+    postMessage('openFile', { specId });
+  }
+
+  function openSpecForm() {
+    postMessage('openSpecForm', {});
+  }
+
+  function cardAction(action: string, specId: string) {
+    postMessage('cardAction', { action, specId });
+  }
+
+  function complexityColor(c: string) {
+    return c === 'low' ? 'badge-low' : c === 'medium' ? 'badge-medium' : 'badge-high';
+  }
+
+  function priorityColor(p: string) {
+    return p === 'high' ? 'badge-high' : p === 'medium' ? 'badge-medium' : 'badge-low';
+  }
+</script>
+
+<div class="kanban-root">
+  <header class="kanban-header">
+    <span class="kanban-title">SDD Kanban</span>
+    <input
+      class="filter-input"
+      type="search"
+      placeholder="Search by ID, title, or tag…"
+      bind:value={filterText}
+    />
+    <button class="btn-new" onclick={openSpecForm}>New Spec +</button>
+  </header>
+
+  <div class="board">
+    {#each COLUMNS as col (col.id)}
+      {@const cards = cardsForColumn(col.id)}
+      {@const validTarget = draggedId !== null && isValidDrop(col.id)}
+      {@const invalidTarget = draggedId !== null && !isValidDrop(col.id)}
+      <div
+        class="column"
+        class:drop-valid={validTarget}
+        class:drop-invalid={invalidTarget}
+        ondragover={(e) => onDragOver(e, col.id)}
+        ondrop={(e) => onDrop(e, col.id)}
+      >
+        <div class="column-header">
+          <span class="column-title">{col.label}</span>
+          <span class="column-count">{cards.length}</span>
+        </div>
+
+        {#if cards.length === 0}
+          <p class="empty-col">No specs</p>
+        {:else}
+          {#each cards as card (card.spec_id)}
+            {@const cardError = errorMap.get(card.spec_id)}
+            <div
+              class="spec-card"
+              class:dragging={draggedId === card.spec_id}
+              draggable={true}
+              ondragstart={(e) => onDragStart(e, card.spec_id)}
+              ondragend={onDragEnd}
+            >
+              {#if cardError}
+                <div class="card-error">{cardError}</div>
+              {/if}
+
+              <div class="card-top">
+                <button class="link-btn spec-id" onclick={() => openSpec(card.spec_id)}>
+                  {card.spec_id}
+                </button>
+                <span class="badge {complexityColor(card.complexity)}">{card.complexity}</span>
+              </div>
+
+              <button class="link-btn card-title" onclick={() => openSpec(card.spec_id)}>
+                {card.title}
+              </button>
+
+              <div class="card-meta">
+                <span class="badge {priorityColor(card.priority)}">{card.priority}</span>
+                {#each card.tags.slice(0, 3) as tag}
+                  <span class="tag-chip">{tag}</span>
+                {/each}
+                {#if card.tags.length > 3}
+                  <span class="tag-chip muted">+{card.tags.length - 3}</span>
+                {/if}
+              </div>
+
+              {#if card.depends_on.length > 0}
+                <div class="depends-indicator">⚠ depends on {card.depends_on.join(', ')}</div>
+              {/if}
+
+              <div class="card-actions">
+                {#if card.status === 'draft'}
+                  <button class="btn-action" onclick={() => cardAction('markReady', card.spec_id)}>
+                    Mark Ready
+                  </button>
+                {:else if card.status === 'ready'}
+                  <button class="btn-action" onclick={() => cardAction('execute', card.spec_id)}>
+                    Execute
+                  </button>
+                {:else if card.status === 'review'}
+                  <button class="btn-action btn-approve" onclick={() => cardAction('approve', card.spec_id)}>
+                    Approve
+                  </button>
+                  <button class="btn-action btn-changes" onclick={() => cardAction('requestChanges', card.spec_id)}>
+                    Request Changes
+                  </button>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        {/if}
+      </div>
+    {/each}
+  </div>
+</div>
+
+<style>
+  .kanban-root {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    color: var(--vscode-foreground);
+    background: var(--vscode-editor-background);
+    overflow: hidden;
+  }
+
+  .kanban-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    flex-shrink: 0;
+  }
+
+  .kanban-title {
+    font-weight: 700;
+    font-size: 1.1em;
+    white-space: nowrap;
+  }
+
+  .filter-input {
+    flex: 1;
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border, transparent);
+    border-radius: 3px;
+    padding: 4px 8px;
+    font-size: inherit;
+    font-family: inherit;
+  }
+
+  .btn-new {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    border-radius: 3px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .btn-new:hover { background: var(--vscode-button-hoverBackground); }
+
+  .board {
+    display: flex;
+    gap: 12px;
+    padding: 12px 16px;
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: flex-start;
+  }
+
+  .column {
+    flex: 0 0 220px;
+    background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 6px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+    transition: border-color 0.1s, box-shadow 0.1s;
+  }
+
+  .column.drop-valid {
+    border-color: var(--vscode-charts-green);
+    box-shadow: 0 0 0 2px var(--vscode-charts-green);
+  }
+
+  .column.drop-invalid {
+    border-color: var(--vscode-charts-red);
+    opacity: 0.7;
+  }
+
+  .column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4px 4px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+  }
+
+  .column-title { font-weight: 600; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.04em; }
+  .column-count {
+    background: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 0.8em;
+  }
+
+  .empty-col {
+    text-align: center;
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+    font-size: 0.85em;
+    padding: 12px 0;
+  }
+
+  .spec-card {
+    background: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 4px;
+    padding: 8px;
+    cursor: grab;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: box-shadow 0.1s;
+  }
+  .spec-card:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+  .spec-card.dragging { opacity: 0.5; cursor: grabbing; }
+
+  .card-error {
+    background: var(--vscode-inputValidation-errorBackground);
+    border: 1px solid var(--vscode-inputValidation-errorBorder);
+    color: var(--vscode-inputValidation-errorForeground, var(--vscode-foreground));
+    border-radius: 3px;
+    padding: 4px 6px;
+    font-size: 0.8em;
+  }
+
+  .card-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--vscode-textLink-foreground);
+    cursor: pointer;
+    padding: 0;
+    font-size: inherit;
+    font-family: inherit;
+    text-align: left;
+  }
+  .link-btn:hover { color: var(--vscode-textLink-activeForeground); text-decoration: underline; }
+
+  .spec-id { font-weight: 700; font-size: 0.85em; }
+  .card-title { font-size: 0.9em; line-height: 1.3; word-break: break-word; }
+
+  .card-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+  .badge {
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+  .badge-low    { background: var(--vscode-charts-green); color: #fff; }
+  .badge-medium { background: var(--vscode-charts-yellow); color: #fff; }
+  .badge-high   { background: var(--vscode-charts-red); color: #fff; }
+
+  .tag-chip {
+    background: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+    padding: 1px 5px;
+    border-radius: 10px;
+    font-size: 0.75em;
+  }
+  .muted { color: var(--vscode-descriptionForeground); }
+
+  .depends-indicator {
+    font-size: 0.75em;
+    color: var(--vscode-charts-yellow, #cc0);
+  }
+
+  .card-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+
+  .btn-action {
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    border: none;
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 0.78em;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-action:hover { background: var(--vscode-button-secondaryHoverBackground); }
+  .btn-approve  { background: var(--vscode-charts-green); color: #fff; }
+  .btn-approve:hover { background: var(--vscode-charts-green); opacity: 0.85; }
+  .btn-changes  { background: var(--vscode-charts-orange); color: #fff; }
+  .btn-changes:hover { background: var(--vscode-charts-orange); opacity: 0.85; }
+</style>
