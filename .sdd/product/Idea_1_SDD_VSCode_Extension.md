@@ -139,7 +139,8 @@ Output: 200 {message: "Reset email sent"}
 | Project overview | Webview panel: spec counts by status, completion %, recent activity |
 | Cost summary | Webview panel: total tokens, cost per spec, cost trend chart |
 | Scope estimation | Calculated from spec count x complexity per phase/area tag |
-| Kanban board | Webview panel with draggable columns (Draft, Ready, In Progress, Review, Done) |
+| Kanban board | Webview panel with all 5 status columns (Draft, Ready, In Progress, Review, Done); contextual action buttons on cards per status (Mark Ready / Execute / Approve + Request Changes); "New Spec +" button in header opens Spec Form panel; search/filter bar by spec_id, title, or tag; drag-and-drop with lifecycle validation |
+| Spec form | Webview panel with structured fields for all frontmatter fields AND all markdown body sections (Context, Requirements – Functional/Non-Functional, Acceptance Criteria – Automated/Manual, Constraints, Examples); Create mode (auto-generates spec_id, triggered from Kanban) and Edit mode (loads existing file); Save compiles to valid `.sdd.md` written to `.specs/` |
 
 ### Onboarding
 
@@ -603,6 +604,84 @@ Builder approves spec
          Extension detects merge → marks spec as fully shipped
 ```
 
+### Flow 7: Kanban Board
+
+```
+Builder clicks "SDD: Open Kanban Board"
+    │
+    ├──▶ Webview panel opens with 5 columns: Draft | Ready | In Progress | Review | Done
+    │    Each column lists spec cards containing:
+    │    ├── spec_id + title (clickable → opens .sdd.md in editor)
+    │    ├── Complexity badge (color-coded: low=green, medium=yellow, high=red)
+    │    ├── Priority badge (high/medium/low)
+    │    └── Tag chips + depends_on indicator if unresolved dependencies exist
+    │
+    ├──▶ Contextual action buttons on cards (per status):
+    │    ├── draft    → [Mark Ready]
+    │    ├── ready    → [Execute]
+    │    └── review   → [Approve] [Request Changes]
+    │    Button click → extension delegates to existing sdd.* commands
+    │
+    ├──▶ "New Spec +" button in header
+    │    → postMessage({ type: 'openSpecForm' })
+    │    → extension calls sdd.newSpecForm command
+    │    → Spec Form panel opens in Create mode
+    │
+    ├──▶ Search/filter bar
+    │    Builder types spec_id, title substring, or tag
+    │    → Cards filter in real-time (non-matching cards hidden)
+    │
+    ├──▶ Drag card to adjacent valid column
+    │    → Client-side lifecycle pre-validation (visual feedback)
+    │    → On drop: postMessage({ type: 'kanbanMove', specId, newStatus })
+    │    → Extension validates via lifecycle module
+    │    → Valid: updates frontmatter status field
+    │    → Invalid: sends moveError back → card shows inline error for 3s
+    │
+    └──▶ Click card title/ID → opens .sdd.md file in VS Code editor
+```
+
+### Flow 8: Spec Form (Create / Edit)
+
+```
+Triggered from Kanban "New Spec +" button (Create mode)
+OR right-click spec in sidebar → "Edit in Form" (Edit mode)
+    │
+    ├──▶ CREATE MODE
+    │    Panel opens with title "New Spec"
+    │    spec_id auto-generated (next available PREFIX-NNN)
+    │    All fields blank / defaults set
+    │
+    ├──▶ EDIT MODE
+    │    Panel opens with title "Edit: {spec_id}"
+    │    Extension reads .sdd.md → parses frontmatter + all body sections
+    │    Form fields pre-populated
+    │    "Open File" button visible → opens raw .sdd.md in editor
+    │
+    ├──▶ Builder fills in form sections:
+    │    Identity:        spec_id (readonly), title, status, priority, complexity
+    │    Classification:  tags (chips), agent_skills
+    │    Scope:           relevant_files, must_not_touch, depends_on (multi-select)
+    │    Budget:          budget_max_tokens (number + slider)
+    │    Body sections:   Context, Requirements (Functional + Non-Functional),
+    │                     Acceptance Criteria (Automated + Manual),
+    │                     Constraints, Examples
+    │
+    ├──▶ Inline validation on Save:
+    │    ├── Required: title non-empty
+    │    ├── spec_id format: /^[A-Z]+-\d+$/
+    │    └── relevant_files: warning if empty
+    │
+    ├──▶ Builder clicks "Save Spec"
+    │    → Extension serializes: YAML frontmatter + markdown body sections
+    │    → Create mode: writes .specs/{spec_id}-{slug}.sdd.md
+    │    → Edit mode: overwrites existing file
+    │    → Sidebar tree refreshed
+    │    → Form shows "Saved" confirmation
+    │
+    └──▶ Spec appears in sidebar under its status column
+```
+
 ---
 
 ## 7. Development Plan
@@ -662,8 +741,8 @@ Builder approves spec
 | Task | Description | Output |
 |---|---|---|
 | Dashboard webview | Project overview: spec counts, cost summary, recent activity | `views/webviews/dashboard/` |
-| Kanban webview | Draggable board with lifecycle columns | `views/webviews/kanban/` |
-| Spec form webview | Structured form alternative to raw markdown editing | `views/webviews/specForm/` |
+| Kanban webview (SDD-040, enhanced scope) | All 5 columns; contextual action buttons per card status (Mark Ready, Execute, Approve, Request Changes); "New Spec +" header button → opens Spec Form; search/filter bar; drag-and-drop with server-side lifecycle validation | `views/webviews/kanban/` |
+| Spec form webview (SDD-041, enhanced scope) | Full body sections as labeled form fields; Create mode (auto-generates spec_id, triggered from Kanban) + Edit mode (parses existing file); Save serializes complete `.sdd.md` (frontmatter + all sections) | `views/webviews/specForm/` |
 | Onboarding walkthrough | Step-by-step guide using VS Code Walkthrough API | Walkthrough contribution |
 | Cost analytics | Per-spec and per-project cost charts in dashboard | `analytics/costTracker.ts` |
 | Scope estimation | Aggregate spec count x complexity breakdown | `analytics/scopeEstimator.ts` |

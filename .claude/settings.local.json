@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(node:*)",
-      "Bash(npm:*)"
+      "Bash(npm:*)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
