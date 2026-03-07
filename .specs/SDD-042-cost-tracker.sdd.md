@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-042
 title: Implement cost tracker analytics
-status: draft
+status: done
 priority: medium
 complexity: low
 tags: [phase-4, backend]
