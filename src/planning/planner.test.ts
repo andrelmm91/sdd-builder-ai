@@ -49,6 +49,7 @@ import type { PlanningRequest } from './types';
 const mockGetWorkspaceRoot = vi.mocked(fileSystem.getWorkspaceRoot);
 const mockReadWorkspaceFile = vi.mocked(fileSystem.readWorkspaceFile);
 const mockWriteWorkspaceFile = vi.mocked(fileSystem.writeWorkspaceFile);
+const mockFileExists = vi.mocked(fileSystem.fileExists);
 const mockExecCommand = vi.mocked(shell.execCommand);
 const mockIsCommandAvailable = vi.mocked(shell.isCommandAvailable);
 const mockAssemblePlanContext = vi.mocked(assembler.assemblePlanContext);
@@ -384,6 +385,7 @@ describe('PlannerOrchestrator', () => {
 
   describe('skills file', () => {
     it('includes --system-prompt flag when a skills file is found', async () => {
+      mockFileExists.mockImplementation(async (p: string) => p === '.sdd/skills/sdd-planner.md');
       mockReadWorkspaceFile.mockImplementation(async (p: string) => {
         if (p === '.sdd/skills/sdd-planner.md') return '# SDD Planner skills';
         return undefined;
@@ -399,6 +401,7 @@ describe('PlannerOrchestrator', () => {
     });
 
     it('omits --system-prompt flag when no skills file is found', async () => {
+      mockFileExists.mockResolvedValue(false);
       mockReadWorkspaceFile.mockResolvedValue(undefined);
 
       await new PlannerOrchestrator().plan(SAMPLE_REQUEST);
@@ -411,6 +414,7 @@ describe('PlannerOrchestrator', () => {
     });
 
     it('checks .claude/skills/sdd-planner.md as a fallback', async () => {
+      mockFileExists.mockImplementation(async (p: string) => p === '.claude/skills/sdd-planner.md');
       mockReadWorkspaceFile.mockImplementation(async (p: string) => {
         if (p === '.claude/skills/sdd-planner.md') return '# fallback skills';
         return undefined;

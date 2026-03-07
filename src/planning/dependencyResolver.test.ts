@@ -148,10 +148,10 @@ describe('getExecutionOrder', () => {
 });
 
 describe('getReadyToExecute', () => {
-  it('returns all non-done specs when there are no dependencies', () => {
+  it('returns all ready specs when there are no dependencies', () => {
     const specs = [
       makeSpec({ spec_id: 'A', status: 'ready' }),
-      makeSpec({ spec_id: 'B', status: 'draft' }),
+      makeSpec({ spec_id: 'B', status: 'ready' }),
     ];
     const ready = getReadyToExecute(specs);
     expect(ready).toContain('A');

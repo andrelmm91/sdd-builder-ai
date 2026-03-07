@@ -12,9 +12,18 @@ vi.mock('../utils/fileSystem', () => ({
   getWorkspaceRoot: vi.fn(),
 }));
 
+vi.mock('../utils/frontmatter', () => ({
+  parseFrontmatter: vi.fn(),
+}));
+
+vi.mock('./budgetEnforcer', () => ({
+  estimateCost: vi.fn().mockReturnValue(0.05),
+}));
+
 import { captureResults, getExecutionHistory, getLatestExecution } from './resultCapture';
 import { execCommand, isCommandAvailable } from '../utils/shell';
 import { writeWorkspaceFile, readWorkspaceFile, listFiles, getWorkspaceRoot } from '../utils/fileSystem';
+import { parseFrontmatter } from '../utils/frontmatter';
 import type { ExecutionResult } from './types';
 
 const mockExecCommand = vi.mocked(execCommand);
@@ -23,6 +32,7 @@ const mockWriteWorkspaceFile = vi.mocked(writeWorkspaceFile);
 const mockReadWorkspaceFile = vi.mocked(readWorkspaceFile);
 const mockListFiles = vi.mocked(listFiles);
 const mockGetWorkspaceRoot = vi.mocked(getWorkspaceRoot);
+const mockParseFrontmatter = vi.mocked(parseFrontmatter);
 
 function makeExecutionResult(overrides: Partial<ExecutionResult> = {}): ExecutionResult {
   return {
@@ -80,7 +90,6 @@ describe('captureResults', () => {
     expect(record.duration).toBe(5000);
     expect(record.testsPassed).toBeNull();
     expect(record.prUrl).toBeNull();
-    expect(typeof record.scopeViolation).toBe('boolean');
   });
 
   it('sets status to "failed" when executionResult.success is false', async () => {
@@ -99,18 +108,55 @@ describe('captureResults', () => {
   });
 
   it('detects scope violation when must_not_touch files are in changedFiles', async () => {
-    const { record } = await captureResults('SDD-028', makeExecutionResult(), ['src/foo.ts']);
-    expect(record.scopeViolation).toBe(true);
+    // Set up spec file with must_not_touch including a file that is changed
+    mockListFiles.mockImplementation(async (pattern: string) => {
+      if (pattern.includes('.specs')) return ['.specs/SDD-028.sdd.md'];
+      return [];
+    });
+    mockReadWorkspaceFile.mockImplementation(async (path: string) => {
+      if (path === '.specs/SDD-028.sdd.md') return 'spec-content';
+      return undefined;
+    });
+    mockParseFrontmatter.mockReturnValue({
+      data: { spec_id: 'SDD-028', must_not_touch: ['src/foo.ts'] },
+      body: '',
+    });
+
+    await captureResults('SDD-028', makeExecutionResult());
+
+    // Scope violation is logged, not stored on the record — verify it appears in the log
+    const logCall = mockWriteWorkspaceFile.mock.calls.find(([p]) => p.endsWith('.log'));
+    expect(logCall).toBeDefined();
+    expect(logCall![1]).toContain('VIOLATION DETECTED');
   });
 
   it('does not flag scope violation when no must_not_touch files were changed', async () => {
-    const { record } = await captureResults('SDD-028', makeExecutionResult(), ['src/untouched.ts']);
-    expect(record.scopeViolation).toBe(false);
+    mockListFiles.mockImplementation(async (pattern: string) => {
+      if (pattern.includes('.specs')) return ['.specs/SDD-028.sdd.md'];
+      return [];
+    });
+    mockReadWorkspaceFile.mockImplementation(async (path: string) => {
+      if (path === '.specs/SDD-028.sdd.md') return 'spec-content';
+      return undefined;
+    });
+    mockParseFrontmatter.mockReturnValue({
+      data: { spec_id: 'SDD-028', must_not_touch: ['src/untouched.ts'] },
+      body: '',
+    });
+
+    await captureResults('SDD-028', makeExecutionResult());
+
+    const logCall = mockWriteWorkspaceFile.mock.calls.find(([p]) => p.endsWith('.log'));
+    expect(logCall).toBeDefined();
+    expect(logCall![1]).toContain('Scope OK  : ok');
   });
 
   it('does not flag scope violation when mustNotTouch is empty', async () => {
-    const { record } = await captureResults('SDD-028', makeExecutionResult(), []);
-    expect(record.scopeViolation).toBe(false);
+    await captureResults('SDD-028', makeExecutionResult());
+
+    const logCall = mockWriteWorkspaceFile.mock.calls.find(([p]) => p.endsWith('.log'));
+    expect(logCall).toBeDefined();
+    expect(logCall![1]).toContain('Scope OK  : ok');
   });
 
   it('writes the execution record JSON to the correct path', async () => {

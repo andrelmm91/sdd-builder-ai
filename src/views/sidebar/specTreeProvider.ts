@@ -93,10 +93,12 @@ export class SpecTreeProvider
   }
 
   private buildGroupItems(): SpecGroupItem[] {
-    return STATUS_ORDER.map((status) => {
-      const count = this.specs.filter((s) => s.status === status).length;
-      return new SpecGroupItem(status, count);
-    });
+    return STATUS_ORDER
+      .map((status) => {
+        const count = this.specs.filter((s) => s.status === status).length;
+        return new SpecGroupItem(status, count);
+      })
+      .filter((group) => group.count > 0);
   }
 
   private getSpecsForGroup(status: SpecStatus): SpecTreeItem[] {

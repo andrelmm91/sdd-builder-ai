@@ -3,12 +3,14 @@ import type { SpecDocument } from '../specs/types';
 
 vi.mock('../utils/fileSystem', () => ({
   readWorkspaceFile: vi.fn(),
+  fileExists: vi.fn().mockResolvedValue(false),
 }));
 
 import { assembleExecutionContext } from './contextAssembler';
-import { readWorkspaceFile } from '../utils/fileSystem';
+import { readWorkspaceFile, fileExists } from '../utils/fileSystem';
 
 const mockReadWorkspaceFile = vi.mocked(readWorkspaceFile);
+const mockFileExists = vi.mocked(fileExists);
 
 function makeSpec(overrides: Partial<SpecDocument> = {}): SpecDocument {
   return {
@@ -112,6 +114,7 @@ describe('assembleExecutionContext', () => {
   });
 
   it('includes Agent Skills from filesystem when not provided in options', async () => {
+    mockFileExists.mockImplementation(async (p: string) => p === '.sdd/skills/backend-dev.md');
     mockReadWorkspaceFile.mockImplementation(async (path: string) => {
       if (path === '.sdd/skills/backend-dev.md') {
         return '# Backend Dev\n\nWrite clean code.';

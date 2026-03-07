@@ -20,7 +20,7 @@ export const STATUS_LABELS: Record<SpecStatus, string> = {
 export class SpecGroupItem extends vscode.TreeItem {
   readonly kind = 'group' as const;
 
-  constructor(public readonly status: SpecStatus, count: number) {
+  constructor(public readonly status: SpecStatus, public readonly count: number) {
     super(STATUS_LABELS[status], vscode.TreeItemCollapsibleState.Expanded);
     this.description = `(${count})`;
     this.contextValue = `sdd-group-${status}`;

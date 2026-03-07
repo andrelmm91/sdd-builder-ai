@@ -157,9 +157,11 @@ describe('SpecTreeProvider', () => {
       const groups = children as SpecGroupItem[];
 
       expect(groups[0].status).toBe('draft');
-      expect(groups[0].label).toContain('Draft (2)');
+      expect(groups[0].label).toBe('Draft');
+      expect(groups[0].description).toBe('(2)');
       expect(groups[1].status).toBe('ready');
-      expect(groups[1].label).toContain('Ready (1)');
+      expect(groups[1].label).toBe('Ready');
+      expect(groups[1].description).toBe('(1)');
     });
 
     it('returns groups in STATUS_ORDER order', async () => {
