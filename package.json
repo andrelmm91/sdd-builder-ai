@@ -2,12 +2,29 @@
   "name": "sdd-platform",
   "displayName": "SDD Platform",
   "description": "Spec-Driven Development for VS Code — AI-assisted structured development workflow",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "andrelmm91",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andrelmm91/sdd-agentic"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
-  "icon": "resources/icon.png",
+  "icon": "media/logo.png",
+  "galleryBanner": {
+    "color": "#1e1e2e",
+    "theme": "dark"
+  },
+  "keywords": [
+    "sdd",
+    "spec-driven",
+    "ai",
+    "claude",
+    "code-generation",
+    "specs"
+  ],
   "categories": [
     "Other"
   ],

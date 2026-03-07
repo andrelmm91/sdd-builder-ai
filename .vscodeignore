@@ -1,16 +1,31 @@
+## Source & test files
 src/
-out/
+test/
+webview-ui/
+
+## Config & build files
+tsconfig.json
+vitest.config.ts
+esbuild.config.mjs
+vite.config.ts
+.eslintrc*
+.prettierrc*
+
+## Project metadata
 .specs/
 .sdd/
 .vscode/
 .claude/
-*.test.ts
-**/*.test.ts
-tsconfig.json
-esbuild.config.mjs
-.eslintrc*
-.prettierrc*
+.github/
+
+## Git & misc
 .gitignore
 .vscodeignore
-README.md
 node_modules/
+**/*.test.ts
+**/*.map
+
+## Extra output & scripts
+out/
+run-sdd.sh
+test-*.mjs
