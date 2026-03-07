@@ -11,8 +11,11 @@
       },
       "options": {
         "shell": {
-          "executable": "cmd.exe",
-          "args": ["/d", "/c"]
+          "executable": "C:\\Program Files\\Git\\bin\\bash.exe",
+          "args": ["-c"]
+        },
+        "env": {
+          "PATH": "C:\\Program Files\\nodejs;${env:PATH}"
         }
       },
       "problemMatcher": "$tsc"
