@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-045
 title: Set up testing infrastructure with Vitest
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-4, testing, infra]
