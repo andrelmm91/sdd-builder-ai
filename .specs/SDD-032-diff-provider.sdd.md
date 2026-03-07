@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-032
 title: Implement multi-file diff provider for review
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-3, frontend]
@@ -39,9 +39,9 @@ During review, builders need to see all files changed by the AI agent in VS Code
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: scope violations are correctly detected
-- [ ] Unit tests pass: changed files are parsed from git output
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: scope violations are correctly detected
+- [x] Unit tests pass: changed files are parsed from git output
 
 ### Manual
 - [ ] Diff views open for all changed files

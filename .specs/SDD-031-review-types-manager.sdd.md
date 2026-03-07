@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-031
 title: Implement review manager and types
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-3, frontend]
@@ -45,10 +45,10 @@ After execution, builders review AI-generated changes. The review manager opens 
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: approve transitions spec to done
-- [ ] Unit tests pass: request_changes transitions spec to ready and saves feedback
-- [ ] Unit tests pass: reject transitions spec to draft
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: approve transitions spec to done
+- [x] Unit tests pass: request_changes transitions spec to ready and saves feedback
+- [x] Unit tests pass: reject transitions spec to draft
 
 ### Manual
 - [ ] Opening review shows spec and diff side by side
