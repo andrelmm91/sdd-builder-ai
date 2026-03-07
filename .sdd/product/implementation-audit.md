@@ -1,7 +1,7 @@
-# Implementation Audit: SDD-001 through SDD-030
+# Implementation Audit: SDD-001 through SDD-036
 
-> Audit date: 2026-03-06
-> Scope: All implemented specs SDD-001 to SDD-030
+> Audit date: 2026-03-07
+> Scope: All implemented specs SDD-001 to SDD-036
 > TypeScript: no compile errors
 
 This document captures issues found in the implementation relative to specs,
@@ -179,10 +179,56 @@ long-term maintainability.
 
 ---
 
+## SDD-031 and SDD-032 — Review Module (added 2026-03-07)
+
+### SDD-031: ReviewManager — No Issues
+
+`src/review/types.ts` and `src/review/reviewManager.ts` fully comply with the
+spec. All three decision paths (approve / request_changes / reject) are
+implemented, concurrent-submission guard is in place, and 18 unit tests pass.
+
+### SDD-032: DiffProvider — Minor Type Deviation
+
+`src/review/diffProvider.ts` complies with the spec except:
+
+**Item 21 — `getScopeViolations` is async (Phase 3 — Polish)**
+
+The spec signature is `getScopeViolations(...): ChangedFile[]` (synchronous).
+The implementation is `async getScopeViolations(...): Promise<ChangedFile[]>`.
+The async form is strictly more capable and all callers already `await` it, so
+this is a safe deviation, but the spec should be updated to match.
+
+**Fix:** Update SDD-032 spec to change the return type to `Promise<ChangedFile[]>`.
+
+---
+
+## SDD-035 and SDD-036 — GitHub Module (added 2026-03-07)
+
+### SDD-035: GitOps — No Issues
+
+`src/github/gitOps.ts` fully complies with the spec. All seven exported
+functions are implemented (`createBranch`, `stageFiles`, `commit`, `push`,
+`getCurrentBranch`, `getChangedFiles`, `checkoutFiles`). Branch-already-exists
+is handled by appending `-2`; dirty working tree triggers a `console.warn`;
+push authentication and no-remote errors return distinct messages. 13 unit
+tests pass.
+
+### SDD-036: PrCreator — No Issues
+
+`src/github/prCreator.ts` fully complies with the spec. `createPullRequest`
+uses `gh pr create` via the shell utility (title and body passed through env
+vars to avoid shell-escaping issues with multi-line content). `isPrCliAvailable`
+checks both installation and `gh auth status`. `linkPrToExecution` updates the
+latest execution record JSON with the PR URL. `buildPrBody` produces the
+required markdown format. 14 unit tests pass.
+
+---
+
 ## Specs with No Issues
 
 SDD-001, SDD-002, SDD-004, SDD-007, SDD-008, SDD-009, SDD-011, SDD-012,
-SDD-016, SDD-018, SDD-023, SDD-025, SDD-027, SDD-029
+SDD-016, SDD-018, SDD-023, SDD-025, SDD-027, SDD-029, SDD-031,
+SDD-035, SDD-036
 
 ---
 

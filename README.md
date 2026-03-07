@@ -293,7 +293,7 @@ your-project/
 │   │       └── exec-001.log            # Full execution log
 │   └── reviews/
 │       └── PROJ-042/
-│           └── review-001.md           # Reviewer feedback
+│           └── review-001.json         # Reviewer decision + feedback
 ```
 
 Every spec, execution, and review lives in Git history — clone the repo and get the full SDD audit trail.

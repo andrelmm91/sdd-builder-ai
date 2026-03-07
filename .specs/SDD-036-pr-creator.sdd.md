@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-036
 title: Implement GitHub PR creator
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-3, backend]
@@ -52,9 +52,9 @@ After Git operations (branch, commit, push), the extension creates a pull reques
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: PR body is correctly formatted from spec data
-- [ ] Unit tests pass: missing gh CLI returns appropriate error
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: PR body is correctly formatted from spec data
+- [x] Unit tests pass: missing gh CLI returns appropriate error
 
 ### Manual
 - [ ] PR is created on GitHub with correct title and body

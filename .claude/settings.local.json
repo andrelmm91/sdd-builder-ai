@@ -3,7 +3,8 @@
     "allow": [
       "Bash(node:*)",
       "Bash(npm:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(npx vitest:*)"
     ]
   }
 }

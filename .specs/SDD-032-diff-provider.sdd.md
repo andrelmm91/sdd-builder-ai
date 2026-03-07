@@ -29,7 +29,7 @@ During review, builders need to see all files changed by the AI agent in VS Code
     - `ChangedFile` type: `{ path: string; status: 'added' | 'modified' | 'deleted' }`
     - `openDiffForFile(filePath: string): Promise<void>` — opens VS Code diff view for a single file (current vs HEAD)
     - `openAllDiffs(): Promise<void>` — opens diff views for all changed files in separate tabs
-    - `getScopeViolations(specRelevantFiles: string[], specMustNotTouch: string[]): ChangedFile[]` — returns changed files that are not in relevant_files or are in must_not_touch
+    - `getScopeViolations(specRelevantFiles: string[], specMustNotTouch: string[]): Promise<ChangedFile[]>` — returns changed files that are not in relevant_files or are in must_not_touch
   - Use `vscode.commands.executeCommand('vscode.diff', ...)` to open native diff views
 
 ### Non-Functional

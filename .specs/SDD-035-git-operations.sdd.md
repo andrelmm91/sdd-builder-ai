@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-035
 title: Implement Git operations for spec shipping
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-3, backend]
@@ -44,9 +44,9 @@ When a spec is approved, the extension creates a feature branch, stages the chan
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes
-- [ ] Unit tests pass: branch name is correctly formatted from spec ID and slug
-- [ ] Unit tests pass: commit message follows convention
+- [x] TypeScript compilation passes
+- [x] Unit tests pass: branch name is correctly formatted from spec ID and slug
+- [x] Unit tests pass: commit message follows convention
 
 ### Manual
 - [ ] Branch creation and push work in a real Git repository
