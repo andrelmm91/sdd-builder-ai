@@ -170,6 +170,57 @@
         }
       }
     },
+    "walkthroughs": [
+      {
+        "id": "sdd.gettingStarted",
+        "title": "Getting Started with SDD",
+        "description": "Learn the SDD workflow: initialize, create specs, execute with AI, and ship.",
+        "steps": [
+          {
+            "id": "initProject",
+            "title": "Initialize your project",
+            "description": "Run **SDD: Initialize Project** to set up the `.sdd` folder structure with config, conventions, and skills.\n\n[Initialize Project](command:sdd.initProject)",
+            "media": { "image": "resources/icon.png", "altText": "Initialize project" },
+            "completionEvents": ["onCommand:sdd.initProject"]
+          },
+          {
+            "id": "newSpec",
+            "title": "Create your first spec",
+            "description": "Run **SDD: New Spec** to create a `.sdd.md` spec file with all required sections.\n\n[New Spec](command:sdd.newSpec)",
+            "media": { "image": "resources/icon.png", "altText": "Create a spec" },
+            "completionEvents": ["onCommand:sdd.newSpec"]
+          },
+          {
+            "id": "specFormat",
+            "title": "Understand the spec format",
+            "description": "Each `.sdd.md` file has YAML frontmatter (spec_id, status, priority, budget_max_tokens, …) followed by markdown sections: **Context**, **Requirements**, **Acceptance Criteria**, **Constraints**, and **Examples**.\n\nOpen the Specs panel to browse your specs.",
+            "media": { "image": "resources/icon.png", "altText": "Spec format" },
+            "completionEvents": ["onView:sdd.specsTree"]
+          },
+          {
+            "id": "markReady",
+            "title": "Mark spec as ready",
+            "description": "Edit your spec until it is complete, then right-click it in the Specs panel and run **SDD: Mark Ready** to transition it to `ready` status.\n\n[Mark Ready](command:sdd.markReady)",
+            "media": { "image": "resources/icon.png", "altText": "Mark spec ready" },
+            "completionEvents": ["onCommand:sdd.markReady"]
+          },
+          {
+            "id": "executeSpec",
+            "title": "Execute with AI",
+            "description": "Right-click a `ready` spec and run **SDD: Execute Spec** to have Claude implement the spec within the defined token budget.\n\n[Execute Spec](command:sdd.executeSpec)",
+            "media": { "image": "resources/icon.png", "altText": "Execute spec" },
+            "completionEvents": ["onCommand:sdd.executeSpec"]
+          },
+          {
+            "id": "reviewSpec",
+            "title": "Review and ship",
+            "description": "Review the AI's changes in the diff view, then **Approve** to create a PR or **Request Changes** to send feedback back to the agent.\n\n[Review Spec](command:sdd.reviewSpec)",
+            "media": { "image": "resources/icon.png", "altText": "Review and ship" },
+            "completionEvents": ["onCommand:sdd.reviewSpec"]
+          }
+        ]
+      }
+    ],
     "languages": [
       {
         "id": "sdd-spec",

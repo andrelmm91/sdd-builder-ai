@@ -1,4 +1,6 @@
 import * as vscode from "vscode";
+import { fileExists } from "./utils/fileSystem";
+import { CONFIG_FILE } from "./utils/constants";
 import { initProject } from "./commands/initProject";
 import { newSpec } from "./commands/newSpec";
 import { createMarkReadyCommand } from "./commands/markReady";
@@ -71,6 +73,15 @@ export function activate(context: vscode.ExtensionContext): void {
       "-", " "
     )
   );
+
+  // Show walkthrough on first activation (before project is initialized)
+  fileExists(CONFIG_FILE).then((initialized) => {
+    if (!initialized) {
+      vscode.commands.executeCommand('workbench.action.openWalkthrough', {
+        category: 'andrelmm91.sdd-platform#sdd.gettingStarted',
+      });
+    }
+  });
 }
 
 export function deactivate(): void {

@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-044
 title: Implement onboarding walkthrough
-status: draft
+status: done
 priority: medium
 complexity: medium
 tags: [phase-4, frontend]

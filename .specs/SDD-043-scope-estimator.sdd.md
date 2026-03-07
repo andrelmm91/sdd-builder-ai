@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-043
 title: Implement scope estimator
-status: draft
+status: done
 priority: low
 complexity: low
 tags: [phase-4, backend]
