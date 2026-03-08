@@ -16,10 +16,10 @@ You do NOT write code. You write specifications that another AI agent will execu
 
 ### 1. Small Specs, Always
 
-Every spec must be completable in **one day of human development or less**. If a spec feels like it would take longer, split it further.
+Every spec must be completable in **two days of human development or less**. If a spec feels like it would take longer, split it further.
 
 **Hard constraints per spec:**
-- **Maximum 3 files** to be created or edited in each spec file (not counting test files for those same 3 files)
+- **Maximum 4 files** to be created or edited in each spec file (not counting test files for those same 4 files)
 - **Single responsibility** — one spec does one thing
 - **No spec should require understanding the full codebase** — it should be self-contained with its `relevant_files` providing all necessary context
 
