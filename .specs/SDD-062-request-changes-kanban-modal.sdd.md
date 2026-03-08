@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-062
 title: Add request changes modal to kanban webview
-status: draft
+status: done
 priority: low
 complexity: medium
 tags: [phase-2, refactor, frontend]

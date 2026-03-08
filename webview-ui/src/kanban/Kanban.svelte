@@ -14,6 +14,8 @@
     tags: string[];
     depends_on: string[];
     changedFiles?: string[];
+    automatedCriteria?: string;
+    manualCriteria?: string;
   }
 
   const COLUMNS: { id: SpecStatus; label: string }[] = [
@@ -39,6 +41,8 @@
   let errorMap = $state<Map<string, string>>(new Map());
   let bulkState = $state<BulkExecutionState>({ items: [], isRunning: false, currentIndex: -1 });
   let expandedFiles = $state<Set<string>>(new Set());
+  let modalSpec = $state<SpecCard | null>(null);
+  let feedbackText = $state('');
 
   const filtered = $derived(
     filterText.trim() === ''
@@ -152,6 +156,36 @@
     postMessage('clearBulk', {});
   }
 
+  function openModal(card: SpecCard) {
+    const parts: string[] = [];
+    if (card.automatedCriteria?.trim()) {
+      parts.push(`### Automated\n\n${card.automatedCriteria.trim()}`);
+    }
+    if (card.manualCriteria?.trim()) {
+      parts.push(`### Manual\n\n${card.manualCriteria.trim()}`);
+    }
+    feedbackText = parts.join('\n\n');
+    modalSpec = card;
+  }
+
+  function closeModal() {
+    modalSpec = null;
+  }
+
+  function submitModal() {
+    if (!modalSpec) return;
+    postMessage('requestChanges', { specId: modalSpec.spec_id, feedback: feedbackText });
+    closeModal();
+  }
+
+  function handleBackdropClick(e: MouseEvent) {
+    if ((e.target as HTMLElement).classList.contains('modal-backdrop')) closeModal();
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') closeModal();
+  }
+
   function toggleFiles(specId: string) {
     const next = new Set(expandedFiles);
     if (next.has(specId)) {
@@ -178,6 +212,8 @@
     return p === 'high' ? 'badge-high' : p === 'medium' ? 'badge-medium' : 'badge-low';
   }
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="kanban-root">
   <header class="kanban-header">
@@ -325,7 +361,7 @@
                   <button class="btn-action btn-approve" onclick={() => cardAction('approve', card.spec_id)}>
                     Approve
                   </button>
-                  <button class="btn-action btn-changes" onclick={() => cardAction('requestChanges', card.spec_id)}>
+                  <button class="btn-action btn-changes" onclick={() => openModal(card)}>
                     Request Changes
                   </button>
                 {/if}
@@ -367,6 +403,39 @@
       </div>
     {/each}
   </div>
+
+  {#if modalSpec}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="modal-backdrop" onclick={handleBackdropClick}>
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+      >
+        <div class="modal-header">
+          <span id="modal-title" class="modal-title">Request Changes</span>
+          <span class="modal-spec-id">{modalSpec.spec_id}</span>
+        </div>
+        <p class="modal-subtitle">{modalSpec.title}</p>
+
+        <label class="modal-label" for="feedback-area">Feedback</label>
+        <textarea
+          id="feedback-area"
+          class="modal-textarea"
+          bind:value={feedbackText}
+          placeholder="Describe what needs to be fixed…"
+          rows={10}
+        ></textarea>
+
+        <div class="modal-actions">
+          <button class="btn-action btn-approve" onclick={submitModal}>Submit</button>
+          <button class="btn-action" onclick={closeModal}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -743,5 +812,78 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     min-width: 0;
+  }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .modal {
+    background: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 6px;
+    padding: 20px;
+    width: 480px;
+    max-width: 90vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-title {
+    font-weight: 700;
+    font-size: 1em;
+  }
+
+  .modal-spec-id {
+    font-size: 0.8em;
+    color: var(--vscode-descriptionForeground);
+    font-family: var(--vscode-editor-font-family, monospace);
+  }
+
+  .modal-subtitle {
+    margin: 0;
+    font-size: 0.85em;
+    color: var(--vscode-descriptionForeground);
+  }
+
+  .modal-label {
+    font-size: 0.85em;
+    font-weight: 600;
+  }
+
+  .modal-textarea {
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border, transparent);
+    border-radius: 3px;
+    padding: 6px 8px;
+    font-size: 0.82em;
+    font-family: var(--vscode-editor-font-family, monospace);
+    resize: vertical;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 4px;
   }
 </style>

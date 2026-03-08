@@ -7,6 +7,7 @@ import { SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../../../utils/constants';
 import { BulkExecutionManager } from '../../../execution/bulkExecution';
 import { executeSingleSpec } from '../../../commands/executeSpec';
 import { getLatestExecution } from '../../../execution/resultCapture';
+import { applyRequestChanges } from '../../../commands/reviewCommands';
 import type { SpecData, SpecStatus } from '../../../specs/types';
 
 interface CardActionMessage {
@@ -96,6 +97,18 @@ export class KanbanPanel extends BaseWebviewPanel {
       case 'cancelBulk':
         BulkExecutionManager.getInstance().cancel();
         break;
+      case 'requestChanges': {
+        const { specId, feedback } = message.data as { specId: string; feedback: string };
+        const filePath = this.specFilePaths.get(specId);
+        if (!filePath) break;
+        try {
+          await applyRequestChanges(filePath, feedback || '');
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          vscode.window.showErrorMessage(`Request changes failed: ${message}`);
+        }
+        break;
+      }
     }
   }
 
@@ -127,12 +140,12 @@ export class KanbanPanel extends BaseWebviewPanel {
     this.post('specList', { specs });
   }
 
-  private async loadSpecs(): Promise<Array<SpecData & { changedFiles?: string[] }>> {
+  private async loadSpecs(): Promise<Array<SpecData & { changedFiles?: string[]; automatedCriteria?: string; manualCriteria?: string }>> {
     const root = vscode.workspace.workspaceFolders?.[0]?.uri;
     if (!root) return [];
     const pattern = new vscode.RelativePattern(root, `${SPECS_FOLDER}/**/*${SPEC_FILE_EXTENSION}`);
     const uris = await vscode.workspace.findFiles(pattern, null);
-    const specs: Array<SpecData & { changedFiles?: string[] }> = [];
+    const specs: Array<SpecData & { changedFiles?: string[]; automatedCriteria?: string; manualCriteria?: string }> = [];
     this.specFilePaths.clear();
     await Promise.all(
       uris.map(async (uri) => {
@@ -140,13 +153,18 @@ export class KanbanPanel extends BaseWebviewPanel {
           const bytes = await vscode.workspace.fs.readFile(uri);
           const result = parseSpec(Buffer.from(bytes).toString('utf8'));
           if (result.success) {
-            const fm = result.data.frontmatter;
+            const doc = result.data;
+            const fm = doc.frontmatter;
             this.specFilePaths.set(fm.spec_id, uri.fsPath);
+            const criteria = {
+              automatedCriteria: doc.automatedCriteria,
+              manualCriteria: doc.manualCriteria,
+            };
             if (fm.status === 'review') {
               const latest = await getLatestExecution(fm.spec_id);
-              specs.push({ ...fm, changedFiles: latest?.changedFiles });
+              specs.push({ ...fm, ...criteria, changedFiles: latest?.changedFiles });
             } else {
-              specs.push(fm);
+              specs.push({ ...fm, ...criteria });
             }
           }
         } catch { /* skip */ }
