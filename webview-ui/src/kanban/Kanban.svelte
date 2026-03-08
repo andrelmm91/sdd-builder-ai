@@ -13,6 +13,7 @@
     complexity: string;
     tags: string[];
     depends_on: string[];
+    changedFiles?: string[];
   }
 
   const COLUMNS: { id: SpecStatus; label: string }[] = [
@@ -37,6 +38,7 @@
   let draggedId = $state<string | null>(null);
   let errorMap = $state<Map<string, string>>(new Map());
   let bulkState = $state<BulkExecutionState>({ items: [], isRunning: false, currentIndex: -1 });
+  let expandedFiles = $state<Set<string>>(new Set());
 
   const filtered = $derived(
     filterText.trim() === ''
@@ -148,6 +150,24 @@
 
   function clearBulk() {
     postMessage('clearBulk', {});
+  }
+
+  function toggleFiles(specId: string) {
+    const next = new Set(expandedFiles);
+    if (next.has(specId)) {
+      next.delete(specId);
+    } else {
+      next.add(specId);
+    }
+    expandedFiles = next;
+  }
+
+  function fileChangeType(entry: string): string {
+    return entry.split(' ')[0];
+  }
+
+  function filePath(entry: string): string {
+    return entry.split(' ').slice(1).join(' ');
   }
 
   function complexityColor(c: string) {
@@ -310,6 +330,37 @@
                   </button>
                 {/if}
               </div>
+
+              {#if card.status === 'review' && card.changedFiles && card.changedFiles.length > 0}
+                <div class="changed-files">
+                  <button
+                    class="files-toggle"
+                    draggable={false}
+                    onclick={(e) => { e.stopPropagation(); toggleFiles(card.spec_id); }}
+                    ondragstart={(e) => e.stopPropagation()}
+                  >
+                    {card.changedFiles.length} file{card.changedFiles.length === 1 ? '' : 's'} changed
+                    {expandedFiles.has(card.spec_id) ? '▲' : '▼'}
+                  </button>
+                  {#if expandedFiles.has(card.spec_id)}
+                    <ul class="files-list">
+                      {#each card.changedFiles as entry}
+                        {@const type = fileChangeType(entry)}
+                        {@const path = filePath(entry)}
+                        <li class="file-entry">
+                          <span
+                            class="file-type"
+                            class:file-added={type === 'A'}
+                            class:file-modified={type === 'M'}
+                            class:file-deleted={type === 'D'}
+                          >{type}</span>
+                          <code class="file-path">{path}</code>
+                        </li>
+                      {/each}
+                    </ul>
+                  {/if}
+                </div>
+              {/if}
             </div>
           {/each}
         {/if}
@@ -636,4 +687,61 @@
     border: 1px solid var(--vscode-panel-border);
   }
   .btn-clear:hover { background: var(--vscode-button-secondaryHoverBackground); }
+
+  /* Changed files section */
+  .changed-files {
+    margin-top: 4px;
+    border-top: 1px solid var(--vscode-panel-border);
+    padding-top: 4px;
+  }
+
+  .files-toggle {
+    background: none;
+    border: none;
+    color: var(--vscode-descriptionForeground);
+    cursor: pointer;
+    font-size: 0.75em;
+    font-family: inherit;
+    padding: 0;
+    text-align: left;
+    width: 100%;
+  }
+  .files-toggle:hover { color: var(--vscode-foreground); }
+
+  .files-list {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .file-entry {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 0.75em;
+    min-width: 0;
+  }
+
+  .file-type {
+    font-weight: 700;
+    font-size: 0.9em;
+    flex-shrink: 0;
+    width: 12px;
+    text-align: center;
+  }
+  .file-added    { color: var(--vscode-charts-green); }
+  .file-modified { color: var(--vscode-charts-yellow); }
+  .file-deleted  { color: var(--vscode-charts-red); }
+
+  .file-path {
+    font-family: var(--vscode-editor-font-family, monospace);
+    color: var(--vscode-foreground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
 </style>

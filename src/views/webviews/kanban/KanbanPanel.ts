@@ -6,6 +6,7 @@ import { serializeFrontmatter, parseFrontmatter } from '../../../utils/frontmatt
 import { SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../../../utils/constants';
 import { BulkExecutionManager } from '../../../execution/bulkExecution';
 import { executeSingleSpec } from '../../../commands/executeSpec';
+import { getLatestExecution } from '../../../execution/resultCapture';
 import type { SpecData, SpecStatus } from '../../../specs/types';
 
 interface CardActionMessage {
@@ -126,12 +127,12 @@ export class KanbanPanel extends BaseWebviewPanel {
     this.post('specList', { specs });
   }
 
-  private async loadSpecs(): Promise<SpecData[]> {
+  private async loadSpecs(): Promise<Array<SpecData & { changedFiles?: string[] }>> {
     const root = vscode.workspace.workspaceFolders?.[0]?.uri;
     if (!root) return [];
     const pattern = new vscode.RelativePattern(root, `${SPECS_FOLDER}/**/*${SPEC_FILE_EXTENSION}`);
     const uris = await vscode.workspace.findFiles(pattern, null);
-    const specs: SpecData[] = [];
+    const specs: Array<SpecData & { changedFiles?: string[] }> = [];
     this.specFilePaths.clear();
     await Promise.all(
       uris.map(async (uri) => {
@@ -139,8 +140,14 @@ export class KanbanPanel extends BaseWebviewPanel {
           const bytes = await vscode.workspace.fs.readFile(uri);
           const result = parseSpec(Buffer.from(bytes).toString('utf8'));
           if (result.success) {
-            specs.push(result.data.frontmatter);
-            this.specFilePaths.set(result.data.frontmatter.spec_id, uri.fsPath);
+            const fm = result.data.frontmatter;
+            this.specFilePaths.set(fm.spec_id, uri.fsPath);
+            if (fm.status === 'review') {
+              const latest = await getLatestExecution(fm.spec_id);
+              specs.push({ ...fm, changedFiles: latest?.changedFiles });
+            } else {
+              specs.push(fm);
+            }
           }
         } catch { /* skip */ }
       }),

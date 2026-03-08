@@ -50,8 +50,8 @@ beforeEach(() => {
   mockGetWorkspaceRoot.mockReturnValue('/workspace');
   mockIsCommandAvailable.mockResolvedValue(true);
   mockExecCommand.mockImplementation(async (cmd: string) => {
-    if (cmd === 'git diff --name-only') {
-      return { stdout: 'src/foo.ts\nsrc/bar.ts\n', stderr: '', exitCode: 0, success: true };
+    if (cmd === 'git diff --name-status') {
+      return { stdout: 'M\tsrc/foo.ts\nA\tsrc/bar.ts\n', stderr: '', exitCode: 0, success: true };
     }
     if (cmd === 'git diff') {
       return { stdout: 'diff content', stderr: '', exitCode: 0, success: true };
@@ -102,9 +102,18 @@ describe('captureResults', () => {
     expect(record.status).toBe('completed');
   });
 
-  it('captures changed files from git diff --name-only', async () => {
+  it('captures changed files from git diff --name-status with type prefix', async () => {
     const { changedFiles } = await captureResults('SDD-028', makeExecutionResult());
-    expect(changedFiles).toEqual(['src/foo.ts', 'src/bar.ts']);
+    expect(changedFiles).toEqual(['M src/foo.ts', 'A src/bar.ts']);
+  });
+
+  it('writes changedFiles to the execution record JSON', async () => {
+    await captureResults('SDD-028', makeExecutionResult());
+
+    const jsonCall = mockWriteWorkspaceFile.mock.calls.find(([p]) => p.endsWith('.json'));
+    expect(jsonCall).toBeDefined();
+    const parsed = JSON.parse(jsonCall![1]);
+    expect(parsed.changedFiles).toEqual(['M src/foo.ts', 'A src/bar.ts']);
   });
 
   it('detects scope violation when must_not_touch files are in changedFiles', async () => {

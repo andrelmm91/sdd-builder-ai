@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-061
 title: Display changed files in kanban review cards
-status: draft
+status: done
 priority: medium
 complexity: medium
 tags: [phase-2, refactor, frontend]

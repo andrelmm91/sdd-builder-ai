@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-060
 title: Persist changed files array in execution records
-status: draft
+status: done
 priority: medium
 complexity: low
 tags: [phase-2, refactor, backend]

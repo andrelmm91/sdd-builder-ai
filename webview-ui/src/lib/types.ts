@@ -5,6 +5,7 @@ export interface SpecSummary {
   priority: string;
   complexity: string;
   tags: string[];
+  changedFiles?: string[];
 }
 
 export interface BulkExecutionItem {

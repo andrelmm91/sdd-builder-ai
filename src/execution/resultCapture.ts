@@ -28,14 +28,17 @@ export async function captureResults(
 
   const gitAvailable = await isCommandAvailable('git');
   if (gitAvailable && root) {
-    const nameOnlyResult = await execCommand('git diff --name-only', { cwd: root });
-    if (nameOnlyResult.success) {
-      changedFiles = nameOnlyResult.stdout
+    const nameStatusResult = await execCommand('git diff --name-status', { cwd: root });
+    if (nameStatusResult.success) {
+      changedFiles = nameStatusResult.stdout
         .split('\n')
-        .map((f) => f.trim())
+        .map((line) => {
+          const [status, ...pathParts] = line.trim().split('\t');
+          return status && pathParts.length ? `${status.trim()} ${pathParts.join('\t').trim()}` : '';
+        })
         .filter(Boolean);
     } else {
-      console.warn('[SDD] git diff --name-only failed:', nameOnlyResult.stderr);
+      console.warn('[SDD] git diff --name-status failed:', nameStatusResult.stderr);
     }
 
     const diffResult = await execCommand('git diff', { cwd: root });
@@ -50,7 +53,11 @@ export async function captureResults(
 
   // Detect scope violations
   const scopeViolation =
-    mustNotTouch.length > 0 && changedFiles.some((f) => mustNotTouch.includes(f));
+    mustNotTouch.length > 0 &&
+    changedFiles.some((f) => {
+      const filePath = f.split(' ').slice(1).join(' ');
+      return mustNotTouch.includes(filePath);
+    });
 
   // Determine next execution number
   const executionNumber = await nextExecutionNumber(specId);
@@ -72,6 +79,7 @@ export async function captureResults(
     duration: executionResult.duration,
     testsPassed: null,
     prUrl: null,
+    changedFiles,
   };
 
   // Write record JSON
