@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-057
 title: Add commit and PR command controls to AI Config webview
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-2, refactor, frontend]

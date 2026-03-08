@@ -52,6 +52,10 @@ describe('readAIConfig', () => {
       model: 'gpt-4o',
       tagSkillMappings: [{ tag: 'backend', skill: 'backend-dev' }],
       prePromptTemplate: 'custom prompt',
+      commitCommand: 'git add -A && git commit -m "{spec_id}: {title}"',
+      commitCommandEnabled: true,
+      prCommand: 'gh pr create --title "feat: {title} ({spec_id})" --body "Implements {spec_id}"',
+      prCommandEnabled: false,
     };
     mockReadWorkspaceFile.mockResolvedValue(JSON.stringify(fullConfig));
     const config = await readAIConfig();

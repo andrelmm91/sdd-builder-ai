@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-056
 title: Add commit and PR command fields to AIConfig types
-status: draft
+status: done
 priority: high
 complexity: low
 tags: [phase-2, refactor, backend]

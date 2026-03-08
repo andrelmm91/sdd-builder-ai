@@ -15,6 +15,10 @@ export interface AIConfig {
   model: string;
   tagSkillMappings: TagSkillMapping[];
   prePromptTemplate: string;
+  commitCommand: string;
+  commitCommandEnabled: boolean;
+  prCommand: string;
+  prCommandEnabled: boolean;
 }
 
 export const CLAUDE_MODELS = ['opus', 'sonnet', 'haiku'] as const;
@@ -34,10 +38,17 @@ export const COPILOT_PERMISSION_MODES: readonly CopilotPermissionMode[] = [
 export const DEFAULT_PRE_PROMPT =
   'Implement {spec_file}. Update open tasks in the spec after completion. Add unit tests if necessary. Commit with the SDD spec_id as message.';
 
+export const DEFAULT_COMMIT_COMMAND = 'git add -A && git commit -m "{spec_id}: {title}"';
+export const DEFAULT_PR_COMMAND = 'gh pr create --title "feat: {title} ({spec_id})" --body "Implements {spec_id}"';
+
 export const DEFAULT_AI_CONFIG: AIConfig = {
   provider: 'claude',
   permissionMode: 'default',
   model: 'sonnet',
   tagSkillMappings: [],
   prePromptTemplate: DEFAULT_PRE_PROMPT,
+  commitCommand: DEFAULT_COMMIT_COMMAND,
+  commitCommandEnabled: false,
+  prCommand: DEFAULT_PR_COMMAND,
+  prCommandEnabled: false,
 };

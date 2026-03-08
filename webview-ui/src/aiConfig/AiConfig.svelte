@@ -16,6 +16,10 @@
     model: string;
     tagSkillMappings: TagSkillMapping[];
     prePromptTemplate: string;
+    commitCommand: string;
+    commitCommandEnabled: boolean;
+    prCommand: string;
+    prCommandEnabled: boolean;
   }
 
   const PROVIDER_OPTIONS: { value: AIProvider; label: string }[] = [
@@ -43,6 +47,9 @@
   const DEFAULT_PRE_PROMPT =
     'Implement {spec_file}. Update open tasks in the spec after completion. Add unit tests if necessary. Commit with the SDD spec_id as message.';
 
+  const DEFAULT_COMMIT_COMMAND = 'git add -A && git commit -m "{spec_id}: {title}"';
+  const DEFAULT_PR_COMMAND = 'gh pr create --title "feat: {title} ({spec_id})" --body "Implements {spec_id}"';
+
   let provider = $state<AIProvider>('claude');
   let permissionMode = $state<PermissionMode>('default');
   let model = $state<string>('sonnet');
@@ -50,6 +57,10 @@
   let prePromptTemplate = $state<string>(DEFAULT_PRE_PROMPT);
   let availableTags = $state<string[]>([]);
   let availableSkills = $state<string[]>([]);
+  let commitCommand = $state<string>(DEFAULT_COMMIT_COMMAND);
+  let commitCommandEnabled = $state<boolean>(false);
+  let prCommand = $state<string>(DEFAULT_PR_COMMAND);
+  let prCommandEnabled = $state<boolean>(false);
   let newTag = $state('');
   let newSkill = $state('');
   let saved = $state(false);
@@ -85,7 +96,7 @@
   }
 
   function save() {
-    const config: AIConfig = { provider, permissionMode, model, tagSkillMappings, prePromptTemplate };
+    const config: AIConfig = { provider, permissionMode, model, tagSkillMappings, prePromptTemplate, commitCommand, commitCommandEnabled, prCommand, prCommandEnabled };
     postMessage('saveConfig', config);
     saved = true;
     setTimeout(() => (saved = false), 2000);
@@ -101,6 +112,10 @@
         model = c.model ?? 'sonnet';
         tagSkillMappings = c.tagSkillMappings ?? [];
         prePromptTemplate = c.prePromptTemplate ?? DEFAULT_PRE_PROMPT;
+        commitCommand = c.commitCommand ?? DEFAULT_COMMIT_COMMAND;
+        commitCommandEnabled = c.commitCommandEnabled ?? false;
+        prCommand = c.prCommand ?? DEFAULT_PR_COMMAND;
+        prCommandEnabled = c.prCommandEnabled ?? false;
         availableTags = d.tags ?? [];
         availableSkills = d.skills ?? [];
       }
@@ -251,6 +266,37 @@
         bind:value={prePromptTemplate}
       ></textarea>
       <p class="field-hint">Use <code>{'{spec_file}'}</code> as a placeholder for the spec path.</p>
+    </section>
+
+    <section class="form-section">
+      <div class="section-heading">Git Commands</div>
+      <p class="field-hint">These commands are appended to the execution prompt so the AI agent handles git operations. Use <code>{'{spec_id}'}</code> and <code>{'{title}'}</code> as placeholders.</p>
+
+      <div class="toggle-field">
+        <label class="toggle-label">
+          <input type="checkbox" bind:checked={commitCommandEnabled} />
+          Commit Command
+        </label>
+        <textarea
+          class="form-textarea"
+          rows={2}
+          bind:value={commitCommand}
+          disabled={!commitCommandEnabled}
+        ></textarea>
+      </div>
+
+      <div class="toggle-field">
+        <label class="toggle-label">
+          <input type="checkbox" bind:checked={prCommandEnabled} />
+          PR Command
+        </label>
+        <textarea
+          class="form-textarea"
+          rows={2}
+          bind:value={prCommand}
+          disabled={!prCommandEnabled}
+        ></textarea>
+      </div>
     </section>
 
     <div class="save-row">
@@ -422,6 +468,31 @@
     border-radius: 3px;
   }
   .btn-remove:hover { background: var(--vscode-list-hoverBackground); }
+
+  .toggle-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 0.9em;
+    cursor: pointer;
+  }
+
+  .toggle-label input[type='checkbox'] {
+    accent-color: var(--vscode-button-background);
+  }
+
+  .form-textarea:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
   .save-row {
     display: flex;

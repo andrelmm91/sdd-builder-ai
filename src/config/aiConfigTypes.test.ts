@@ -37,6 +37,10 @@ describe('aiConfigTypes', () => {
       model: 'sonnet',
       tagSkillMappings: [],
       prePromptTemplate: DEFAULT_PRE_PROMPT,
+      commitCommand: 'git add -A && git commit -m "{spec_id}: {title}"',
+      commitCommandEnabled: false,
+      prCommand: 'gh pr create --title "feat: {title} ({spec_id})" --body "Implements {spec_id}"',
+      prCommandEnabled: false,
     });
   });
 
