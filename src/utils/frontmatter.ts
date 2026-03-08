@@ -24,7 +24,7 @@ export function parseFrontmatter(content: string): ParseResult {
   }
 
   const yamlText = content.slice(DELIMITER.length, end).trim();
-  const body = content.slice(end + 4).replace(/^\n/, '');
+  const body = content.slice(end + 4).replace(/^\n+/, '');
 
   try {
     const parsed = yamlParse(yamlText);
@@ -44,6 +44,6 @@ export function parseFrontmatter(content: string): ParseResult {
  */
 export function serializeFrontmatter(data: Record<string, unknown>, body: string): string {
   const yaml = yamlStringify(data).trimEnd();
-  const separator = body.length > 0 ? '\n' : '';
-  return `---\n${yaml}\n---\n${separator}${body}`;
+  const separator = body.length > 0 ? '\n\n' : '';
+  return `---\n${yaml}\n---${separator}${body}`;
 }

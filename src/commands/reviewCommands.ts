@@ -39,7 +39,6 @@ export async function applyRequestChanges(filePath: string, feedback: string): P
   const { data, body } = parseFrontmatter(content);
 
   // Append feedback entry to the ## Context section
-  const feedbackBlock = `\n\nFeedback for re-execution: ${feedback}\n`;
   let newBody: string;
   const contextMatch = /^## Context\b/m.exec(body);
   if (contextMatch) {
@@ -47,14 +46,14 @@ export async function applyRequestChanges(filePath: string, feedback: string): P
     const nextHeadingMatch = /\n## /.exec(afterContext);
     if (nextHeadingMatch) {
       const insertAt = contextMatch.index + contextMatch[0].length + nextHeadingMatch.index;
-      // Strip trailing whitespace/newlines from the context section before inserting
       const before = body.slice(0, insertAt).trimEnd();
-      newBody = before + feedbackBlock + '\n' + body.slice(insertAt).trimStart();
+      const after = body.slice(insertAt).trimStart();
+      newBody = `${before}\n\nFeedback for re-execution: ${feedback}\n\n${after}`;
     } else {
-      newBody = body.trimEnd() + feedbackBlock;
+      newBody = `${body.trimEnd()}\n\nFeedback for re-execution: ${feedback}`;
     }
   } else {
-    newBody = body.trimEnd() + feedbackBlock;
+    newBody = `${body.trimEnd()}\n\nFeedback for re-execution: ${feedback}`;
   }
 
   const updated = serializeFrontmatter({ ...data, status: 'ready' }, newBody);
