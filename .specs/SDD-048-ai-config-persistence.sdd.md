@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-048
 title: Implement AI config read/write persistence
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-2, backend, ai-config]
@@ -42,13 +42,13 @@ With AI configuration types defined in SDD-047, this spec implements the persist
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Unit tests pass for readAIConfig (file exists, file missing, invalid JSON cases)
-- [ ] Unit tests pass for writeAIConfig (creates file, creates directory)
-- [ ] Unit tests pass for getAvailableTags and getAvailableSkills
-- [ ] TypeScript compilation succeeds
+- [x] Unit tests pass for readAIConfig (file exists, file missing, invalid JSON cases)
+- [x] Unit tests pass for writeAIConfig (creates file, creates directory)
+- [x] Unit tests pass for getAvailableTags and getAvailableSkills
+- [x] TypeScript compilation succeeds
 
 ### Manual
-- [ ] Config file roundtrips correctly (write then read returns same data)
+- [x] Config file roundtrips correctly (write then read returns same data)
 
 ## Constraints
 - Do not modify projectConfig.ts — create a separate module

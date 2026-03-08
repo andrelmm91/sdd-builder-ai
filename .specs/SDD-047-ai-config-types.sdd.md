@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-047
 title: Define AI configuration types and constants
-status: draft
+status: done
 priority: high
 complexity: low
 tags: [phase-2, backend, ai-config]
@@ -45,11 +45,11 @@ The SDD Agentic extension needs a global AI configuration system that allows use
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation succeeds with no errors (`npm run type-check`)
-- [ ] All types and constants are exported and importable
+- [x] TypeScript compilation succeeds with no errors (`npm run type-check`)
+- [x] All types and constants are exported and importable
 
 ### Manual
-- [ ] Types accurately represent the AI configuration domain from the product spec
+- [x] Types accurately represent the AI configuration domain from the product spec
 
 ## Constraints
 - Do not implement any read/write logic — only type definitions and constants

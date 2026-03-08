@@ -8,6 +8,7 @@ export const CONVENTIONS_FILE = '.sdd/conventions.md';
 export const EXECUTIONS_FOLDER = '.sdd/executions';
 export const REVIEWS_FOLDER = '.sdd/reviews';
 export const SKILLS_FOLDER = '.sdd/skills';
+export const AI_CONFIG_FILE = '.sdd/ai-config.json';
 
 export const DEFAULT_BUDGET = 100000;
 export const DEFAULT_PREFIX = 'SPEC';
