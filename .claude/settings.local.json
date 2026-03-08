@@ -6,7 +6,8 @@
       "WebFetch(domain:github.com)",
       "Bash(npx vitest:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "Bash(xargs wc:*)"
     ]
   }
 }

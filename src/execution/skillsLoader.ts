@@ -24,13 +24,18 @@ export async function getSkillsPath(skillsName: string): Promise<string | undefi
 /**
  * Reads and returns the content of the skills file for the given skills name.
  * Returns undefined if no skills file is found.
+ * The returned content includes a header with the skill path for traceability.
  */
 export async function loadSkills(skillsName: string): Promise<string | undefined> {
   const resolvedPath = await getSkillsPath(skillsName);
   if (!resolvedPath) {
     return undefined;
   }
-  return readWorkspaceFile(resolvedPath);
+  const content = await readWorkspaceFile(resolvedPath);
+  if (!content) {
+    return undefined;
+  }
+  return `> Skill: "${skillsName}" (from ${resolvedPath})\n\n${content}`;
 }
 
 /**

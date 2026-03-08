@@ -178,6 +178,9 @@ export class CliRunner implements ExecutionRunner {
 
     if (provider === 'copilot') {
       const parts = ['github', 'copilot'];
+      if (aiConfig?.model) {
+        parts.push('--model', aiConfig.model);
+      }
       if (aiConfig?.permissionMode === 'yolo') {
         parts.push('--yolo');
       }

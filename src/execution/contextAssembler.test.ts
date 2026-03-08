@@ -113,7 +113,7 @@ describe('assembleExecutionContext', () => {
     expect(result).toContain('Backend Dev Skills');
   });
 
-  it('includes Agent Skills from filesystem when not provided in options', async () => {
+  it('includes Agent Skills from filesystem with instruction prefix when not provided in options', async () => {
     mockFileExists.mockImplementation(async (p: string) => p === '.sdd/skills/backend-dev.md');
     mockReadWorkspaceFile.mockImplementation(async (path: string) => {
       if (path === '.sdd/skills/backend-dev.md') {
@@ -124,6 +124,7 @@ describe('assembleExecutionContext', () => {
 
     const result = await assembleExecutionContext(makeSpec(), {});
     expect(result).toContain('## Agent Skills');
+    expect(result).toContain('Use the following skill for this task: "backend-dev".');
     expect(result).toContain('Write clean code.');
   });
 

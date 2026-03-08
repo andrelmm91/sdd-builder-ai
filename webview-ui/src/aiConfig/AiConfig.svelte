@@ -37,7 +37,7 @@
 
   const MODELS: Record<AIProvider, string[]> = {
     claude: ['opus', 'sonnet', 'haiku'],
-    copilot: ['claude-sonnet-4.6', 'gpt-4o'],
+    copilot: ['claude-sonnet-4.6', 'gpt-4o', 'gpt-5.1', 'codex', 'opus'],
   };
 
   const DEFAULT_PRE_PROMPT =

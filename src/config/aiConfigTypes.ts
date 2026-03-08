@@ -18,7 +18,7 @@ export interface AIConfig {
 }
 
 export const CLAUDE_MODELS = ['opus', 'sonnet', 'haiku'] as const;
-export const COPILOT_MODELS = ['claude-sonnet-4.6', 'gpt-4o'] as const;
+export const COPILOT_MODELS = ['claude-sonnet-4.6', 'gpt-4o', 'gpt-5.1', 'codex', 'opus'] as const;
 
 export const CLAUDE_PERMISSION_MODES: readonly ClaudePermissionMode[] = [
   'default',

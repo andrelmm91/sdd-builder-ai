@@ -15,7 +15,7 @@ export class AiConfigPanel extends BaseWebviewPanel {
   }
 
   private constructor(extensionUri: vscode.Uri) {
-    super(extensionUri, 'aiConfig', 'AI Configuration', vscode.ViewColumn.One);
+    super(extensionUri, 'sddAiConfig', 'AI Configuration', vscode.ViewColumn.One);
   }
 
   protected async handleMessage(message: { type: string; data: unknown }): Promise<void> {

@@ -56,21 +56,23 @@ describe('getSkillsPath', () => {
 });
 
 describe('loadSkills', () => {
-  it('returns content when skills file is found in .sdd/skills/', async () => {
+  it('returns content with path header when skills file is found in .sdd/skills/', async () => {
     mockFileExists.mockImplementation(async (p) => p === '.sdd/skills/backend-dev.md');
     mockReadWorkspaceFile.mockResolvedValue('# Backend Dev\n\nWrite clean code.');
 
     const result = await loadSkills('backend-dev');
-    expect(result).toBe('# Backend Dev\n\nWrite clean code.');
+    expect(result).toContain('> Skill: "backend-dev" (from .sdd/skills/backend-dev.md)');
+    expect(result).toContain('# Backend Dev\n\nWrite clean code.');
     expect(mockReadWorkspaceFile).toHaveBeenCalledWith('.sdd/skills/backend-dev.md');
   });
 
-  it('returns content when fallback to .claude/skills/ works', async () => {
+  it('returns content with path header when fallback to .claude/skills/ works', async () => {
     mockFileExists.mockImplementation(async (p) => p === '.claude/skills/sdd-planner.md');
     mockReadWorkspaceFile.mockResolvedValue('# SDD Planner\n\nPlan specs carefully.');
 
     const result = await loadSkills('sdd-planner');
-    expect(result).toBe('# SDD Planner\n\nPlan specs carefully.');
+    expect(result).toContain('> Skill: "sdd-planner" (from .claude/skills/sdd-planner.md)');
+    expect(result).toContain('# SDD Planner\n\nPlan specs carefully.');
     expect(mockReadWorkspaceFile).toHaveBeenCalledWith('.claude/skills/sdd-planner.md');
   });
 

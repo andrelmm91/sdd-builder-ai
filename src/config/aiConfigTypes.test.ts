@@ -15,7 +15,7 @@ describe('aiConfigTypes', () => {
   });
 
   it('exports COPILOT_MODELS', () => {
-    expect(COPILOT_MODELS).toEqual(['claude-sonnet-4.6', 'gpt-4o']);
+    expect(COPILOT_MODELS).toEqual(['claude-sonnet-4.6', 'gpt-4o', 'gpt-5.1', 'codex', 'opus']);
   });
 
   it('exports CLAUDE_PERMISSION_MODES', () => {

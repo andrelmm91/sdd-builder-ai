@@ -71,21 +71,29 @@ async function resolveSkills(
       .map((m) => m.skill);
 
     if (matchedSkills.length > 0) {
+      const uniqueSkills = [...new Set(matchedSkills)];
       const skillSections: string[] = [];
-      for (const skillName of [...new Set(matchedSkills)]) {
+      for (const skillName of uniqueSkills) {
         const content = await loadSkills(skillName);
         if (content) {
           skillSections.push(content);
         }
       }
       if (skillSections.length > 0) {
-        return skillSections.join('\n\n---\n\n');
+        const instruction = `Use the following skill(s) for this task: ${uniqueSkills.map((s) => `"${s}"`).join(', ')}.`;
+        return `${instruction}\n\n${skillSections.join('\n\n---\n\n')}`;
       }
     }
   }
 
   // Fallback: use spec's agent_skills field
-  return fm.agent_skills ? loadSkills(fm.agent_skills) : undefined;
+  if (fm.agent_skills) {
+    const content = await loadSkills(fm.agent_skills);
+    if (content) {
+      return `Use the following skill for this task: "${fm.agent_skills}".\n\n${content}`;
+    }
+  }
+  return undefined;
 }
 
 /**
