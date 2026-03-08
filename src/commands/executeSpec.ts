@@ -11,6 +11,7 @@ import { CliRunner } from '../execution/cliRunner';
 import { captureResults } from '../execution/resultCapture';
 import { runPostValidation } from '../execution/postValidation';
 import { getClaudeCliBinary, getTestCommand, getAutoValidate } from '../config/extensionConfig';
+import { readAIConfig } from '../config/aiConfig';
 import { EXECUTIONS_FOLDER } from '../utils/constants';
 import type { SpecTreeItem } from '../views/sidebar/specTreeItem';
 import type { ExecutionConfig } from '../execution/types';
@@ -85,6 +86,9 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     vscode.window.showWarningMessage(`${specId} budget warning: ${budgetValidation.warning}`);
   }
 
+  // --- Read AI config ---
+  const aiConfig = await readAIConfig();
+
   // --- Build execution config ---
   const testCommand = await getTestCommand();
   const autoValidate = getAutoValidate();
@@ -128,11 +132,11 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
 
         // Assemble context
         progress.report({ message: 'Assembling context…', increment: 15 });
-        const context = await assembleExecutionContext(spec, { skills });
+        const context = await assembleExecutionContext(spec, { skills, aiConfig });
 
         // Execute via CliRunner
-        progress.report({ message: 'Running Claude CLI…', increment: 20 });
-        executionResult = await _runner.execute(spec, context, config);
+        progress.report({ message: 'Running CLI…', increment: 20 });
+        executionResult = await _runner.execute(spec, context, config, aiConfig);
 
         if (token.isCancellationRequested) {
           // Save partial results then revert status

@@ -2,6 +2,7 @@ import { readWorkspaceFile } from '../utils/fileSystem';
 import { CONVENTIONS_FILE } from '../utils/constants';
 import { loadSkills } from './skillsLoader';
 import type { SpecDocument } from '../specs/types';
+import type { AIConfig } from '../config/aiConfigTypes';
 
 const MAX_CONTEXT_BYTES = 100 * 1024;
 
@@ -10,6 +11,7 @@ export type ContextOptions = {
   skills?: string;
   feedback?: string;
   previousOutput?: string;
+  aiConfig?: AIConfig;
 };
 
 function buildRawSpec(spec: SpecDocument): string {
@@ -54,6 +56,39 @@ function buildRawSpec(spec: SpecDocument): string {
 }
 
 /**
+ * Resolves skills content by checking tag-skill mappings from AIConfig first,
+ * falling back to the spec's agent_skills field.
+ */
+async function resolveSkills(
+  fm: SpecDocument['frontmatter'],
+  aiConfig?: AIConfig,
+): Promise<string | undefined> {
+  // Check for tag-skill mappings from AIConfig
+  if (aiConfig?.tagSkillMappings && aiConfig.tagSkillMappings.length > 0) {
+    const specTags = new Set(fm.tags ?? []);
+    const matchedSkills = aiConfig.tagSkillMappings
+      .filter((m) => specTags.has(m.tag))
+      .map((m) => m.skill);
+
+    if (matchedSkills.length > 0) {
+      const skillSections: string[] = [];
+      for (const skillName of [...new Set(matchedSkills)]) {
+        const content = await loadSkills(skillName);
+        if (content) {
+          skillSections.push(content);
+        }
+      }
+      if (skillSections.length > 0) {
+        return skillSections.join('\n\n---\n\n');
+      }
+    }
+  }
+
+  // Fallback: use spec's agent_skills field
+  return fm.agent_skills ? loadSkills(fm.agent_skills) : undefined;
+}
+
+/**
  * Assembles a full execution context document for the Claude CLI agent.
  *
  * The returned string contains everything the agent needs to implement the
@@ -66,6 +101,13 @@ export async function assembleExecutionContext(
 ): Promise<string> {
   const sections: string[] = [];
   const fm = spec.frontmatter;
+
+  // 0. Custom Pre-prompt (from AIConfig)
+  if (options.aiConfig?.prePromptTemplate) {
+    const specFileName = `${fm.spec_id}.sdd.md`;
+    const prompt = options.aiConfig.prePromptTemplate.replace(/\{spec_file\}/g, specFileName);
+    sections.push(`## Instructions\n\n${prompt}`);
+  }
 
   // 1. Spec
   sections.push(`## Spec\n\n${buildRawSpec(spec)}`);
@@ -92,10 +134,8 @@ export async function assembleExecutionContext(
     sections.push(`## Conventions\n\n${conventionsContent}`);
   }
 
-  // 4. Agent Skills
-  const skillsContent =
-    options.skills ??
-    (fm.agent_skills ? await loadSkills(fm.agent_skills) : undefined);
+  // 4. Agent Skills (tag-skill mappings from AIConfig override spec's agent_skills)
+  const skillsContent = options.skills ?? await resolveSkills(fm, options.aiConfig);
   if (skillsContent) {
     sections.push(`## Agent Skills\n\n${skillsContent}`);
   }

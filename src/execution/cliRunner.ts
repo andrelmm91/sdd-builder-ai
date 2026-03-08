@@ -173,6 +173,35 @@ export class CliRunner implements ExecutionRunner {
     }
   }
 
+  private _buildCommand(config: ExecutionConfig, aiConfig: AIConfig | undefined, contextFilePath: string): string {
+    const provider = aiConfig?.provider ?? 'claude';
+
+    if (provider === 'copilot') {
+      const parts = ['github', 'copilot'];
+      if (aiConfig?.permissionMode === 'yolo') {
+        parts.push('--yolo');
+      }
+      parts.push(`< "${contextFilePath}"`);
+      return parts.join(' ');
+    }
+
+    // Claude provider (default)
+    const parts = [config.claudeCliBinary, '--print', '--max-tokens', String(config.maxTokens)];
+
+    if (aiConfig?.model) {
+      parts.push('--model', aiConfig.model);
+    }
+
+    if (aiConfig?.permissionMode === 'dangerously-skip-permissions') {
+      parts.push('--dangerously-skip-permissions');
+    } else if (aiConfig?.permissionMode === 'plan') {
+      parts.push('--plan');
+    }
+
+    parts.push(`< "${contextFilePath}"`);
+    return parts.join(' ');
+  }
+
   private _fail(startTime: number, error: string): ExecutionResult {
     this._running = false;
     return { success: false, output: '', tokensIn: 0, tokensOut: 0, duration: Date.now() - startTime, error };

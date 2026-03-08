@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-052
 title: Make execution pipeline config-aware
-status: draft
+status: done
 priority: high
 complexity: high
 tags: [phase-2, backend, ai-config]
