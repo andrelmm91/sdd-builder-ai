@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-059
 title: Remove hardcoded git operations from approve command
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-2, refactor, backend]
@@ -45,8 +45,8 @@ The `gitOps.ts` and `prCreator.ts` modules remain in the codebase (other command
 
 ## Acceptance Criteria
 ### Automated
-- [ ] TypeScript compiles (`npm run type-check`)
-- [ ] Existing tests pass (`npm test`)
+- [x] TypeScript compiles (`npm run type-check`)
+- [x] Existing tests pass (`npm test`)
 
 ### Manual
 - [ ] Approving a spec in the kanban moves it to "done" without any git operations

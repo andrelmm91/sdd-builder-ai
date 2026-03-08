@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-058
 title: Inject commit and PR commands into execution context
-status: draft
+status: done
 priority: high
 complexity: low
 tags: [phase-2, refactor, backend]
@@ -45,11 +45,11 @@ This spec adds a new section to the assembled context that includes the enabled 
 
 ## Acceptance Criteria
 ### Automated
-- [ ] TypeScript compiles (`npm run type-check`)
-- [ ] Unit test: when both commands are enabled, context includes both commands with placeholders replaced
-- [ ] Unit test: when only commitCommand is enabled, context includes only commit command
-- [ ] Unit test: when both are disabled, no "Post-Execution Commands" section appears
-- [ ] Existing context assembler tests still pass
+- [x] TypeScript compiles (`npm run type-check`)
+- [x] Unit test: when both commands are enabled, context includes both commands with placeholders replaced
+- [x] Unit test: when only commitCommand is enabled, context includes only commit command
+- [x] Unit test: when both are disabled, no "Post-Execution Commands" section appears
+- [x] Existing context assembler tests still pass
 
 ### Manual
 - [ ] None

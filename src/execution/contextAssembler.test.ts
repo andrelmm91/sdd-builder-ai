@@ -188,6 +188,61 @@ describe('assembleExecutionContext', () => {
     expect(Buffer.byteLength(result, 'utf8')).toBeLessThanOrEqual(100 * 1024);
   });
 
+  it('includes Post-Execution Commands section with both commands when both are enabled', async () => {
+    const result = await assembleExecutionContext(makeSpec(), {
+      aiConfig: {
+        provider: 'claude',
+        permissionMode: 'default',
+        model: 'sonnet',
+        tagSkillMappings: [],
+        prePromptTemplate: '',
+        commitCommand: 'git add -A && git commit -m "{spec_id}: {title}"',
+        commitCommandEnabled: true,
+        prCommand: 'gh pr create --title "feat: {title} ({spec_id})" --body "Implements {spec_id}"',
+        prCommandEnabled: true,
+      },
+    });
+    expect(result).toContain('## Post-Execution Commands');
+    expect(result).toContain('git add -A && git commit -m "SDD-024: Define execution types and implement context assembler"');
+    expect(result).toContain('gh pr create --title "feat: Define execution types and implement context assembler (SDD-024)"');
+  });
+
+  it('includes Post-Execution Commands section with only commit when only commitCommand is enabled', async () => {
+    const result = await assembleExecutionContext(makeSpec(), {
+      aiConfig: {
+        provider: 'claude',
+        permissionMode: 'default',
+        model: 'sonnet',
+        tagSkillMappings: [],
+        prePromptTemplate: '',
+        commitCommand: 'git add -A && git commit -m "{spec_id}: {title}"',
+        commitCommandEnabled: true,
+        prCommand: 'gh pr create --title "feat: {title} ({spec_id})"',
+        prCommandEnabled: false,
+      },
+    });
+    expect(result).toContain('## Post-Execution Commands');
+    expect(result).toContain('git add -A && git commit -m "SDD-024:');
+    expect(result).not.toContain('gh pr create');
+  });
+
+  it('does not include Post-Execution Commands section when both commands are disabled', async () => {
+    const result = await assembleExecutionContext(makeSpec(), {
+      aiConfig: {
+        provider: 'claude',
+        permissionMode: 'default',
+        model: 'sonnet',
+        tagSkillMappings: [],
+        prePromptTemplate: '',
+        commitCommand: 'git add -A && git commit -m "{spec_id}: {title}"',
+        commitCommandEnabled: false,
+        prCommand: 'gh pr create --title "feat: {title} ({spec_id})"',
+        prCommandEnabled: false,
+      },
+    });
+    expect(result).not.toContain('## Post-Execution Commands');
+  });
+
   it('includes all sections when all inputs are provided', async () => {
     mockReadWorkspaceFile.mockImplementation(async (path: string) => {
       if (path === 'src/execution/types.ts') {

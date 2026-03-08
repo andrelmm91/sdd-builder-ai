@@ -156,6 +156,28 @@ export async function assembleExecutionContext(
   }
   sections.push(`## Scope Constraints\n\n${scopeLines.join('\n')}`);
 
+  // 5.5. Post-Execution Commands
+  if (options.aiConfig) {
+    const { commitCommand, commitCommandEnabled, prCommand, prCommandEnabled } = options.aiConfig;
+    const enabledCommands: string[] = [];
+
+    if (commitCommandEnabled && commitCommand) {
+      const cmd = commitCommand.replace(/\{spec_id\}/g, fm.spec_id).replace(/\{title\}/g, fm.title);
+      enabledCommands.push(`1. Commit changes: \`${cmd}\``);
+    }
+
+    if (prCommandEnabled && prCommand) {
+      const cmd = prCommand.replace(/\{spec_id\}/g, fm.spec_id).replace(/\{title\}/g, fm.title);
+      enabledCommands.push(`${enabledCommands.length + 1}. Create PR: \`${cmd}\``);
+    }
+
+    if (enabledCommands.length > 0) {
+      sections.push(
+        `## Post-Execution Commands\n\nAfter completing all implementation work, run the following commands:\n\n${enabledCommands.join('\n')}`,
+      );
+    }
+  }
+
   // 6. Previous Feedback
   if (options.feedback) {
     const feedbackParts = [`### Feedback\n\n${options.feedback}`];
