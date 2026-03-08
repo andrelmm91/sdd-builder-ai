@@ -157,14 +157,7 @@
   }
 
   function openModal(card: SpecCard) {
-    const parts: string[] = [];
-    if (card.automatedCriteria?.trim()) {
-      parts.push(`### Automated\n\n${card.automatedCriteria.trim()}`);
-    }
-    if (card.manualCriteria?.trim()) {
-      parts.push(`### Manual\n\n${card.manualCriteria.trim()}`);
-    }
-    feedbackText = parts.join('\n\n');
+    feedbackText = '';
     modalSpec = card;
   }
 
