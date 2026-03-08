@@ -116,6 +116,10 @@
     postMessage('openSpecForm', {});
   }
 
+  function openAiConfig() {
+    postMessage('openAiConfig', {});
+  }
+
   function cardAction(action: string, specId: string) {
     postMessage('cardAction', { action, specId });
   }
@@ -139,6 +143,7 @@
       bind:value={filterText}
     />
     <button class="btn-new" onclick={openSpecForm}>New Spec +</button>
+    <button class="btn-new btn-config" onclick={openAiConfig}>⚙ AI Config</button>
   </header>
 
   <div class="board">
@@ -275,6 +280,11 @@
     white-space: nowrap;
   }
   .btn-new:hover { background: var(--vscode-button-hoverBackground); }
+  .btn-config {
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+  }
+  .btn-config:hover { background: var(--vscode-button-secondaryHoverBackground); }
 
   .board {
     display: flex;

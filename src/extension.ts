@@ -21,6 +21,7 @@ import { activate as activateDiagnostics } from "./specs/diagnostics";
 import { DashboardPanel } from "./views/webviews/dashboard/DashboardPanel";
 import { KanbanPanel } from "./views/webviews/kanban/KanbanPanel";
 import { SpecFormPanel } from "./views/webviews/specForm/SpecFormPanel";
+import { AiConfigPanel } from "./views/webviews/aiConfig/AiConfigPanel";
 
 export function activate(context: vscode.ExtensionContext): void {
   // SDD Platform extension activated
@@ -71,6 +72,9 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand("sdd.newSpecForm", () =>
       SpecFormPanel.openForCreate(context.extensionUri)
+    ),
+    vscode.commands.registerCommand("sdd.openAiConfig", () =>
+      AiConfigPanel.createOrShow(context.extensionUri)
     ),
     vscode.commands.registerCommand("sdd.planFromRequirements", planFromRequirements),
     vscode.commands.registerCommand("sdd.refinePlan", refinePlan),

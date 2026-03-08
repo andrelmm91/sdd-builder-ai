@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-050
 title: Create AI Configuration panel class and command
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-2, backend, ui, ai-config]

@@ -53,6 +53,9 @@ export class KanbanPanel extends BaseWebviewPanel {
       case 'openSpecForm':
         await vscode.commands.executeCommand('sdd.newSpecForm');
         break;
+      case 'openAiConfig':
+        await vscode.commands.executeCommand('sdd.openAiConfig');
+        break;
       case 'openFile':
         await this.handleOpenFile((message.data as { specId: string }).specId);
         break;

@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-051
 title: Add AI Configuration button to Kanban header
-status: draft
+status: done
 priority: medium
 complexity: low
 tags: [phase-2, frontend, ui, ai-config]

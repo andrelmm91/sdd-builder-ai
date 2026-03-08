@@ -88,6 +88,10 @@
         "title": "SDD: New Spec (Form)"
       },
       {
+        "command": "sdd.openAiConfig",
+        "title": "SDD: Open AI Configuration"
+      },
+      {
         "command": "sdd.planFromRequirements",
         "title": "SDD: Plan Specs from Requirements"
       },
