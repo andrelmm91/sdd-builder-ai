@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-053
 title: Define bulk execution types and queue manager
-status: draft
+status: done
 priority: medium
 complexity: medium
 tags: [phase-2, backend, ai-config]

@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-054
 title: Wire bulk execution to commands and kanban panel
-status: draft
+status: done
 priority: medium
 complexity: medium
 tags: [phase-2, backend, ai-config]

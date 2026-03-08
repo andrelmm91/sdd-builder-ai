@@ -4,6 +4,8 @@ import { parseSpec } from '../../../specs/parser';
 import { canTransition } from '../../../specs/lifecycle';
 import { serializeFrontmatter, parseFrontmatter } from '../../../utils/frontmatter';
 import { SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../../../utils/constants';
+import { BulkExecutionManager } from '../../../execution/bulkExecution';
+import { executeSingleSpec } from '../../../commands/executeSpec';
 import type { SpecData, SpecStatus } from '../../../specs/types';
 
 interface CardActionMessage {
@@ -39,6 +41,7 @@ export class KanbanPanel extends BaseWebviewPanel {
   private constructor(extensionUri: vscode.Uri) {
     super(extensionUri, 'sddKanban', 'SDD Kanban', vscode.ViewColumn.One);
     this.setupWatcher();
+    this.setupBulkStateSync();
     void this.sendSpecs();
   }
 
@@ -59,6 +62,35 @@ export class KanbanPanel extends BaseWebviewPanel {
       case 'openFile':
         await this.handleOpenFile((message.data as { specId: string }).specId);
         break;
+      case 'addToBulk': {
+        const { specId } = message.data as { specId: string };
+        const filePath = this.specFilePaths.get(specId);
+        if (filePath) {
+          await BulkExecutionManager.getInstance().addSpec(specId, filePath);
+        }
+        break;
+      }
+      case 'removeFromBulk': {
+        const { specId } = message.data as { specId: string };
+        BulkExecutionManager.getInstance().removeSpec(specId);
+        break;
+      }
+      case 'executeAll': {
+        const manager = BulkExecutionManager.getInstance();
+        const executeFn = async (specId: string) => {
+          const fp = manager.getFilePath(specId) ?? this.specFilePaths.get(specId);
+          if (!fp) return false;
+          return executeSingleSpec(fp);
+        };
+        void manager.executeAll(executeFn);
+        break;
+      }
+      case 'requestBulkState':
+        this.post('bulkState', BulkExecutionManager.getInstance().getQueue());
+        break;
+      case 'cancelBulk':
+        BulkExecutionManager.getInstance().cancel();
+        break;
     }
   }
 
@@ -66,6 +98,12 @@ export class KanbanPanel extends BaseWebviewPanel {
     KanbanPanel.instance = undefined;
     this.watcher?.dispose();
     super.dispose();
+  }
+
+  private setupBulkStateSync(): void {
+    BulkExecutionManager.getInstance().onStateChange((state) => {
+      this.post('bulkState', state);
+    });
   }
 
   private setupWatcher(): void {

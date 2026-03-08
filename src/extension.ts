@@ -5,7 +5,8 @@ import { initProject } from "./commands/initProject";
 import { newSpec } from "./commands/newSpec";
 import { createMarkReadyCommand } from "./commands/markReady";
 import { createValidateSpecCommand } from "./commands/validateSpec";
-import { createExecuteSpecCommand } from "./commands/executeSpec";
+import { createExecuteSpecCommand, executeSingleSpec } from "./commands/executeSpec";
+import { BulkExecutionManager } from "./execution/bulkExecution";
 import { planFromRequirements } from "./commands/planFromRequirements";
 import { refinePlan } from "./commands/refinePlan";
 import {
@@ -76,6 +77,46 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("sdd.openAiConfig", () =>
       AiConfigPanel.createOrShow(context.extensionUri)
     ),
+    vscode.commands.registerCommand("sdd.addToBulk", async (item?: import("./views/sidebar/specTreeItem").SpecTreeItem | string) => {
+      let filePath: string | undefined;
+      if (typeof item === 'string') {
+        filePath = item;
+      } else if (item && item.kind === 'spec') {
+        filePath = item.filePath;
+      } else {
+        const editor = vscode.window.activeTextEditor;
+        if (editor && editor.document.fileName.endsWith('.sdd.md')) {
+          filePath = editor.document.fileName;
+        }
+      }
+      if (!filePath) {
+        vscode.window.showErrorMessage('No spec file selected or open.');
+        return;
+      }
+      // Derive specId from the file by parsing it
+      try {
+        const bytes = await vscode.workspace.fs.readFile(vscode.Uri.file(filePath));
+        const { parseSpec } = await import('./specs/parser');
+        const result = parseSpec(Buffer.from(bytes).toString('utf8'));
+        if (result.success) {
+          const added = await BulkExecutionManager.getInstance().addSpec(result.data.frontmatter.spec_id, filePath);
+          if (!added) {
+            vscode.window.showWarningMessage(`${result.data.frontmatter.spec_id} could not be added to bulk queue (must be "ready" and not already queued).`);
+          }
+        }
+      } catch {
+        vscode.window.showErrorMessage('Failed to add spec to bulk queue.');
+      }
+    }),
+    vscode.commands.registerCommand("sdd.executeAllBulk", async () => {
+      const manager = BulkExecutionManager.getInstance();
+      const refresh = () => specTreeProvider.refresh();
+      await manager.executeAll(async (specId) => {
+        const fp = manager.getFilePath(specId);
+        if (!fp) return false;
+        return executeSingleSpec(fp, refresh);
+      });
+    }),
     vscode.commands.registerCommand("sdd.planFromRequirements", planFromRequirements),
     vscode.commands.registerCommand("sdd.refinePlan", refinePlan),
     specTreeProvider,
