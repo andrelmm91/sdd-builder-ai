@@ -12,6 +12,7 @@ export default defineConfig({
         sddDashboard: resolve(__dirname, 'src/dashboard/index.ts'),
         sddKanban: resolve(__dirname, 'src/kanban/index.ts'),
         sddSpecForm: resolve(__dirname, 'src/specForm/index.ts'),
+        sddAiConfig: resolve(__dirname, 'src/aiConfig/index.ts'),
       },
       output: {
         entryFileNames: '[name].js',
