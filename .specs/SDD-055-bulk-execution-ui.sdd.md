@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-055
 title: Add bulk execution UI to Kanban board
-status: draft
+status: done
 priority: medium
 complexity: high
 tags: [phase-2, frontend, ui, ai-config]

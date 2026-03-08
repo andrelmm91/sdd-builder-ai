@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { onMessage, postMessage } from '../lib/vscode';
+  import type { BulkExecutionState } from '../lib/types';
 
   type SpecStatus = 'draft' | 'ready' | 'in_progress' | 'review' | 'done';
 
@@ -35,6 +36,7 @@
   let filterText = $state('');
   let draggedId = $state<string | null>(null);
   let errorMap = $state<Map<string, string>>(new Map());
+  let bulkState = $state<BulkExecutionState>({ items: [], isRunning: false });
 
   const filtered = $derived(
     filterText.trim() === ''
@@ -49,11 +51,17 @@
         }),
   );
 
+  const bulkSpecIdSet = $derived(new Set(bulkState.items.map((i) => i.specId)));
+
   function cardsForColumn(status: SpecStatus): SpecCard[] {
-    return filtered.filter((s) => s.status === status);
+    const cards = filtered.filter((s) => s.status === status);
+    // Ready: exclude cards that are in the bulk queue (they appear in the bulk frame)
+    if (status === 'ready') return cards.filter((c) => !bulkSpecIdSet.has(c.spec_id));
+    return cards;
   }
 
   onMount(() => {
+    postMessage('requestBulkState', {});
     onMessage((msg) => {
       if (msg.type === 'specList') {
         const d = msg.data as { specs: SpecCard[] };
@@ -61,6 +69,8 @@
       } else if (msg.type === 'moveError') {
         const d = msg.data as { specId: string; message: string };
         showError(d.specId, d.message);
+      } else if (msg.type === 'bulkState') {
+        bulkState = msg.data as BulkExecutionState;
       }
     });
   });
@@ -124,6 +134,22 @@
     postMessage('cardAction', { action, specId });
   }
 
+  function addToBulk(specId: string) {
+    postMessage('addToBulk', { specId });
+  }
+
+  function removeFromBulk(specId: string) {
+    postMessage('removeFromBulk', { specId });
+  }
+
+  function executeAll() {
+    postMessage('executeAll', {});
+  }
+
+  function clearBulk() {
+    postMessage('cancelBulk', {});
+  }
+
   function complexityColor(c: string) {
     return c === 'low' ? 'badge-low' : c === 'medium' ? 'badge-medium' : 'badge-high';
   }
@@ -160,10 +186,72 @@
       >
         <div class="column-header">
           <span class="column-title">{col.label}</span>
-          <span class="column-count">{cards.length}</span>
+          <span class="column-count">{cards.length + (col.id === 'ready' ? bulkState.items.length : 0)}</span>
         </div>
 
-        {#if cards.length === 0}
+        <!-- Bulk queue frame in Ready column (not running) -->
+        {#if col.id === 'ready' && bulkState.items.length > 0 && !bulkState.isRunning}
+          <div class="bulk-frame">
+            <div class="bulk-frame-header">
+              <span class="bulk-frame-title">Bulk Queue ({bulkState.items.length})</span>
+              <div class="bulk-frame-actions">
+                <button class="btn-action btn-execute-all" onclick={executeAll}>Execute All</button>
+                <button class="btn-action btn-clear" onclick={clearBulk}>Clear</button>
+              </div>
+            </div>
+            {#each bulkState.items as item (item.specId)}
+              {@const card = specs.find((s) => s.spec_id === item.specId)}
+              {#if card}
+                <div class="bulk-item">
+                  <button class="link-btn bulk-item-id" onclick={() => openSpec(item.specId)}>
+                    {item.specId}
+                  </button>
+                  <span class="bulk-item-title">{card.title}</span>
+                  <button class="btn-remove" onclick={() => removeFromBulk(item.specId)} title="Remove from bulk">✕</button>
+                </div>
+              {/if}
+            {/each}
+          </div>
+        {/if}
+
+        <!-- Bulk execution frame in In Progress column (running) -->
+        {#if col.id === 'in_progress' && bulkState.isRunning}
+          <div class="bulk-frame bulk-frame-running">
+            <div class="bulk-frame-header">
+              <span class="bulk-frame-title">Bulk Execution</span>
+            </div>
+            {#each bulkState.items as item (item.specId)}
+              {@const card = specs.find((s) => s.spec_id === item.specId)}
+              <div class="bulk-item">
+                <span
+                  class="bulk-status-icon"
+                  class:icon-executing={item.status === 'executing'}
+                  class:icon-done={item.status === 'done'}
+                  class:icon-failed={item.status === 'failed'}
+                >
+                  {#if item.status === 'executing'}
+                    <span class="spinner"></span>
+                  {:else if item.status === 'done'}
+                    ✓
+                  {:else if item.status === 'failed'}
+                    ✗
+                  {:else}
+                    ·
+                  {/if}
+                </span>
+                <button class="link-btn bulk-item-id" onclick={() => openSpec(item.specId)}>
+                  {item.specId}
+                </button>
+                <span class="bulk-item-title">{card?.title ?? item.specId}</span>
+                {#if item.error}
+                  <span class="bulk-item-error" title={item.error}>!</span>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
+
+        {#if cards.length === 0 && !(col.id === 'ready' && bulkState.items.length > 0)}
           <p class="empty-col">No specs</p>
         {:else}
           {#each cards as card (card.spec_id)}
@@ -212,6 +300,9 @@
                 {:else if card.status === 'ready'}
                   <button class="btn-action" onclick={() => cardAction('execute', card.spec_id)}>
                     Execute
+                  </button>
+                  <button class="btn-action btn-add-bulk" onclick={() => addToBulk(card.spec_id)}>
+                    + Bulk
                   </button>
                 {:else if card.status === 'review'}
                   <button class="btn-action btn-approve" onclick={() => cardAction('approve', card.spec_id)}>
@@ -345,6 +436,116 @@
     padding: 12px 0;
   }
 
+  /* Bulk frame */
+  .bulk-frame {
+    border: 1.5px solid var(--vscode-charts-blue, #4aa0ff);
+    background: var(--vscode-editor-inactiveSelectionBackground, rgba(74,160,255,0.06));
+    border-radius: 5px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .bulk-frame-running {
+    border-color: var(--vscode-charts-purple, #9b59b6);
+    background: var(--vscode-editor-inactiveSelectionBackground, rgba(155,89,182,0.06));
+  }
+
+  .bulk-frame-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  .bulk-frame-title {
+    font-size: 0.78em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--vscode-charts-blue, #4aa0ff);
+  }
+
+  .bulk-frame-running .bulk-frame-title {
+    color: var(--vscode-charts-purple, #9b59b6);
+  }
+
+  .bulk-frame-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  .bulk-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8em;
+    min-width: 0;
+  }
+
+  .bulk-item-id {
+    font-weight: 700;
+    font-size: 0.85em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .bulk-item-title {
+    color: var(--vscode-descriptionForeground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .btn-remove {
+    background: none;
+    border: none;
+    color: var(--vscode-descriptionForeground);
+    cursor: pointer;
+    padding: 0 2px;
+    font-size: 0.9em;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .btn-remove:hover { color: var(--vscode-charts-red); }
+
+  .bulk-status-icon {
+    width: 16px;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 1em;
+  }
+  .icon-executing { color: var(--vscode-charts-blue, #4aa0ff); }
+  .icon-done { color: var(--vscode-charts-green); font-weight: 700; }
+  .icon-failed { color: var(--vscode-charts-red); font-weight: 700; }
+
+  .bulk-item-error {
+    color: var(--vscode-charts-red);
+    font-weight: 700;
+    cursor: default;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid var(--vscode-charts-blue, #4aa0ff);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  /* Card styles */
   .spec-card {
     background: var(--vscode-editor-background);
     border: 1px solid var(--vscode-panel-border);
@@ -429,4 +630,20 @@
   .btn-approve:hover { background: var(--vscode-charts-green); opacity: 0.85; }
   .btn-changes  { background: var(--vscode-charts-orange); color: #fff; }
   .btn-changes:hover { background: var(--vscode-charts-orange); opacity: 0.85; }
+  .btn-execute-all { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+  .btn-execute-all:hover { background: var(--vscode-button-hoverBackground); }
+  .btn-add-bulk {
+    background: color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 15%, transparent);
+    color: var(--vscode-charts-blue, #4aa0ff);
+    border: 1px solid var(--vscode-charts-blue, #4aa0ff);
+  }
+  .btn-add-bulk:hover {
+    background: color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 25%, transparent);
+  }
+  .btn-clear {
+    background: none;
+    color: var(--vscode-descriptionForeground);
+    border: 1px solid var(--vscode-panel-border);
+  }
+  .btn-clear:hover { background: var(--vscode-button-secondaryHoverBackground); }
 </style>
