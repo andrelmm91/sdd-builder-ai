@@ -36,7 +36,7 @@
   let filterText = $state('');
   let draggedId = $state<string | null>(null);
   let errorMap = $state<Map<string, string>>(new Map());
-  let bulkState = $state<BulkExecutionState>({ items: [], isRunning: false });
+  let bulkState = $state<BulkExecutionState>({ items: [], isRunning: false, currentIndex: -1 });
 
   const filtered = $derived(
     filterText.trim() === ''
@@ -147,7 +147,7 @@
   }
 
   function clearBulk() {
-    postMessage('cancelBulk', {});
+    postMessage('clearBulk', {});
   }
 
   function complexityColor(c: string) {
@@ -226,12 +226,12 @@
                 <span
                   class="bulk-status-icon"
                   class:icon-executing={item.status === 'executing'}
-                  class:icon-done={item.status === 'done'}
+                  class:icon-done={item.status === 'completed'}
                   class:icon-failed={item.status === 'failed'}
                 >
                   {#if item.status === 'executing'}
                     <span class="spinner"></span>
-                  {:else if item.status === 'done'}
+                  {:else if item.status === 'completed'}
                     ✓
                   {:else if item.status === 'failed'}
                     ✗
@@ -243,9 +243,6 @@
                   {item.specId}
                 </button>
                 <span class="bulk-item-title">{card?.title ?? item.specId}</span>
-                {#if item.error}
-                  <span class="bulk-item-error" title={item.error}>!</span>
-                {/if}
               </div>
             {/each}
           </div>
@@ -522,13 +519,6 @@
   .icon-executing { color: var(--vscode-charts-blue, #4aa0ff); }
   .icon-done { color: var(--vscode-charts-green); font-weight: 700; }
   .icon-failed { color: var(--vscode-charts-red); font-weight: 700; }
-
-  .bulk-item-error {
-    color: var(--vscode-charts-red);
-    font-weight: 700;
-    cursor: default;
-    flex-shrink: 0;
-  }
 
   @keyframes spin {
     from { transform: rotate(0deg); }

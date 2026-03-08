@@ -5,6 +5,7 @@ import { writeWorkspaceFile, fileExists, getWorkspaceRoot } from '../utils/fileS
 import { isCommandAvailable } from '../utils/shell';
 import type { SpecDocument } from '../specs/types';
 import type { ExecutionConfig, ExecutionResult, ExecutionRunner } from './types';
+import type { AIConfig } from '../config/aiConfigTypes';
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -34,6 +35,7 @@ export class CliRunner implements ExecutionRunner {
     spec: SpecDocument,
     context: string,
     config: ExecutionConfig,
+    aiConfig?: AIConfig,
   ): Promise<ExecutionResult> {
     if (this._running) {
       return { success: false, output: '', tokensIn: 0, tokensOut: 0, duration: 0, error: 'Already running' };
@@ -65,7 +67,7 @@ export class CliRunner implements ExecutionRunner {
       }
 
       const contextFilePath = path.join(root, contextFile);
-      const command = `${config.claudeCliBinary} --print --max-tokens ${config.maxTokens} < "${contextFilePath}"`;
+      const command = this._buildCommand(config, aiConfig, contextFilePath);
 
       // Collect output chunks both for capture and terminal display
       const outputChunks: string[] = [];

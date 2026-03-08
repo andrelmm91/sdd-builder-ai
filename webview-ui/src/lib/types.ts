@@ -9,13 +9,13 @@ export interface SpecSummary {
 
 export interface BulkExecutionItem {
   specId: string;
-  status: 'queued' | 'executing' | 'done' | 'failed';
-  error?: string;
+  status: 'queued' | 'executing' | 'completed' | 'failed';
 }
 
 export interface BulkExecutionState {
   items: BulkExecutionItem[];
   isRunning: boolean;
+  currentIndex: number;
 }
 
 export type WebviewMessage =

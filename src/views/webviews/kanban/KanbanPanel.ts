@@ -28,6 +28,7 @@ const ACTION_COMMAND_MAP: Record<CardActionMessage['action'], string> = {
 export class KanbanPanel extends BaseWebviewPanel {
   private static instance: KanbanPanel | undefined;
   private watcher: vscode.FileSystemWatcher | undefined;
+  private bulkStateListener: vscode.Disposable | undefined;
   private specFilePaths = new Map<string, string>();
 
   static createOrShow(extensionUri: vscode.Uri): void {
@@ -88,6 +89,9 @@ export class KanbanPanel extends BaseWebviewPanel {
       case 'requestBulkState':
         this.post('bulkState', BulkExecutionManager.getInstance().getQueue());
         break;
+      case 'clearBulk':
+        BulkExecutionManager.getInstance().clear();
+        break;
       case 'cancelBulk':
         BulkExecutionManager.getInstance().cancel();
         break;
@@ -97,11 +101,12 @@ export class KanbanPanel extends BaseWebviewPanel {
   override dispose(): void {
     KanbanPanel.instance = undefined;
     this.watcher?.dispose();
+    this.bulkStateListener?.dispose();
     super.dispose();
   }
 
   private setupBulkStateSync(): void {
-    BulkExecutionManager.getInstance().onStateChange((state) => {
+    this.bulkStateListener = BulkExecutionManager.getInstance().onStateChange((state) => {
       this.post('bulkState', state);
     });
   }

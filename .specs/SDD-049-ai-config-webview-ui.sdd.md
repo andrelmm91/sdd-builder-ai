@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-049
 title: Create AI Configuration Svelte webview component
-status: draft
+status: done
 priority: high
 complexity: high
 tags: [phase-2, frontend, ui, ai-config]
