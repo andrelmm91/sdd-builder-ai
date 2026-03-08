@@ -14,8 +14,18 @@ import type { SpecDocument } from '../specs/types';
 const _diffProvider = new DiffProvider();
 const _reviewManager = new ReviewManager(_diffProvider);
 
-function resolveSpecId(item?: SpecTreeItem): string | undefined {
-  if (item?.kind === 'spec') return item.spec.spec_id;
+async function resolveSpecId(item?: SpecTreeItem | string): Promise<string | undefined> {
+  if (item && typeof item === 'object' && item.kind === 'spec') return item.spec.spec_id;
+  if (typeof item === 'string') {
+    // item is a file path — parse spec_id from the file
+    try {
+      const uri = vscode.Uri.file(item);
+      const bytes = await vscode.workspace.fs.readFile(uri);
+      const content = Buffer.from(bytes).toString('utf8');
+      const { data } = parseFrontmatter(content);
+      if (data['spec_id']) return data['spec_id'] as string;
+    } catch { /* fall through */ }
+  }
   return undefined;
 }
 
@@ -47,8 +57,8 @@ async function findAndParseSpec(specId: string): Promise<SpecDocument | undefine
 }
 
 export function createReviewSpecCommand(_refresh: () => void) {
-  return async (item?: SpecTreeItem): Promise<void> => {
-    const specId = resolveSpecId(item);
+  return async (item?: SpecTreeItem | string): Promise<void> => {
+    const specId = await resolveSpecId(item);
     if (!specId) {
       vscode.window.showErrorMessage('No spec selected. Right-click a spec in the sidebar.');
       return;
@@ -58,8 +68,8 @@ export function createReviewSpecCommand(_refresh: () => void) {
 }
 
 export function createApproveSpecCommand(refresh: () => void) {
-  return async (item?: SpecTreeItem): Promise<void> => {
-    const specId = resolveSpecId(item);
+  return async (item?: SpecTreeItem | string): Promise<void> => {
+    const specId = await resolveSpecId(item);
     if (!specId) {
       vscode.window.showErrorMessage('No spec selected.');
       return;
@@ -209,8 +219,8 @@ export function createApproveSpecCommand(refresh: () => void) {
 }
 
 export function createRequestChangesCommand(refresh: () => void) {
-  return async (item?: SpecTreeItem): Promise<void> => {
-    const specId = resolveSpecId(item);
+  return async (item?: SpecTreeItem | string): Promise<void> => {
+    const specId = await resolveSpecId(item);
     if (!specId) {
       vscode.window.showErrorMessage('No spec selected.');
       return;
@@ -253,8 +263,8 @@ export function createRequestChangesCommand(refresh: () => void) {
 }
 
 export function createRejectSpecCommand(refresh: () => void) {
-  return async (item?: SpecTreeItem): Promise<void> => {
-    const specId = resolveSpecId(item);
+  return async (item?: SpecTreeItem | string): Promise<void> => {
+    const specId = await resolveSpecId(item);
     if (!specId) {
       vscode.window.showErrorMessage('No spec selected.');
       return;

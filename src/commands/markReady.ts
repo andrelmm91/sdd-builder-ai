@@ -7,9 +7,11 @@ import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
 import type { SpecTreeItem } from '../views/sidebar/specTreeItem';
 
 export function createMarkReadyCommand(refresh: () => void) {
-  return async (item?: SpecTreeItem): Promise<void> => {
+  return async (item?: SpecTreeItem | string): Promise<void> => {
     let filePath: string | undefined;
-    if (item && item.kind === 'spec') {
+    if (typeof item === 'string') {
+      filePath = item;
+    } else if (item && item.kind === 'spec') {
       filePath = item.filePath;
     } else {
       const editor = vscode.window.activeTextEditor;

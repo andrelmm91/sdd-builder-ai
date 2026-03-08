@@ -80,6 +80,14 @@
         "title": "SDD: Open Dashboard"
       },
       {
+        "command": "sdd.openKanbanBoard",
+        "title": "SDD: Open Kanban Board"
+      },
+      {
+        "command": "sdd.newSpecForm",
+        "title": "SDD: New Spec (Form)"
+      },
+      {
         "command": "sdd.planFromRequirements",
         "title": "SDD: Plan Specs from Requirements"
       },

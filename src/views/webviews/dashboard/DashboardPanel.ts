@@ -37,6 +37,8 @@ export class DashboardPanel extends BaseWebviewPanel {
       if (data.specId) {
         await this.openSpec(data.specId);
       }
+    } else if (message.type === 'openKanban') {
+      await vscode.commands.executeCommand('sdd.openKanbanBoard');
     } else if (message.type === 'refresh') {
       await this.sendData();
     }

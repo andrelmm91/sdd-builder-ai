@@ -19,10 +19,12 @@ import type { ExecutionConfig } from '../execution/types';
 const _runner = new CliRunner();
 
 export function createExecuteSpecCommand(refresh: () => void) {
-  return async (item?: SpecTreeItem): Promise<void> => {
+  return async (item?: SpecTreeItem | string): Promise<void> => {
     // --- Resolve file path ---
     let filePath: string | undefined;
-    if (item && item.kind === 'spec') {
+    if (typeof item === 'string') {
+      filePath = item;
+    } else if (item && item.kind === 'spec') {
       filePath = item.filePath;
     } else {
       const editor = vscode.window.activeTextEditor;

@@ -134,9 +134,13 @@ export class KanbanPanel extends BaseWebviewPanel {
 
   private async handleCardAction(msg: CardActionMessage): Promise<void> {
     const command = ACTION_COMMAND_MAP[msg.action];
-    if (command) {
-      await vscode.commands.executeCommand(command, msg.specId);
+    if (!command) return;
+    const filePath = this.specFilePaths.get(msg.specId);
+    if (!filePath) {
+      this.post('moveError', { specId: msg.specId, message: `Spec file not found for ${msg.specId}` });
+      return;
     }
+    await vscode.commands.executeCommand(command, filePath);
   }
 
   private async handleOpenFile(specId: string): Promise<void> {

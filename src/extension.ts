@@ -18,6 +18,9 @@ import { SpecTreeProvider } from "./views/sidebar/specTreeProvider";
 import { SpecCompletionProvider } from "./specs/completionProvider";
 import { StatusBarManager } from "./views/statusBar";
 import { activate as activateDiagnostics } from "./specs/diagnostics";
+import { DashboardPanel } from "./views/webviews/dashboard/DashboardPanel";
+import { KanbanPanel } from "./views/webviews/kanban/KanbanPanel";
+import { SpecFormPanel } from "./views/webviews/specForm/SpecFormPanel";
 
 export function activate(context: vscode.ExtensionContext): void {
   // SDD Platform extension activated
@@ -61,7 +64,13 @@ export function activate(context: vscode.ExtensionContext): void {
       createRejectSpecCommand(() => specTreeProvider.refresh())
     ),
     vscode.commands.registerCommand("sdd.openDashboard", () =>
-      vscode.commands.executeCommand("workbench.view.extension.sdd-sidebar")
+      DashboardPanel.createOrShow(context.extensionUri)
+    ),
+    vscode.commands.registerCommand("sdd.openKanbanBoard", () =>
+      KanbanPanel.createOrShow(context.extensionUri)
+    ),
+    vscode.commands.registerCommand("sdd.newSpecForm", () =>
+      SpecFormPanel.openForCreate(context.extensionUri)
     ),
     vscode.commands.registerCommand("sdd.planFromRequirements", planFromRequirements),
     vscode.commands.registerCommand("sdd.refinePlan", refinePlan),

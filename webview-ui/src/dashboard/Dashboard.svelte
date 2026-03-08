@@ -75,6 +75,10 @@
     postMessage('navigate', { specId });
   }
 
+  function openKanban() {
+    postMessage('openKanban', {});
+  }
+
   function formatDate(iso: string) {
     return new Date(iso).toLocaleString();
   }
@@ -85,7 +89,10 @@
 </script>
 
 <main>
-  <h1 class="page-title">SDD Dashboard</h1>
+  <div class="page-header">
+    <h1 class="page-title">SDD Dashboard</h1>
+    <button class="kanban-btn" onclick={openKanban}>Open Kanban Board</button>
+  </div>
 
   <!-- Spec Status Summary -->
   <section class="card">
@@ -190,10 +197,31 @@
     max-width: 900px;
   }
 
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
   .page-title {
-    margin: 0 0 16px;
+    margin: 0;
     font-size: 1.4em;
     font-weight: 600;
+  }
+
+  .kanban-btn {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-family: inherit;
+  }
+  .kanban-btn:hover {
+    background: var(--vscode-button-hoverBackground);
   }
 
   .card {
