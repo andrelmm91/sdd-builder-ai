@@ -211,14 +211,14 @@
 <div class="kanban-root">
   <header class="kanban-header">
     <span class="kanban-title">SDD Kanban</span>
+    <button class="btn-new" onclick={openSpecForm}>New Spec +</button>
+    <button class="btn-new btn-config" onclick={openAiConfig}>⚙ AI Config</button>
     <input
       class="filter-input"
       type="search"
       placeholder="Search by ID, title, or tag…"
       bind:value={filterText}
     />
-    <button class="btn-new" onclick={openSpecForm}>New Spec +</button>
-    <button class="btn-new btn-config" onclick={openAiConfig}>⚙ AI Config</button>
   </header>
 
   <div class="board">
