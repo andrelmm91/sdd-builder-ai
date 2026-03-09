@@ -4,7 +4,7 @@
     {
       "label": "build",
       "type": "shell",
-      "command": "npm run build",
+      "command": "npm run build:all",
       "group": {
         "kind": "build",
         "isDefault": true

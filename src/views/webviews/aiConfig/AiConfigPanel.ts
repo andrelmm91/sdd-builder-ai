@@ -51,13 +51,16 @@ export class AiConfigPanel extends BaseWebviewPanel {
         break;
       }
       case 'saveConfig': {
+        const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '(no workspace)';
+        outputChannel.appendLine(`[saveConfig] workspace root: ${root}`);
+        outputChannel.appendLine(`[saveConfig] writing: ${JSON.stringify(message.data)}`);
         try {
-          outputChannel.appendLine(`[saveConfig] writing config: ${JSON.stringify(message.data)}`);
           await writeAIConfig(message.data as AIConfig);
-          outputChannel.appendLine(`[saveConfig] write succeeded`);
-          void vscode.window.showInformationMessage('AI configuration saved');
+          outputChannel.appendLine(`[saveConfig] write succeeded → ${root}/.sdd/config.json`);
+          this.post('saveConfirmed', {});
         } catch (err) {
           outputChannel.appendLine(`[saveConfig] ERROR: ${err}`);
+          this.post('saveError', { message: String(err) });
           void vscode.window.showErrorMessage(`Failed to save AI config: ${err}`);
         }
         break;

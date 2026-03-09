@@ -58,6 +58,7 @@
   let newTag = $state('');
   let newSkill = $state('');
   let saved = $state(false);
+  let saveError = $state(false);
   let notInitialized = $state(false);
 
   const permissionOptions = $derived(PERMISSION_MODES[provider]);
@@ -93,13 +94,24 @@
   function save() {
     const config: AIConfig = { provider, permissionMode, model, tagSkillMappings, prePromptTemplate, commitCommand, commitCommandEnabled, prCommand, prCommandEnabled };
     postMessage('saveConfig', config);
-    saved = true;
-    setTimeout(() => (saved = false), 2000);
+  }
+
+  /** Bypass Svelte 5 event delegation — attach a real DOM listener. */
+  function directClick(node: HTMLElement, handler: () => void) {
+    node.addEventListener('click', handler);
+    return { destroy: () => node.removeEventListener('click', handler) };
   }
 
   onMount(() => {
     onMessage((msg) => {
-      if (msg.type === 'configData') {
+      if (msg.type === 'saveConfirmed') {
+        saved = true;
+        saveError = false;
+        setTimeout(() => (saved = false), 2000);
+      } else if (msg.type === 'saveError') {
+        saveError = true;
+        setTimeout(() => (saveError = false), 3000);
+      } else if (msg.type === 'configData') {
         const d = msg.data as { config: AIConfig; tags: string[]; skills: string[] };
         const c = d.config;
         notInitialized = false;
@@ -129,7 +141,7 @@
 
   {#if notInitialized}
     <div class="not-initialized">
-      <button class="btn-init" onclick={() => postMessage('initProject', {})}>Initialize SDD Project</button>
+      <button class="btn-init" use:directClick={() => postMessage('initProject', {})}>Initialize SDD Project</button>
       Project not initialized. Run <strong>SDD: Initialize Project</strong> first.
     </div>
   {/if}
@@ -305,7 +317,9 @@
     </section>
 
     <div class="save-row">
-      <button class="btn-save" onclick={save}>{saved ? 'Saved!' : 'Save'}</button>
+      <button class="btn-save" class:btn-save-error={saveError} use:directClick={save}>
+        {saved ? 'Saved!' : saveError ? 'Error!' : 'Save'}
+      </button>
     </div>
   </div>
 </div>
@@ -550,4 +564,5 @@
     min-width: 80px;
   }
   .btn-save:hover { background: var(--vscode-button-hoverBackground); }
+  .btn-save-error { background: var(--vscode-inputValidation-errorBackground, #be1100) !important; }
 </style>
