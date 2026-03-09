@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-066
 title: Create requirement board Svelte webview UI
-status: draft
+status: done
 priority: high
 complexity: high
 tags: [phase-2, frontend, ui]
@@ -52,8 +52,8 @@ The three columns are: **Feature Backlog** | **Idealization In Review** | **SDD 
 ## Acceptance Criteria
 
 ### Automated
-- [ ] Vite build succeeds with the new entry point (`npm run build` in webview-ui)
-- [ ] TypeScript compilation passes
+- [x] Vite build succeeds with the new entry point (`npm run build` in webview-ui)
+- [x] TypeScript compilation passes
 
 ### Manual
 - [ ] Three columns render correctly with appropriate headers

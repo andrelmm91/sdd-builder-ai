@@ -13,6 +13,7 @@ export default defineConfig({
         sddKanban: resolve(__dirname, 'src/kanban/index.ts'),
         sddSpecForm: resolve(__dirname, 'src/specForm/index.ts'),
         sddAiConfig: resolve(__dirname, 'src/aiConfig/index.ts'),
+        sddRequirementBoard: resolve(__dirname, 'src/requirementBoard/main.ts'),
       },
       output: {
         entryFileNames: '[name].js',
