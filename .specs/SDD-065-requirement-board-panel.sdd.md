@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-065
 title: Create RequirementBoardPanel webview panel
-status: draft
+status: done
 priority: high
 complexity: high
 tags: [phase-2, backend, ui]
