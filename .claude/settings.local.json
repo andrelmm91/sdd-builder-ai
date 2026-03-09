@@ -7,7 +7,9 @@
       "Bash(npx vitest:*)",
       "Bash(npx tsc:*)",
       "Bash(npx:*)",
-      "Bash(xargs wc:*)"
+      "Bash(xargs wc:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)"
     ]
   }
 }

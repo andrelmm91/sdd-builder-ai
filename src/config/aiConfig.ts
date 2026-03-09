@@ -1,30 +1,48 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { readWorkspaceFile, writeWorkspaceFile, getWorkspaceRoot } from '../utils/fileSystem';
-import { AI_CONFIG_FILE, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
+import { CONFIG_FILE, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
 import { DEFAULT_AI_CONFIG } from './aiConfigTypes';
 import type { AIConfig } from './aiConfigTypes';
+import { listAvailableSkills } from '../execution/skillsLoader';
 
-export async function readAIConfig(): Promise<AIConfig> {
-  const content = await readWorkspaceFile(AI_CONFIG_FILE);
+export async function readAIConfig(): Promise<AIConfig | undefined> {
+  const content = await readWorkspaceFile(CONFIG_FILE);
   if (!content) {
-    return { ...DEFAULT_AI_CONFIG, tagSkillMappings: [] };
+    // config.json doesn't exist — project not initialized
+    return undefined;
   }
   try {
-    const parsed = JSON.parse(content) as Partial<AIConfig>;
+    const parsed = JSON.parse(content) as { ai?: Partial<AIConfig> };
+    // File exists but no ai key yet — return defaults so the form is usable
+    const ai = parsed.ai ?? {};
     return {
-      ...DEFAULT_AI_CONFIG,
-      ...parsed,
-      tagSkillMappings: parsed.tagSkillMappings ?? [],
+      provider: ai.provider ?? DEFAULT_AI_CONFIG.provider,
+      permissionMode: ai.permissionMode ?? DEFAULT_AI_CONFIG.permissionMode,
+      model: ai.model ?? DEFAULT_AI_CONFIG.model,
+      tagSkillMappings: ai.tagSkillMappings ?? [],
+      prePromptTemplate: ai.prePromptTemplate ?? DEFAULT_AI_CONFIG.prePromptTemplate,
+      commitCommand: ai.commitCommand ?? DEFAULT_AI_CONFIG.commitCommand,
+      commitCommandEnabled: ai.commitCommandEnabled ?? DEFAULT_AI_CONFIG.commitCommandEnabled,
+      prCommand: ai.prCommand ?? DEFAULT_AI_CONFIG.prCommand,
+      prCommandEnabled: ai.prCommandEnabled ?? DEFAULT_AI_CONFIG.prCommandEnabled,
     };
   } catch {
-    console.warn('Invalid AI config JSON, using defaults');
-    return { ...DEFAULT_AI_CONFIG, tagSkillMappings: [] };
+    return undefined;
   }
 }
 
 export async function writeAIConfig(config: AIConfig): Promise<void> {
-  await writeWorkspaceFile(AI_CONFIG_FILE, JSON.stringify(config, null, 2));
+  const content = await readWorkspaceFile(CONFIG_FILE);
+  let existing: Record<string, unknown> = {};
+  if (content) {
+    try {
+      existing = JSON.parse(content) as Record<string, unknown>;
+    } catch {
+      // keep existing as empty
+    }
+  }
+  existing['ai'] = config;
+  await writeWorkspaceFile(CONFIG_FILE, JSON.stringify(existing, null, 2));
 }
 
 export async function getAvailableTags(): Promise<string[]> {
@@ -66,18 +84,5 @@ export async function getAvailableTags(): Promise<string[]> {
 }
 
 export async function getAvailableSkills(): Promise<string[]> {
-  const root = getWorkspaceRoot();
-  if (!root) {
-    return [];
-  }
-
-  try {
-    const skillsDir = vscode.Uri.file(path.join(root, '.claude', 'skills'));
-    const entries = await vscode.workspace.fs.readDirectory(skillsDir);
-    return entries
-      .map(([name]) => name.replace(/\.[^.]+$/, ''))
-      .sort();
-  } catch {
-    return [];
-  }
+  return listAvailableSkills();
 }

@@ -26,7 +26,7 @@ export abstract class BaseWebviewPanel {
 
     this.panel.webview.html = this.getHtml(viewType);
     this.panel.webview.onDidReceiveMessage(
-      (msg) => this.handleMessage(msg),
+      (msg) => { void this.handleMessage(msg); },
       undefined,
       this.disposables,
     );
@@ -82,7 +82,7 @@ export abstract class BaseWebviewPanel {
     const csp = [
       `default-src 'none'`,
       `style-src ${this.panel.webview.cspSource} 'unsafe-inline'`,
-      `script-src 'nonce-${nonce}'`,
+      `script-src ${this.panel.webview.cspSource} 'nonce-${nonce}'`,
       `font-src ${this.panel.webview.cspSource}`,
     ].join('; ');
 

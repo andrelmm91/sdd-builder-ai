@@ -44,26 +44,21 @@
     copilot: ['claude-sonnet-4.6', 'gpt-4o', 'gpt-5.1', 'codex', 'opus'],
   };
 
-  const DEFAULT_PRE_PROMPT =
-    'Implement {spec_file}. Update open tasks in the spec after completion. Add unit tests if necessary. Commit with the SDD spec_id as message.';
-
-  const DEFAULT_COMMIT_COMMAND = 'git add -A && git commit -m "{spec_id}: {title}"';
-  const DEFAULT_PR_COMMAND = 'gh pr create --title "feat: {title} ({spec_id})" --body "Implements {spec_id}"';
-
   let provider = $state<AIProvider>('claude');
   let permissionMode = $state<PermissionMode>('default');
   let model = $state<string>('sonnet');
   let tagSkillMappings = $state<TagSkillMapping[]>([]);
-  let prePromptTemplate = $state<string>(DEFAULT_PRE_PROMPT);
+  let prePromptTemplate = $state<string>('');
   let availableTags = $state<string[]>([]);
   let availableSkills = $state<string[]>([]);
-  let commitCommand = $state<string>(DEFAULT_COMMIT_COMMAND);
+  let commitCommand = $state<string>('');
   let commitCommandEnabled = $state<boolean>(false);
-  let prCommand = $state<string>(DEFAULT_PR_COMMAND);
+  let prCommand = $state<string>('');
   let prCommandEnabled = $state<boolean>(false);
   let newTag = $state('');
   let newSkill = $state('');
   let saved = $state(false);
+  let notInitialized = $state(false);
 
   const permissionOptions = $derived(PERMISSION_MODES[provider]);
   const modelOptions = $derived(MODELS[provider]);
@@ -107,17 +102,20 @@
       if (msg.type === 'configData') {
         const d = msg.data as { config: AIConfig; tags: string[]; skills: string[] };
         const c = d.config;
-        provider = c.provider ?? 'claude';
-        permissionMode = c.permissionMode ?? 'default';
-        model = c.model ?? 'sonnet';
-        tagSkillMappings = c.tagSkillMappings ?? [];
-        prePromptTemplate = c.prePromptTemplate ?? DEFAULT_PRE_PROMPT;
-        commitCommand = c.commitCommand ?? DEFAULT_COMMIT_COMMAND;
-        commitCommandEnabled = c.commitCommandEnabled ?? false;
-        prCommand = c.prCommand ?? DEFAULT_PR_COMMAND;
-        prCommandEnabled = c.prCommandEnabled ?? false;
-        availableTags = d.tags ?? [];
-        availableSkills = d.skills ?? [];
+        notInitialized = false;
+        provider = c.provider;
+        permissionMode = c.permissionMode;
+        model = c.model;
+        tagSkillMappings = c.tagSkillMappings;
+        prePromptTemplate = c.prePromptTemplate;
+        commitCommand = c.commitCommand;
+        commitCommandEnabled = c.commitCommandEnabled;
+        prCommand = c.prCommand;
+        prCommandEnabled = c.prCommandEnabled;
+        availableTags = d.tags;
+        availableSkills = d.skills;
+      } else if (msg.type === 'notInitialized') {
+        notInitialized = true;
       }
     });
     postMessage('requestConfig', {});
@@ -129,7 +127,14 @@
     <span class="config-title">AI Global Configuration</span>
   </header>
 
-  <div class="config-body">
+  {#if notInitialized}
+    <div class="not-initialized">
+      <button class="btn-init" onclick={() => postMessage('initProject', {})}>Initialize SDD Project</button>
+      Project not initialized. Run <strong>SDD: Initialize Project</strong> first.
+    </div>
+  {/if}
+
+  <div class="config-body" class:disabled={notInitialized}>
     <section class="form-section">
       <label class="field-label" for="provider-select">AI Provider</label>
       <select
@@ -329,12 +334,44 @@
     font-size: 1.1em;
   }
 
+  .not-initialized {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 16px 0;
+    padding: 10px 14px;
+    background: var(--vscode-inputValidation-warningBackground);
+    border: 1px solid var(--vscode-inputValidation-warningBorder);
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+
+  .btn-init {
+    flex-shrink: 0;
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    border-radius: 3px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .btn-init:hover { background: var(--vscode-button-hoverBackground); }
+
   .config-body {
     padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 20px;
     max-width: 600px;
+  }
+
+  .config-body.disabled {
+    opacity: 0.4;
+    pointer-events: none;
   }
 
   .form-section {

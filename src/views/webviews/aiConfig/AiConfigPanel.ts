@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
 import { BaseWebviewPanel } from '../BaseWebviewPanel';
 import { readAIConfig, writeAIConfig, getAvailableTags, getAvailableSkills } from '../../../config/aiConfig';
+import { initProject } from '../../../commands/initProject';
 import type { AIConfig } from '../../../config/aiConfigTypes';
+
+const outputChannel = vscode.window.createOutputChannel('SDD AI Config');
 
 export class AiConfigPanel extends BaseWebviewPanel {
   private static instance: AiConfigPanel | undefined;
@@ -19,6 +22,7 @@ export class AiConfigPanel extends BaseWebviewPanel {
   }
 
   protected async handleMessage(message: { type: string; data: unknown }): Promise<void> {
+    outputChannel.appendLine(`[handleMessage] type="${message.type}"`);
     switch (message.type) {
       case 'requestConfig': {
         const [config, tags, skills] = await Promise.all([
@@ -26,12 +30,36 @@ export class AiConfigPanel extends BaseWebviewPanel {
           getAvailableTags(),
           getAvailableSkills(),
         ]);
-        this.post('configData', { config, tags, skills });
+        if (config === undefined) {
+          this.post('notInitialized', {});
+        } else {
+          this.post('configData', { config, tags, skills });
+        }
+        break;
+      }
+      case 'initProject': {
+        await initProject();
+        // Re-send config so the panel loads immediately after init
+        const [config, tags, skills] = await Promise.all([
+          readAIConfig(),
+          getAvailableTags(),
+          getAvailableSkills(),
+        ]);
+        if (config !== undefined) {
+          this.post('configData', { config, tags, skills });
+        }
         break;
       }
       case 'saveConfig': {
-        await writeAIConfig(message.data as AIConfig);
-        void vscode.window.showInformationMessage('AI configuration saved');
+        try {
+          outputChannel.appendLine(`[saveConfig] writing config: ${JSON.stringify(message.data)}`);
+          await writeAIConfig(message.data as AIConfig);
+          outputChannel.appendLine(`[saveConfig] write succeeded`);
+          void vscode.window.showInformationMessage('AI configuration saved');
+        } catch (err) {
+          outputChannel.appendLine(`[saveConfig] ERROR: ${err}`);
+          void vscode.window.showErrorMessage(`Failed to save AI config: ${err}`);
+        }
         break;
       }
     }

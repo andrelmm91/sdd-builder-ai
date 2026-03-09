@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { fileExists, writeWorkspaceFile, createWorkspaceDirectory } from '../utils/fileSystem';
 import { getDefaultProjectConfig, writeProjectConfig } from '../config/projectConfig';
+import { writeAIConfig } from '../config/aiConfig';
+import { DEFAULT_AI_CONFIG } from '../config/aiConfigTypes';
 import { execCommand } from '../utils/shell';
 import { getClaudeCliBinary } from '../config/extensionConfig';
 import {
@@ -55,8 +57,9 @@ export async function initProject(): Promise<void> {
   await createWorkspaceDirectory(REVIEWS_FOLDER);
   await createWorkspaceDirectory(SKILLS_FOLDER);
 
-  // Write config and scaffold files
+  // Write config and scaffold files (project config first, then AI defaults)
   await writeProjectConfig(getDefaultProjectConfig());
+  await writeAIConfig({ ...DEFAULT_AI_CONFIG });
   await writeWorkspaceFile(CONVENTIONS_FILE, CONVENTIONS_TEMPLATE);
   await writeWorkspaceFile(`${SKILLS_FOLDER}/sdd-planner/SKILL.md`, SKILL_PLACEHOLDER);
 

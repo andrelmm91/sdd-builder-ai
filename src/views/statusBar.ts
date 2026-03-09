@@ -45,7 +45,7 @@ export class StatusBarManager implements vscode.Disposable {
   async updateCounts(): Promise<void> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
-      this.statusBarItem.text = 'SDD: 0 ready, 0 running';
+      this.statusBarItem.text = 'SDD: 0 ready, 0 running, 0 done';
       return;
     }
 
@@ -58,6 +58,7 @@ export class StatusBarManager implements vscode.Disposable {
 
     let readyCount = 0;
     let inProgressCount = 0;
+    let doneCount = 0;
 
     await Promise.all(
       uris.map(async (uri) => {
@@ -70,6 +71,8 @@ export class StatusBarManager implements vscode.Disposable {
               readyCount++;
             } else if (result.data.frontmatter.status === 'in_progress') {
               inProgressCount++;
+            } else if (result.data.frontmatter.status === 'done') {
+              doneCount++;
             }
           }
         } catch {
@@ -78,7 +81,7 @@ export class StatusBarManager implements vscode.Disposable {
       }),
     );
 
-    this.statusBarItem.text = `SDD: ${readyCount} ready, ${inProgressCount} running`;
+    this.statusBarItem.text = `SDD: ${readyCount} ready, ${inProgressCount} running, ${doneCount} done`;
   }
 }
 

@@ -128,12 +128,17 @@ export function activate(context: vscode.ExtensionContext): void {
     )
   );
 
-  // Show walkthrough on first activation (before project is initialized)
-  fileExists(CONFIG_FILE).then((initialized) => {
+  // Auto-init prompt on first activation
+  fileExists(CONFIG_FILE).then(async (initialized) => {
     if (!initialized) {
-      vscode.commands.executeCommand('workbench.action.openWalkthrough', {
-        category: 'andrelmm91.sdd-platform#sdd.gettingStarted',
-      });
+      const answer = await vscode.window.showInformationMessage(
+        'SDD: No project found in this workspace. Initialize now?',
+        'Initialize',
+        'Not now',
+      );
+      if (answer === 'Initialize') {
+        await initProject();
+      }
     }
   });
 }
