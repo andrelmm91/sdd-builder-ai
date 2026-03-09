@@ -102,6 +102,10 @@ export class CliRunner implements ExecutionRunner {
             const userShell = process.env.SHELL || '/bin/zsh';
             const child = cp.spawn(userShell, ['-l', '-c', command], {
               cwd: root,
+              // Explicitly ignore stdin so tools like `claude --print` don't
+              // hang waiting for an open pipe to close (which manifests as a
+              // SIGTERM exit code 143 in non-interactive environments).
+              stdio: ['ignore', 'pipe', 'pipe'],
             });
             this._process = child;
 
