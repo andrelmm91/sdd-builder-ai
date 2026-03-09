@@ -18,7 +18,7 @@ export function buildCliCommand(options: CliCommandOptions): string {
   const provider = aiConfig?.provider ?? 'claude';
 
   if (provider === 'copilot') {
-    const parts = ['github', 'copilot'];
+    const parts = ['gh', 'copilot'];
     if (aiConfig?.model) parts.push('--model', aiConfig.model);
     if (aiConfig?.permissionMode === 'yolo') parts.push('--yolo');
     parts.push(promptArg);

@@ -6,8 +6,15 @@ import { isCommandAvailable } from '../utils/shell';
 import type { SpecDocument } from '../specs/types';
 import type { ExecutionConfig, ExecutionResult, ExecutionRunner } from './types';
 import type { AIConfig } from '../config/aiConfigTypes';
+import { DEFAULT_PRE_PROMPT } from '../config/aiConfigTypes';
+import { getSkillsPath } from './skillsLoader';
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
+/** Wraps a string in single quotes, escaping any internal single quotes. */
+function sq(str: string): string {
+  return `'${str.replace(/'/g, "'\\''")}'`;
+}
 
 // Matches token usage lines emitted by claude CLI:
 //   "Tokens: in=1234 out=5678"  OR  "tokens_input: 1234 / tokens_output: 5678"
@@ -67,7 +74,7 @@ export class CliRunner implements ExecutionRunner {
       }
 
       const contextFilePath = path.join(root, contextFile);
-      const command = this._buildCommand(config, aiConfig, contextFilePath);
+      const command = await this._buildCommand(spec, config, aiConfig, contextFilePath);
 
       // Collect output chunks both for capture and terminal display
       const outputChunks: string[] = [];
@@ -86,8 +93,12 @@ export class CliRunner implements ExecutionRunner {
           onDidWrite: writeEmitter.event,
           onDidClose: closeEmitter.event,
           open: () => {
-            const child = cp.spawn(command, [], {
-              shell: true,
+            // Show the exact command being run so failures are diagnosable
+            writeEmitter.fire(`[SDD] Running: ${command}\r\n\r\n`);
+
+            // Use the user's login shell so PATH includes nvm, homebrew, etc.
+            const userShell = process.env.SHELL || '/bin/zsh';
+            const child = cp.spawn(userShell, ['-l', '-c', command], {
               cwd: root,
             });
             this._process = child;
@@ -137,9 +148,10 @@ export class CliRunner implements ExecutionRunner {
         terminal.show();
 
         closeEmitter.event((exitCode) => {
-          terminal.dispose();
           writeEmitter.dispose();
           closeEmitter.dispose();
+          // Do NOT dispose the terminal — keep it visible so the user can
+          // read the output. VS Code will mark it as "[terminated]" automatically.
           if (typeof exitCode === 'number' && exitCode !== 0 && !this._aborted) {
             reject(new Error(`Process exited with code ${exitCode}`));
           } else {
@@ -173,35 +185,80 @@ export class CliRunner implements ExecutionRunner {
     }
   }
 
-  private _buildCommand(config: ExecutionConfig, aiConfig: AIConfig | undefined, contextFilePath: string): string {
+  private async _buildCommand(
+    spec: SpecDocument,
+    config: ExecutionConfig,
+    aiConfig: AIConfig | undefined,
+    contextFilePath: string,
+  ): Promise<string> {
+    const fm = spec.frontmatter;
     const provider = aiConfig?.provider ?? 'claude';
 
+    // --- Build unified prompt string (same for both providers) ---
+    const promptParts: string[] = [];
+
+    // 1. Pre-prompt template with {spec_file} resolved to the spec's own filename
+    const specFileName = `${fm.spec_id}.sdd.md`;
+    const prePrompt = (aiConfig?.prePromptTemplate ?? DEFAULT_PRE_PROMPT)
+      .replace(/\{spec_file\}/g, specFileName);
+    promptParts.push(prePrompt);
+
+    // 2. Tag-skill mappings: only include skills whose tag appears on this spec
+    if (aiConfig?.tagSkillMappings?.length) {
+      const specTags = new Set(fm.tags ?? []);
+      const matchedSkills = [
+        ...new Set(
+          aiConfig.tagSkillMappings
+            .filter((m) => specTags.has(m.tag))
+            .map((m) => m.skill),
+        ),
+      ];
+      for (const skillName of matchedSkills) {
+        const skillPath = await getSkillsPath(skillName);
+        if (skillPath) {
+          promptParts.push(`Use skills in ${skillPath}`);
+        }
+      }
+    }
+
+    // 3. Post-execution commands (only when enabled and non-empty)
+    if (aiConfig?.commitCommandEnabled && aiConfig.commitCommand) {
+      const cmd = aiConfig.commitCommand
+        .replace(/\{spec_id\}/g, fm.spec_id)
+        .replace(/\{title\}/g, fm.title);
+      promptParts.push(`After completion run: \`${cmd}\``);
+    }
+    if (aiConfig?.prCommandEnabled && aiConfig.prCommand) {
+      const cmd = aiConfig.prCommand
+        .replace(/\{spec_id\}/g, fm.spec_id)
+        .replace(/\{title\}/g, fm.title);
+      promptParts.push(`After completion run: \`${cmd}\``);
+    }
+
+    const prompt = promptParts.join(' ');
+
+    // --- Build CLI command ---
+
     if (provider === 'copilot') {
-      const parts = ['github', 'copilot'];
-      if (aiConfig?.model) {
-        parts.push('--model', aiConfig.model);
-      }
-      if (aiConfig?.permissionMode === 'yolo') {
-        parts.push('--yolo');
-      }
-      parts.push(`< "${contextFilePath}"`);
+      const parts = ['gh', 'copilot'];
+      if (aiConfig?.model) parts.push('--model', aiConfig.model);
+      if (aiConfig?.permissionMode === 'yolo') parts.push('--yolo');
+      // Prompt text as -p value with #file: reference to full assembled context
+      parts.push('-p', sq(`${prompt} #file:${contextFilePath}`));
       return parts.join(' ');
     }
 
-    // Claude provider (default)
-    const parts = [config.claudeCliBinary, '--print', '--max-tokens', String(config.maxTokens)];
-
-    if (aiConfig?.model) {
-      parts.push('--model', aiConfig.model);
-    }
-
+    // Claude provider
+    const parts = [config.claudeCliBinary, '--print'];
+    if (aiConfig?.model) parts.push('--model', aiConfig.model);
     if (aiConfig?.permissionMode === 'dangerously-skip-permissions') {
       parts.push('--dangerously-skip-permissions');
     } else if (aiConfig?.permissionMode === 'plan') {
       parts.push('--plan');
     }
-
-    parts.push(`< "${contextFilePath}"`);
+    // Prepend prompt to the context file via process substitution so the
+    // instruction is explicit at the top of stdin (mirrors Copilot's -p approach)
+    parts.push(`< <(printf %s ${sq(prompt)}; printf '\\n\\n'; cat ${sq(contextFilePath)})`);
     return parts.join(' ');
   }
 

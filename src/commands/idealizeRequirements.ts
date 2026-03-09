@@ -7,7 +7,7 @@ import { getClaudeCliBinary } from '../config/extensionConfig';
 import { readAIConfig } from '../config/aiConfig';
 import { IDEALIZATION_FILENAME, PRODUCT_FOLDER } from '../utils/constants';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
-import { isCommandAvailable } from '../utils/shell';
+import { execCommand } from '../utils/shell';
 import { buildCliCommand } from '../execution/cliCommandBuilder';
 
 const IDEALIZATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
@@ -27,9 +27,12 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
   await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(tempPromptPath)));
   await vscode.workspace.fs.writeFile(promptFileUri, new TextEncoder().encode(prompt));
 
+  const loginShell = process.env.SHELL || '/bin/zsh';
   const cliBinary = getClaudeCliBinary();
-  const available = await isCommandAvailable(cliBinary);
-  if (!available) {
+
+  // Check availability using the login shell so we respect the user's full PATH
+  const which = await execCommand(`${loginShell} -l -c "which ${cliBinary}"`, { timeout: 5000 });
+  if (!which.success) {
     vscode.window.showErrorMessage(
       `SDD: AI CLI not found: "${cliBinary}". Install it or update sdd.claudeCliBinary in settings.`,
     );
@@ -44,7 +47,7 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
     promptArg: `"$(cat '${tempPromptPath}')"`,
   });
 
-  await runInTerminal(command, root, featureName, async () => {
+  await runInTerminal(command, loginShell, root, featureName, async () => {
     try {
       await postValidate(root, featureName, folderPath);
       vscode.window.showInformationMessage(`SDD: Idealization complete for "${featureName}".`);
@@ -59,6 +62,7 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
 
 function runInTerminal(
   command: string,
+  loginShell: string,
   cwd: string,
   featureName: string,
   onSuccess: () => Promise<void>,
@@ -71,7 +75,8 @@ function runInTerminal(
       onDidWrite: writeEmitter.event,
       onDidClose: closeEmitter.event,
       open: () => {
-        const child = cp.spawn(command, [], { shell: true, cwd });
+        // Spawn via the user's login shell so the full PATH (nvm, homebrew, etc.) is available
+        const child = cp.spawn(loginShell, ['-l', '-c', command], { cwd });
 
         const timeout = setTimeout(() => {
           child.kill('SIGTERM');
@@ -98,7 +103,7 @@ function runInTerminal(
           closeEmitter.fire(1);
         });
       },
-      close: () => { /* user closed the terminal */ },
+      close: () => { /* user closed the terminal — no cleanup needed */ },
     };
 
     const terminal = vscode.window.createTerminal({
@@ -108,7 +113,8 @@ function runInTerminal(
     terminal.show();
 
     closeEmitter.event(async (exitCode) => {
-      terminal.dispose();
+      // Do NOT dispose the terminal here — VS Code keeps it visible ("Process exited")
+      // so the user can read the AI output before closing it themselves.
       writeEmitter.dispose();
       closeEmitter.dispose();
       if (exitCode === 0) {

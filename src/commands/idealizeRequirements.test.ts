@@ -67,7 +67,7 @@ vi.mock('../config/aiConfig', () => ({
 }));
 
 vi.mock('../utils/shell', () => ({
-  isCommandAvailable: vi.fn().mockResolvedValue(true),
+  execCommand: vi.fn().mockResolvedValue({ success: true, stdout: '/usr/local/bin/claude', stderr: '', exitCode: 0 }),
 }));
 
 vi.mock('../execution/cliCommandBuilder', () => ({
@@ -94,7 +94,7 @@ vi.mock('../views/webviews/requirementBoard/featureParser', () => ({
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import { getWorkspaceRoot } from '../utils/fileSystem';
-import { isCommandAvailable } from '../utils/shell';
+import { execCommand } from '../utils/shell';
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { idealizeRequirements } from './idealizeRequirements';
@@ -104,7 +104,7 @@ import { idealizeRequirements } from './idealizeRequirements';
 // ---------------------------------------------------------------------------
 
 const mockGetWorkspaceRoot = vi.mocked(getWorkspaceRoot);
-const mockIsCommandAvailable = vi.mocked(isCommandAvailable);
+const mockExecCommand = vi.mocked(execCommand);
 const mockSpawn = vi.mocked(cp.spawn);
 const mockShowErrorMessage = vi.mocked(vscode.window.showErrorMessage);
 const mockShowInformationMessage = vi.mocked(vscode.window.showInformationMessage);
@@ -157,7 +157,7 @@ describe('idealizeRequirements', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetWorkspaceRoot.mockReturnValue('/workspace');
-    mockIsCommandAvailable.mockResolvedValue(true);
+    mockExecCommand.mockResolvedValue({ success: true, stdout: '/usr/local/bin/claude', stderr: '', exitCode: 0 });
     mockFs.createDirectory.mockResolvedValue(undefined);
     mockFs.writeFile.mockResolvedValue(undefined);
     mockFs.delete.mockResolvedValue(undefined);
@@ -178,14 +178,14 @@ describe('idealizeRequirements', () => {
     await idealizeRequirements(FEATURE_NAME, FOLDER_PATH);
 
     expect(mockShowErrorMessage).toHaveBeenCalledWith(expect.stringContaining('No workspace'));
-    expect(mockIsCommandAvailable).not.toHaveBeenCalled();
+    expect(mockExecCommand).not.toHaveBeenCalled();
   });
 
   // --- buildIdealizePrompt ---
 
   it('builds prompt with @ reference to feature file path', async () => {
     // Stop early (after writing prompt) to inspect written content
-    mockIsCommandAvailable.mockResolvedValue(false);
+    mockExecCommand.mockResolvedValue({ success: false, stdout: '', stderr: '', exitCode: 1 });
 
     await idealizeRequirements(FEATURE_NAME, FOLDER_PATH);
 
@@ -203,7 +203,7 @@ describe('idealizeRequirements', () => {
   // --- CLI not available ---
 
   it('shows error when CLI binary is not available', async () => {
-    mockIsCommandAvailable.mockResolvedValue(false);
+    mockExecCommand.mockResolvedValue({ success: false, stdout: '', stderr: '', exitCode: 1 });
 
     await idealizeRequirements(FEATURE_NAME, FOLDER_PATH);
 

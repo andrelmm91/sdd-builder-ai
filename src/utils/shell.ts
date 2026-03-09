@@ -61,7 +61,14 @@ export function execCommand(command: string, options: ExecOptions = {}): Promise
 }
 
 export async function isCommandAvailable(command: string): Promise<boolean> {
-  const checker = os.platform() === 'win32' ? `where ${command}` : `which ${command}`;
+  let checker: string;
+  if (os.platform() === 'win32') {
+    checker = `where ${command}`;
+  } else {
+    // Run through the user's login shell so PATH includes nvm, homebrew, etc.
+    const userShell = process.env.SHELL || '/bin/zsh';
+    checker = `${userShell} -l -c 'which ${command}'`;
+  }
   const result = await execCommand(checker);
   return result.success;
 }
