@@ -8,6 +8,7 @@ import type { ExecutionConfig, ExecutionResult, ExecutionRunner } from './types'
 import type { AIConfig } from '../config/aiConfigTypes';
 import { DEFAULT_PRE_PROMPT } from '../config/aiConfigTypes';
 import { getSkillsPath } from './skillsLoader';
+import { SPECS_FOLDER } from '../utils/constants';
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -74,7 +75,7 @@ export class CliRunner implements ExecutionRunner {
       }
 
       const contextFilePath = path.join(root, contextFile);
-      const command = await this._buildCommand(spec, config, aiConfig, contextFilePath);
+      const command = await this._buildCommand(spec, config, aiConfig);
 
       // Collect output chunks both for capture and terminal display
       const outputChunks: string[] = [];
@@ -189,21 +190,26 @@ export class CliRunner implements ExecutionRunner {
     spec: SpecDocument,
     config: ExecutionConfig,
     aiConfig: AIConfig | undefined,
-    contextFilePath: string,
   ): Promise<string> {
     const fm = spec.frontmatter;
     const provider = aiConfig?.provider ?? 'claude';
 
-    // --- Build unified prompt string (same for both providers) ---
+    // File reference prefix differs per provider
+    const specFileName = `${fm.spec_id}.sdd.md`;
+    const specFilePath = `${SPECS_FOLDER}/${specFileName}`;
+    const fileRef = provider === 'copilot'
+      ? `#file:${specFilePath}`
+      : `@${specFilePath}`;
+
+    // --- Build prompt ---
     const promptParts: string[] = [];
 
-    // 1. Pre-prompt template with {spec_file} resolved to the spec's own filename
-    const specFileName = `${fm.spec_id}.sdd.md`;
+    // 1. Pre-prompt: {spec_file} resolves to the provider-appropriate file reference
     const prePrompt = (aiConfig?.prePromptTemplate ?? DEFAULT_PRE_PROMPT)
-      .replace(/\{spec_file\}/g, specFileName);
+      .replace(/\{spec_file\}/g, fileRef);
     promptParts.push(prePrompt);
 
-    // 2. Tag-skill mappings: only include skills whose tag appears on this spec
+    // 2. Tag-skill mappings: only for tags present on this spec
     if (aiConfig?.tagSkillMappings?.length) {
       const specTags = new Set(fm.tags ?? []);
       const matchedSkills = [
@@ -243,8 +249,7 @@ export class CliRunner implements ExecutionRunner {
       const parts = ['gh', 'copilot'];
       if (aiConfig?.model) parts.push('--model', aiConfig.model);
       if (aiConfig?.permissionMode === 'yolo') parts.push('--yolo');
-      // Prompt text as -p value with #file: reference to full assembled context
-      parts.push('-p', sq(`${prompt} #file:${contextFilePath}`));
+      parts.push('-p', sq(prompt));
       return parts.join(' ');
     }
 
@@ -256,9 +261,7 @@ export class CliRunner implements ExecutionRunner {
     } else if (aiConfig?.permissionMode === 'plan') {
       parts.push('--plan');
     }
-    // Prepend prompt to the context file via process substitution so the
-    // instruction is explicit at the top of stdin (mirrors Copilot's -p approach)
-    parts.push(`< <(printf %s ${sq(prompt)}; printf '\\n\\n'; cat ${sq(contextFilePath)})`);
+    parts.push(sq(prompt));
     return parts.join(' ');
   }
 
