@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-063
 title: Define requirement board types and constants
-status: draft
+status: done
 priority: high
 complexity: low
 tags: [phase-2, backend, types]
@@ -40,8 +40,8 @@ The requirement board has three columns (statuses): "Feature Backlog", "Idealiza
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes with no errors (`npm run type-check`)
-- [ ] All new types are exported and importable from their module
+- [x] TypeScript compilation passes with no errors (`npm run type-check`)
+- [x] All new types are exported and importable from their module
 
 ### Manual
 - [ ] Type definitions match the data model described in the idealization document

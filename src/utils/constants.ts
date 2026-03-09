@@ -1,8 +1,11 @@
 import type { SpecStatus } from '../specs/types';
+import type { FeatureStatus } from '../views/webviews/requirementBoard/types';
 
 export const SPEC_FILE_EXTENSION = '.sdd.md';
 export const SPECS_FOLDER = '.specs';
 export const SDD_FOLDER = '.sdd';
+export const PRODUCT_FOLDER = '.sdd/product';
+export const IDEALIZATION_FILENAME = 'idealization.md';
 export const CONFIG_FILE = '.sdd/config.json';
 export const CONVENTIONS_FILE = '.sdd/conventions.md';
 export const EXECUTIONS_FOLDER = '.sdd/executions';
@@ -19,4 +22,10 @@ export const STATUS_ORDER: SpecStatus[] = [
   'in_progress',
   'review',
   'done',
+];
+
+export const FEATURE_STATUSES: FeatureStatus[] = [
+  'Feature Backlog',
+  'Idealization In Review',
+  'SDD Created',
 ];
