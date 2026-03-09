@@ -4,7 +4,7 @@ import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
 import { getWorkspaceRoot } from '../utils/fileSystem';
 import { getClaudeCliBinary } from '../config/extensionConfig';
 import { readAIConfig } from '../config/aiConfig';
-import { IDEALIZATION_FILENAME } from '../utils/constants';
+import { IDEALIZATION_FILENAME, PRODUCT_FOLDER } from '../utils/constants';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { isCommandAvailable } from '../utils/shell';
 import { buildCliCommand } from '../execution/cliCommandBuilder';
@@ -28,7 +28,7 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
     async (progress, token) => {
       progress.report({ message: 'Preparing prompt...' });
 
-      const featureRelativePath = `.sdd/product/${featureName}/${featureName}.md`;
+      const featureRelativePath = `${PRODUCT_FOLDER}/${featureName}/${featureName}.md`;
       const prompt = buildIdealizePrompt(featureRelativePath);
 
       const tempPromptFile = `.sdd/tmp/idealize-${Date.now()}.md`;

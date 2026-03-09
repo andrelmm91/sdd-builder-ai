@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { parseFrontmatter, serializeFrontmatter } from '../../../utils/frontmatter';
-import { IDEALIZATION_FILENAME } from '../../../utils/constants';
+import { IDEALIZATION_FILENAME, FEATURE_STATUSES } from '../../../utils/constants';
 import type { FeatureCard, FeatureData, FeatureFormData, FeatureStatus } from './types';
 
 export function sanitizeFeatureName(name: string): string {
@@ -12,8 +12,12 @@ export function sanitizeFeatureName(name: string): string {
 
 export function parseFeatureFile(content: string): { data: FeatureData; body: string } {
   const result = parseFrontmatter(content);
+  const rawStatus = result.data['status'] as string;
+  const status: FeatureStatus = FEATURE_STATUSES.includes(rawStatus as FeatureStatus)
+    ? (rawStatus as FeatureStatus)
+    : 'Feature Backlog';
   const data: FeatureData = {
-    status: (result.data['status'] as FeatureStatus) ?? 'Feature Backlog',
+    status,
     date: (result.data['date'] as string) ?? '',
     title: (result.data['title'] as string) ?? undefined,
   };
@@ -41,7 +45,7 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
 
     let hasIdealization = false;
     let status: FeatureStatus = 'Feature Backlog';
-    let displayFilePath: string;
+    let displayFilePath: string = '';
     let featureTitle: string | undefined;
 
     try {
@@ -74,7 +78,7 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
       name: entryName,
       title: featureTitle ?? entryName,
       status,
-      filePath: displayFilePath!,
+      filePath: displayFilePath,
       folderPath: folderUri.fsPath,
       hasIdealization,
     });

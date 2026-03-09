@@ -71,6 +71,18 @@ describe('parseFeatureFile', () => {
     expect(data.title).toBe('User Authentication');
   });
 
+  it('defaults to "Feature Backlog" when status is invalid', () => {
+    const content = `---\nstatus: feature backlog\ndate: 2026-01-01\n---\n`;
+    const { data } = parseFeatureFile(content);
+    expect(data.status).toBe('Feature Backlog');
+  });
+
+  it('defaults to "Feature Backlog" when status has a typo', () => {
+    const content = `---\nstatus: in_progress\ndate: 2026-01-01\n---\n`;
+    const { data } = parseFeatureFile(content);
+    expect(data.status).toBe('Feature Backlog');
+  });
+
   it('returns undefined title when not in frontmatter', () => {
     const content = `---\nstatus: Feature Backlog\ndate: 2026-03-09\n---\n`;
     const { data } = parseFeatureFile(content);

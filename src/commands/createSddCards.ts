@@ -3,7 +3,7 @@ import * as path from 'path';
 import { getWorkspaceRoot } from '../utils/fileSystem';
 import { getClaudeCliBinary } from '../config/extensionConfig';
 import { readAIConfig } from '../config/aiConfig';
-import { SPECS_FOLDER, SPEC_FILE_EXTENSION, IDEALIZATION_FILENAME } from '../utils/constants';
+import { SPECS_FOLDER, SPEC_FILE_EXTENSION, IDEALIZATION_FILENAME, PRODUCT_FOLDER } from '../utils/constants';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { isCommandAvailable } from '../utils/shell';
 import { buildCliCommand } from '../execution/cliCommandBuilder';
@@ -30,7 +30,7 @@ export async function createSddCards(featureName: string, folderPath: string): P
       // Snapshot existing .sdd.md files before AI call
       const specsBefore = await listSpecFiles(root);
 
-      const idealizationRelativePath = `.sdd/product/${featureName}/${IDEALIZATION_FILENAME}`;
+      const idealizationRelativePath = `${PRODUCT_FOLDER}/${featureName}/${IDEALIZATION_FILENAME}`;
       const prompt = buildCreateSddCardsPrompt(idealizationRelativePath);
 
       const tempPromptFile = `.sdd/tmp/create-sdd-cards-${Date.now()}.md`;

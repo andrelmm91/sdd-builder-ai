@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-076
 title: Add FeatureStatus validation and use PRODUCT_FOLDER constant
-status: ready
+status: done
 priority: medium
 complexity: low
 tags: [phase-2, bugfix, backend]
