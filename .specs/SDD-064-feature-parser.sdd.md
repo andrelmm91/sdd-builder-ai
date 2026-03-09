@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-064
 title: Create feature file parser utility
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-2, backend]
@@ -46,10 +46,10 @@ This builds on the existing `parseFrontmatter` and `serializeFrontmatter` utilit
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes (`npm run type-check`)
-- [ ] Unit tests pass for `sanitizeFeatureName` covering: spaces, special characters, mixed case, already-clean names
-- [ ] Unit tests pass for `parseFeatureFile` with valid frontmatter
-- [ ] Unit tests pass for board display rule logic (idealization exists vs. not)
+- [x] TypeScript compilation passes (`npm run type-check`)
+- [x] Unit tests pass for `sanitizeFeatureName` covering: spaces, special characters, mixed case, already-clean names
+- [x] Unit tests pass for `parseFeatureFile` with valid frontmatter
+- [x] Unit tests pass for board display rule logic (idealization exists vs. not)
 
 ### Manual
 - [ ] Files directly in `.sdd/product/` (not in subdirectories) are correctly ignored
