@@ -4,6 +4,7 @@ import {
   sanitizeFeatureName,
   parseFeatureFile,
   loadFeatureCards,
+  createFeatureFile,
 } from './featureParser';
 
 // ── sanitizeFeatureName ──────────────────────────────────────────────────────
@@ -63,15 +64,65 @@ describe('parseFeatureFile', () => {
     expect(data.status).toBe('Feature Backlog');
     expect(body).toContain('Just a plain markdown body');
   });
+
+  it('parses title from frontmatter', () => {
+    const content = `---\nstatus: Feature Backlog\ndate: 2026-03-09\ntitle: User Authentication\n---\n`;
+    const { data } = parseFeatureFile(content);
+    expect(data.title).toBe('User Authentication');
+  });
+
+  it('returns undefined title when not in frontmatter', () => {
+    const content = `---\nstatus: Feature Backlog\ndate: 2026-03-09\n---\n`;
+    const { data } = parseFeatureFile(content);
+    expect(data.title).toBeUndefined();
+  });
 });
 
-// ── loadFeatureCards — board display rules ───────────────────────────────────
+// ── shared test helpers ──────────────────────────────────────────────────────
 
 const enc = new TextEncoder();
 
 function makeUri(path: string): vscode.Uri {
   return vscode.Uri.file(path);
 }
+
+// ── createFeatureFile ────────────────────────────────────────────────────────
+
+describe('createFeatureFile', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (vscode.workspace.fs as { createDirectory: ReturnType<typeof vi.fn> }).createDirectory =
+      vi.fn().mockResolvedValue(undefined);
+    vi.mocked(vscode.workspace.fs.writeFile).mockResolvedValue(undefined);
+  });
+
+  it('writes title to frontmatter', async () => {
+    await createFeatureFile(makeUri('/workspace/.sdd/product'), {
+      name: 'My Cool Feature',
+      description: 'A description',
+      acceptanceCriteria: 'Some criteria',
+    });
+
+    const [, bytesArg] = vi.mocked(vscode.workspace.fs.writeFile).mock.calls[0];
+    const written = new TextDecoder().decode(bytesArg as Uint8Array);
+    expect(written).toContain('title: My Cool Feature');
+  });
+
+  it('sanitizes the folder/file name but preserves original title', async () => {
+    await createFeatureFile(makeUri('/workspace/.sdd/product'), {
+      name: 'User Authentication (v2)',
+      description: 'Auth feature',
+      acceptanceCriteria: 'Login works',
+    });
+
+    const [, bytesArg] = vi.mocked(vscode.workspace.fs.writeFile).mock.calls[0];
+    const written = new TextDecoder().decode(bytesArg as Uint8Array);
+    expect(written).toContain('title: User Authentication (v2)');
+    expect(written).toContain('status: Feature Backlog');
+  });
+});
+
+// ── loadFeatureCards — board display rules ───────────────────────────────────
 
 describe('loadFeatureCards display rules', () => {
   beforeEach(() => {
@@ -136,6 +187,37 @@ describe('loadFeatureCards display rules', () => {
 
     const cards = await loadFeatureCards(makeUri('/workspace/.sdd/product'));
     expect(cards).toHaveLength(0);
+  });
+
+  it('uses title from frontmatter when present', async () => {
+    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
+      vi.fn().mockResolvedValue([['my_feature', vscode.FileType.Directory]]);
+
+    vi.mocked(vscode.workspace.fs.readFile)
+      .mockResolvedValueOnce(
+        enc.encode(
+          '---\nstatus: Feature Backlog\ndate: 2026-03-09\ntitle: My Cool Feature\n---\n',
+        ),
+      );
+
+    const cards = await loadFeatureCards(makeUri('/workspace/.sdd/product'));
+    expect(cards).toHaveLength(1);
+    expect(cards[0].title).toBe('My Cool Feature');
+    expect(cards[0].name).toBe('my_feature');
+  });
+
+  it('falls back to folder name when title is absent from frontmatter', async () => {
+    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
+      vi.fn().mockResolvedValue([['my_feature', vscode.FileType.Directory]]);
+
+    vi.mocked(vscode.workspace.fs.readFile)
+      .mockResolvedValueOnce(
+        enc.encode('---\nstatus: Feature Backlog\ndate: 2026-03-09\n---\n'),
+      );
+
+    const cards = await loadFeatureCards(makeUri('/workspace/.sdd/product'));
+    expect(cards).toHaveLength(1);
+    expect(cards[0].title).toBe('my_feature');
   });
 
   it('skips folder and warns when feature file is also missing', async () => {

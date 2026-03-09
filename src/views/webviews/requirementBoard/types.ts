@@ -3,6 +3,7 @@ export type FeatureStatus = 'Feature Backlog' | 'Idealization In Review' | 'SDD 
 export interface FeatureData {
   status: FeatureStatus;
   date: string;
+  title?: string;
 }
 
 export interface FeatureCard {

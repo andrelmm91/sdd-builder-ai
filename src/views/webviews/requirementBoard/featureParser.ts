@@ -15,6 +15,7 @@ export function parseFeatureFile(content: string): { data: FeatureData; body: st
   const data: FeatureData = {
     status: (result.data['status'] as FeatureStatus) ?? 'Feature Backlog',
     date: (result.data['date'] as string) ?? '',
+    title: (result.data['title'] as string) ?? undefined,
   };
   return { data, body: result.body };
 }
@@ -41,6 +42,7 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
     let hasIdealization = false;
     let status: FeatureStatus = 'Feature Backlog';
     let displayFilePath: string;
+    let featureTitle: string | undefined;
 
     try {
       const idealizationBytes = await vscode.workspace.fs.readFile(idealizationUri);
@@ -48,6 +50,7 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
       const { data } = parseFeatureFile(idealizationContent);
       hasIdealization = true;
       status = data.status;
+      featureTitle = data.title;
       displayFilePath = idealizationUri.fsPath;
     } catch {
       // No idealization.md — try the feature file
@@ -59,6 +62,7 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
           // Only show on board if status is "Feature Backlog" when no idealization
           continue;
         }
+        featureTitle = data.title;
         displayFilePath = featureFileUri.fsPath;
       } catch {
         console.warn(`[featureParser] Skipping folder "${entryName}": could not read feature file`);
@@ -68,7 +72,7 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
 
     cards.push({
       name: entryName,
-      title: entryName,
+      title: featureTitle ?? entryName,
       status,
       filePath: displayFilePath!,
       folderPath: folderUri.fsPath,
@@ -91,6 +95,7 @@ export async function createFeatureFile(
   const frontmatterData: Record<string, unknown> = {
     status: 'Feature Backlog',
     date: today,
+    title: formData.name,
   };
 
   const bodyParts: string[] = [`## Description\n\n${formData.description}`];

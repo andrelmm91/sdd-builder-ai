@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-075
 title: Store and display human-readable feature title
-status: ready
+status: done
 priority: medium
 complexity: medium
 tags: [phase-2, bugfix, ui, backend]
