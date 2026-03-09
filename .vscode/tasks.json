@@ -9,13 +9,15 @@
         "kind": "build",
         "isDefault": true
       },
-      "options": {
-        "shell": {
-          "executable": "C:\\Program Files\\Git\\bin\\bash.exe",
-          "args": ["-c"]
-        },
-        "env": {
-          "PATH": "C:\\Program Files\\nodejs;${env:PATH}"
+      "windows": {
+        "options": {
+          "shell": {
+            "executable": "C:\\Program Files\\Git\\bin\\bash.exe",
+            "args": ["-c"]
+          },
+          "env": {
+            "PATH": "C:\\Program Files\\nodejs;${env:PATH}"
+          }
         }
       },
       "problemMatcher": "$tsc"
