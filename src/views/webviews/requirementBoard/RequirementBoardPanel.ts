@@ -37,6 +37,9 @@ export class RequirementBoardPanel extends BaseWebviewPanel {
         await vscode.commands.executeCommand('sdd.createSddCards', featureName, folderPath);
         break;
       }
+      case 'requestRequirementBoardData':
+        await this.sendFeatureCards();
+        break;
       case 'openFile': {
         const { filePath } = message.data as { filePath: string };
         try {

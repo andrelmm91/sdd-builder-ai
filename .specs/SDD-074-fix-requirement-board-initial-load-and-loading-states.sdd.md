@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-074
 title: Fix requirement board initial data load and add loading states
-status: ready
+status: done
 priority: high
 complexity: medium
 tags: [phase-2, bugfix, ui, backend]

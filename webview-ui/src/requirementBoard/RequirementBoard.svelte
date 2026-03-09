@@ -22,6 +22,8 @@
 
   let features: FeatureCard[] = $state([]);
   let showFeatureForm = $state(false);
+  let loading = $state(true);
+  let actionInProgress: string | null = $state(null);
 
   const featuresByStatus = $derived(
     Object.fromEntries(
@@ -35,6 +37,8 @@
       if (msg.type === 'requirementBoardData') {
         const d = msg.data as { features: FeatureCard[] };
         features = d.features ?? [];
+        loading = false;
+        actionInProgress = null;
       }
     });
   });
@@ -44,10 +48,14 @@
   }
 
   function idealizeRequirements(featureName: string, folderPath: string) {
+    if (actionInProgress !== null) return;
+    actionInProgress = featureName;
     postMessage('idealizeRequirements', { featureName, folderPath });
   }
 
   function createSddCards(featureName: string, folderPath: string) {
+    if (actionInProgress !== null) return;
+    actionInProgress = featureName;
     postMessage('createSddCards', { featureName, folderPath });
   }
 
@@ -76,7 +84,11 @@
     <FeatureForm oncancel={hideFeatureForm} onsubmit={hideFeatureForm} />
   {/if}
 
-  <div class="board">
+  {#if loading}
+    <p class="loading-state">Loading...</p>
+  {/if}
+
+  <div class="board" class:hidden={loading}>
     {#each COLUMNS as col (col.id)}
       {@const cards = featuresByStatus[col.id] ?? []}
       <div class="column">
@@ -100,19 +112,29 @@
 
               <div class="card-actions">
                 {#if col.id === 'Feature Backlog'}
-                  <button
-                    class="btn-action"
-                    onclick={() => idealizeRequirements(card.name, card.folderPath)}
-                  >
-                    Idealize Requirements
-                  </button>
+                  {#if actionInProgress === card.name}
+                    <span class="processing-indicator">Processing...</span>
+                  {:else}
+                    <button
+                      class="btn-action"
+                      disabled={actionInProgress !== null}
+                      onclick={() => idealizeRequirements(card.name, card.folderPath)}
+                    >
+                      Idealize Requirements
+                    </button>
+                  {/if}
                 {:else if col.id === 'Idealization In Review'}
-                  <button
-                    class="btn-action btn-primary"
-                    onclick={() => createSddCards(card.name, card.folderPath)}
-                  >
-                    Create SDD Cards
-                  </button>
+                  {#if actionInProgress === card.name}
+                    <span class="processing-indicator">Processing...</span>
+                  {:else}
+                    <button
+                      class="btn-action btn-primary"
+                      disabled={actionInProgress !== null}
+                      onclick={() => createSddCards(card.name, card.folderPath)}
+                    >
+                      Create SDD Cards
+                    </button>
+                  {/if}
                 {/if}
               </div>
             </div>
@@ -276,4 +298,31 @@
     color: var(--vscode-button-foreground);
   }
   .btn-primary:hover { background: var(--vscode-button-hoverBackground); }
+
+  .btn-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-action:disabled:hover {
+    background: var(--vscode-button-secondaryBackground);
+  }
+  .btn-primary:disabled:hover {
+    background: var(--vscode-button-background);
+  }
+
+  .loading-state {
+    text-align: center;
+    color: var(--vscode-descriptionForeground);
+    padding: 24px;
+    font-style: italic;
+  }
+
+  .hidden { display: none; }
+
+  .processing-indicator {
+    font-size: 0.78em;
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+    padding: 2px 0;
+  }
 </style>
