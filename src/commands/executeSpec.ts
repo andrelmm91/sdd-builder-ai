@@ -136,7 +136,9 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
 
         // Execute via CliRunner
         progress.report({ message: 'Running CLI…', increment: 20 });
-        executionResult = await _runner.execute(spec, context, config, aiConfig);
+        const root = getWorkspaceRoot();
+        const relativeSpecPath = root ? path.relative(root, filePath) : filePath;
+        executionResult = await _runner.execute(spec, context, config, aiConfig, relativeSpecPath);
 
         if (token.isCancellationRequested) {
           // Save partial results then revert status

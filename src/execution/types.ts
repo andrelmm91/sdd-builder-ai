@@ -22,7 +22,7 @@ export interface ExecutionResult {
 }
 
 export interface ExecutionRunner {
-  execute(spec: import('../specs/types').SpecDocument, context: string, config: ExecutionConfig): Promise<ExecutionResult>;
+  execute(spec: import('../specs/types').SpecDocument, context: string, config: ExecutionConfig, aiConfig?: import('../config/aiConfigTypes').AIConfig, specFilePath?: string): Promise<ExecutionResult>;
   abort(): void;
   isRunning(): boolean;
 }

@@ -44,6 +44,7 @@ export class CliRunner implements ExecutionRunner {
     context: string,
     config: ExecutionConfig,
     aiConfig?: AIConfig,
+    specFilePath?: string,
   ): Promise<ExecutionResult> {
     if (this._running) {
       return { success: false, output: '', tokensIn: 0, tokensOut: 0, duration: 0, error: 'Already running' };
@@ -75,7 +76,7 @@ export class CliRunner implements ExecutionRunner {
       }
 
       const contextFilePath = path.join(root, contextFile);
-      const command = await this._buildCommand(spec, config, aiConfig);
+      const command = await this._buildCommand(spec, config, aiConfig, specFilePath);
 
       // Collect output chunks both for capture and terminal display
       const outputChunks: string[] = [];
@@ -190,16 +191,16 @@ export class CliRunner implements ExecutionRunner {
     spec: SpecDocument,
     config: ExecutionConfig,
     aiConfig: AIConfig | undefined,
+    specFilePath?: string,
   ): Promise<string> {
     const fm = spec.frontmatter;
     const provider = aiConfig?.provider ?? 'claude';
 
-    // File reference prefix differs per provider
-    const specFileName = `${fm.spec_id}.sdd.md`;
-    const specFilePath = `${SPECS_FOLDER}/${specFileName}`;
+    // Use the actual file path (with slug) if provided; fall back to ID-only name
+    const resolvedSpecPath = specFilePath ?? `${SPECS_FOLDER}/${fm.spec_id}.sdd.md`;
     const fileRef = provider === 'copilot'
-      ? `#file:${specFilePath}`
-      : `@${specFilePath}`;
+      ? `#file:${resolvedSpecPath}`
+      : `@${resolvedSpecPath}`;
 
     // --- Build prompt ---
     const promptParts: string[] = [];
