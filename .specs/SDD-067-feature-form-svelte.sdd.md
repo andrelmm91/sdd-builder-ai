@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-067
 title: Create feature form Svelte component
-status: draft
+status: done
 priority: medium
 complexity: medium
 tags: [phase-2, frontend, ui]

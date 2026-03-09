@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { onMessage, postMessage } from '../lib/vscode';
+  import FeatureForm from './FeatureForm.svelte';
 
   type FeatureStatus = 'Feature Backlog' | 'Idealization In Review' | 'SDD Created';
 
@@ -51,8 +52,11 @@
   }
 
   function addNewFeature() {
-    showFeatureForm = !showFeatureForm;
-    postMessage('showFeatureForm', {});
+    showFeatureForm = true;
+  }
+
+  function hideFeatureForm() {
+    showFeatureForm = false;
   }
 
   function statusBadgeClass(status: FeatureStatus): string {
@@ -67,6 +71,10 @@
     <span class="board-title">Requirement Board</span>
     <button class="btn-new" onclick={addNewFeature}>Add New Feature +</button>
   </header>
+
+  {#if showFeatureForm}
+    <FeatureForm oncancel={hideFeatureForm} onsubmit={hideFeatureForm} />
+  {/if}
 
   <div class="board">
     {#each COLUMNS as col (col.id)}
