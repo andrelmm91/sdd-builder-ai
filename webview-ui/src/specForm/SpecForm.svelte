@@ -130,11 +130,18 @@
       : [...dependsOn, id];
   }
 
+  /** Bypass Svelte 5 event delegation — attach a real DOM listener. */
+  function directClick(node: HTMLElement, handler: () => void) {
+    node.addEventListener('click', handler);
+    return { destroy: () => node.removeEventListener('click', handler) };
+  }
+
   function save() {
     attempted = true;
     if (!title.trim() || specIdInvalid) return;
 
-    const formData: FormData = {
+    // JSON round-trip strips Svelte 5 $state Proxy wrappers so postMessage can serialize the object.
+    const formData: FormData = JSON.parse(JSON.stringify({
       spec_id: specId,
       title: title.trim(),
       status,
@@ -154,7 +161,7 @@
       manualCriteria,
       constraints,
       examples,
-    };
+    }));
 
     postMessage('saveSpec', formData);
   }
@@ -369,7 +376,7 @@
 
   <!-- Sticky action bar -->
   <div class="action-bar">
-    <button class="btn-save" onclick={save}>Save Spec</button>
+    <button class="btn-save" use:directClick={save}>Save Spec</button>
     {#if mode === 'edit' && filePath}
       <button class="btn-open" onclick={openFile}>Open File</button>
     {/if}
