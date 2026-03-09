@@ -1,1 +1,0 @@
-lets implement SDD-002 in #file:.specs .Update the open tasks in the spec document after completion. Make a commit and push it at the to the main branch with only the name of the SDD file.

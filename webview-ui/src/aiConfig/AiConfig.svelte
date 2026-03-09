@@ -92,7 +92,13 @@
   }
 
   function save() {
-    const config: AIConfig = { provider, permissionMode, model, tagSkillMappings, prePromptTemplate, commitCommand, commitCommandEnabled, prCommand, prCommandEnabled };
+    // Use JSON round-trip to strip Svelte 5 $state Proxy wrappers —
+    // vscodeApi.postMessage cannot serialize Proxy objects.
+    const config: AIConfig = JSON.parse(JSON.stringify({
+      provider, permissionMode, model, tagSkillMappings,
+      prePromptTemplate, commitCommand, commitCommandEnabled,
+      prCommand, prCommandEnabled,
+    }));
     postMessage('saveConfig', config);
   }
 
@@ -317,7 +323,7 @@
     </section>
 
     <div class="save-row">
-      <button class="btn-save" class:btn-save-error={saveError} use:directClick={save}>
+      <button class="btn-save" class:btn-save-success={saved} class:btn-save-error={saveError} use:directClick={save}>
         {saved ? 'Saved!' : saveError ? 'Error!' : 'Save'}
       </button>
     </div>
@@ -564,5 +570,6 @@
     min-width: 80px;
   }
   .btn-save:hover { background: var(--vscode-button-hoverBackground); }
+  .btn-save-success { background: #2ea043 !important; }
   .btn-save-error { background: var(--vscode-inputValidation-errorBackground, #be1100) !important; }
 </style>
