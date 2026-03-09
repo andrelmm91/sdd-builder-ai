@@ -79,6 +79,10 @@
     postMessage('openKanban', {});
   }
 
+  function openRequirementBoard() {
+    postMessage('openRequirementBoard', {});
+  }
+
   function formatDate(iso: string) {
     return new Date(iso).toLocaleString();
   }
@@ -91,7 +95,10 @@
 <main>
   <div class="page-header">
     <h1 class="page-title">SDD Dashboard</h1>
-    <button class="kanban-btn" onclick={openKanban}>Open Kanban Board</button>
+    <div class="header-actions">
+      <button class="kanban-btn" onclick={openKanban}>Open Kanban Board</button>
+      <button class="kanban-btn" onclick={openRequirementBoard}>Open Requirement Board</button>
+    </div>
   </div>
 
   <!-- Spec Status Summary -->
@@ -222,6 +229,11 @@
   }
   .kanban-btn:hover {
     background: var(--vscode-button-hoverBackground);
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
   }
 
   .card {

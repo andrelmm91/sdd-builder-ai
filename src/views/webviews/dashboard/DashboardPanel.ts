@@ -39,6 +39,8 @@ export class DashboardPanel extends BaseWebviewPanel {
       }
     } else if (message.type === 'openKanban') {
       await vscode.commands.executeCommand('sdd.openKanbanBoard');
+    } else if (message.type === 'openRequirementBoard') {
+      await vscode.commands.executeCommand('sdd.openRequirementBoard');
     } else if (message.type === 'refresh') {
       await this.sendData();
     }

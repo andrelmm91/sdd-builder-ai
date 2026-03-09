@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-070
 title: Wire requirement board into dashboard and extension
-status: draft
+status: done
 priority: medium
 complexity: medium
 tags: [phase-2, backend, ui, integration]

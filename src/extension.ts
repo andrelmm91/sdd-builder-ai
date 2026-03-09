@@ -23,6 +23,7 @@ import { StatusBarManager } from "./views/statusBar";
 import { activate as activateDiagnostics } from "./specs/diagnostics";
 import { DashboardPanel } from "./views/webviews/dashboard/DashboardPanel";
 import { KanbanPanel } from "./views/webviews/kanban/KanbanPanel";
+import { RequirementBoardPanel } from "./views/webviews/requirementBoard/RequirementBoardPanel";
 import { SpecFormPanel } from "./views/webviews/specForm/SpecFormPanel";
 import { AiConfigPanel } from "./views/webviews/aiConfig/AiConfigPanel";
 
@@ -78,6 +79,9 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand("sdd.openAiConfig", () =>
       AiConfigPanel.createOrShow(context.extensionUri)
+    ),
+    vscode.commands.registerCommand("sdd.openRequirementBoard", () =>
+      RequirementBoardPanel.createOrShow(context.extensionUri)
     ),
     vscode.commands.registerCommand("sdd.addToBulk", async (item?: import("./views/sidebar/specTreeItem").SpecTreeItem | string) => {
       let filePath: string | undefined;

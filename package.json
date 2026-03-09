@@ -84,6 +84,10 @@
         "title": "SDD: Open Kanban Board"
       },
       {
+        "command": "sdd.openRequirementBoard",
+        "title": "SDD: Open Requirement Board"
+      },
+      {
         "command": "sdd.newSpecForm",
         "title": "SDD: New Spec (Form)"
       },
