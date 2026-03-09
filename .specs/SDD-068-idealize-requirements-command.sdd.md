@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-068
 title: Implement idealize requirements command
-status: draft
+status: done
 priority: high
 complexity: high
 tags: [phase-2, backend, ai]
@@ -52,8 +52,8 @@ The command uses the existing `cliRunner.ts` pattern to spawn the AI CLI process
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes (`npm run type-check`)
-- [ ] Extension builds successfully (`npm run build`)
+- [x] TypeScript compilation passes (`npm run type-check`)
+- [x] Extension builds successfully (`npm run build`)
 
 ### Manual
 - [ ] Progress notification appears during AI execution
