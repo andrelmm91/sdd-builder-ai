@@ -9,7 +9,7 @@ SDD Platform brings a governed, repeatable workflow for AI-assisted development 
 ## How It Works
 
 ```
-Describe Requirements → AI Plans Specs → Review & Refine → Execute (Claude CLI) → Review Diff → Ship PR
+Describe Requirements → AI Plans Specs → Review & Refine → Execute (Claude/Copilot CLI) → Review Diff → Ship PR
 ```
 
 The core primitive is a `.sdd.md` **spec file** — a small, independently executable contract. Each spec has a clear scope (one thing, one day, ≤ 3 files), structured requirements, acceptance criteria, and an explicit list of relevant files so the agent has all the context it needs without guessing.
