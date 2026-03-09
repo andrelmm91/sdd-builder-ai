@@ -10,6 +10,7 @@ import { BulkExecutionManager } from "./execution/bulkExecution";
 import { planFromRequirements } from "./commands/planFromRequirements";
 import { refinePlan } from "./commands/refinePlan";
 import { idealizeRequirements } from "./commands/idealizeRequirements";
+import { createSddCards } from "./commands/createSddCards";
 import {
   createReviewSpecCommand,
   createApproveSpecCommand,
@@ -121,6 +122,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("sdd.planFromRequirements", planFromRequirements),
     vscode.commands.registerCommand("sdd.refinePlan", refinePlan),
     vscode.commands.registerCommand("sdd.idealizeRequirements", idealizeRequirements),
+    vscode.commands.registerCommand("sdd.createSddCards", createSddCards),
     specTreeProvider,
     statusBarManager,
     vscode.languages.registerCompletionItemProvider(

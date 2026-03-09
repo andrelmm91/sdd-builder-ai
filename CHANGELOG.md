@@ -2,6 +2,13 @@
 
 All notable changes to the SDD Platform extension will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- `sdd.createSddCards` command: invokes AI CLI to generate `.sdd.md` spec files in `.specs/` from an idealization document using the SDD Planner skill (SDD-069)
+- Post-validates that at least one new spec was created, then updates `idealization.md` and `{feature_name}.md` statuses to `SDD Created`
+- Progress notification with cancellation support during SDD card generation
 ## [0.1.0] - 2026-03-07
 
 ### Added

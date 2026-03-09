@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-069
 title: Implement create SDD cards command
-status: draft
+status: done
 priority: high
 complexity: high
 tags: [phase-2, backend, ai]
