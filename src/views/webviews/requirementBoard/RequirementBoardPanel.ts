@@ -17,7 +17,7 @@ export class RequirementBoardPanel extends BaseWebviewPanel {
   }
 
   private constructor(extensionUri: vscode.Uri) {
-    super(extensionUri, 'requirementBoard', 'Requirement Board', vscode.ViewColumn.One);
+    super(extensionUri, 'sddRequirementBoard', 'Requirement Board', vscode.ViewColumn.One);
     this.setupWatcher();
     void this.sendFeatureCards();
   }

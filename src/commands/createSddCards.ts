@@ -116,19 +116,20 @@ function buildCommand(cliBinary: string, aiConfig: AIConfig | undefined, promptF
     const parts = ['github', 'copilot'];
     if (aiConfig?.model) parts.push('--model', aiConfig.model);
     if (aiConfig?.permissionMode === 'yolo') parts.push('--yolo');
-    parts.push(`< "${promptFilePath}"`);
+    parts.push(`"$(cat '${promptFilePath}')"`);
     return parts.join(' ');
   }
 
-  // Claude provider (default)
-  const parts = [cliBinary, '--print'];
+  // Claude provider (default) — no --print so AI can write files to disk
+  const parts = [cliBinary];
   if (aiConfig?.model) parts.push('--model', aiConfig.model);
   if (aiConfig?.permissionMode === 'dangerously-skip-permissions') {
     parts.push('--dangerously-skip-permissions');
   } else if (aiConfig?.permissionMode === 'plan') {
     parts.push('--plan');
   }
-  parts.push(`< "${promptFilePath}"`);
+  // Pass prompt as positional arg (not stdin) so @ file references are resolved
+  parts.push(`"$(cat '${promptFilePath}')"`);
   return parts.join(' ');
 }
 

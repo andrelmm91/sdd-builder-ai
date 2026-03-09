@@ -39,12 +39,12 @@ But `RequirementBoardPanel` passes `'requirementBoard'` as viewType, while the V
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes (`npm run type-check`)
-- [ ] Webview build produces `dist/webviews/sddRequirementBoard.js` (`npm run build:webview`)
+- [x] TypeScript compilation passes (`npm run type-check`)
+- [x] Webview build produces `dist/webviews/sddRequirementBoard.js` (`npm run build:webview`)
 
 ### Manual
-- [ ] Opening the Requirement Board renders the Svelte UI (not a blank panel)
-- [ ] CSS styles load correctly alongside the JS bundle
+- [x] Opening the Requirement Board renders the Svelte UI (not a blank panel)
+- [x] CSS styles load correctly alongside the JS bundle
 
 ## Constraints
 - Only change the viewType string — do not modify `BaseWebviewPanel.ts` or the Vite config

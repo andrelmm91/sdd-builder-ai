@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-072
 title: Fix CLI execution mode for idealize and create-SDD commands
-status: ready
+status: done
 priority: critical
 complexity: medium
 tags: [phase-2, bugfix, backend, ai]
