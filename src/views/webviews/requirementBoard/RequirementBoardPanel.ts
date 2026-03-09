@@ -73,7 +73,7 @@ export class RequirementBoardPanel extends BaseWebviewPanel {
 
   private async sendFeatureCards(): Promise<void> {
     const cards = await this.loadCards();
-    this.post('requirementBoardData', cards);
+    this.post('requirementBoardData', { features: cards });
   }
 
   private async loadCards(): Promise<FeatureCard[]> {
