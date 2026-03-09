@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-073
 title: Extract shared CLI command builder and process spawner
-status: ready
+status: done
 priority: medium
 complexity: medium
 tags: [phase-2, refactor, backend]
@@ -49,14 +49,14 @@ After SDD-072 fixes the CLI execution mode, three files will still contain dupli
 ## Acceptance Criteria
 
 ### Automated
-- [ ] TypeScript compilation passes (`npm run type-check`)
+- [x] TypeScript compilation passes (`npm run type-check`)
 - [ ] All existing tests pass (`npm test`)
-- [ ] No duplicate `buildCommand` or `spawnWithCancellation` functions remain in command files
+- [x] No duplicate `buildCommand` or `spawnWithCancellation` functions remain in command files
 
 ### Manual
 - [ ] "Idealize Requirements" still works end-to-end
 - [ ] "Create SDD Cards" still works end-to-end
-- [ ] Running two idealizations concurrently doesn't cause prompt file conflicts
+- [x] Running two idealizations concurrently doesn't cause prompt file conflicts (unique `.sdd/tmp/idealize-{timestamp}.md` paths)
 
 ## Constraints
 - Do not change `cliRunner.ts`'s public API — only optionally refactor its internal `_buildCommand` to delegate to the shared builder
