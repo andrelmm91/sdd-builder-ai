@@ -2,47 +2,108 @@
 
 **Spec-Driven Development: turn structured specs into working code via AI agents.**
 
-SDD Platform is a VS Code extension that gives you a governed, repeatable workflow for AI-assisted development. You write specs, AI executes them, you review the diff, and ship to GitHub — all without leaving your editor.
+SDD Platform brings a governed, repeatable workflow for AI-assisted development right into VS Code. Instead of pasting vague prompts into a chat window and hoping for the best, you write small, precise spec files that tell the AI agent exactly what to build, which files to touch, and what "done" looks like. The agent executes, you review the diff, and you ship — all without leaving your editor.
 
 ---
 
-## Core Loop
+## How It Works
 
 ```
 Describe Requirements → AI Plans Specs → Review & Refine → Execute (Claude CLI) → Review Diff → Ship PR
 ```
 
-Each unit of work is a `.sdd.md` spec file — a small, independently executable contract that tells the AI agent exactly what to build, which files to touch, and what "done" looks like.
+The core primitive is a `.sdd.md` **spec file** — a small, independently executable contract. Each spec has a clear scope (one thing, one day, ≤ 3 files), structured requirements, acceptance criteria, and an explicit list of relevant files so the agent has all the context it needs without guessing.
+
+Because specs are plain markdown files, everything is version-controlled. Your entire development history — requirements, executions, reviews, feedback — lives in Git alongside your code.
 
 ---
 
 ## Features
 
-### Free Tier
+### Spec Authoring
 
-| Feature | Description |
+**Templates** — Start a new spec in seconds with `SDD: New Spec from Template`. Choose from Feature, Bug Fix, or Refactor templates that pre-fill the right sections for each type of work.
+
+**Structured form** — Rather than editing raw markdown, use `SDD: New Spec Form` to fill in a guided UI with fields for every frontmatter property and each body section. The form compiles to a valid `.sdd.md` on save.
+
+**File path IntelliSense** — When editing `relevant_files` or `must_not_touch` in a spec, the extension autocompletes workspace-relative file paths. No more typos in file references.
+
+**Live validation** — The extension validates specs on save, showing inline errors (red squiggles) and Problems panel entries for things like missing required fields, too many files in scope, or unknown status values.
+
+### Planning
+
+**AI planning** — Run `SDD: Plan Specs from Requirements` and describe what you want in plain English. The SDD Planner agent decomposes your requirements into a set of `.sdd.md` files in `.specs/`, each with sequential IDs, dependency links, and pre-filled `relevant_files` lists.
+
+```
+Add user authentication with email/password login, password reset, and session management
+```
+
+The planner figures out the right order — foundation types first, features next, integration wiring last — and sets up `depends_on` links so you always know what to build first.
+
+### Navigation
+
+**Sidebar tree view** — The SDD sidebar groups all your specs by status (Draft, Ready, In Progress, Review, Done) with quick-action buttons for each state. Right-click any spec for context menu actions.
+
+**Kanban board** — Open `SDD: Open Kanban Board` for a visual 5-column board. Cards show spec ID, title, complexity, priority, and tags. You can drag cards between adjacent valid columns to transition status, filter by ID, title, or tag in real-time, and open AI Config directly from the board header.
+
+**Status bar** — The VS Code status bar always shows a live count of specs in flight (`SDD: N ready, N running`). Click it to jump to the dashboard.
+
+**Dashboard** — `SDD: Open Dashboard` gives you a project overview: spec counts by status, completion percentage, recent activity, and cost charts — so you always know where the project stands.
+
+### Execution
+
+**Claude CLI execution** — When you execute a spec, the extension assembles a full context package (spec file + relevant file contents + conventions + agent skills), injects it into Claude CLI, and streams output to a dedicated terminal. You can watch the agent work in real time.
+
+**Config-aware pipeline** — The execution pipeline reads your AI Config at runtime to apply the right provider, model, permission mode, and tag-to-skill mappings. A spec tagged `backend` can automatically use a different agent persona than one tagged `frontend`.
+
+**Token budget enforcement** — Each spec declares a `budget_max_tokens` limit. The execution pipeline enforces this ceiling so no single spec burns through your budget unexpectedly.
+
+**Post-execution validation** — After execution completes, the extension automatically runs your configured test command (e.g., `npm test`) and captures the results alongside the execution record.
+
+**Bulk execution** — In the Kanban board, use `[+ Bulk]` to queue multiple Ready specs, then `[Execute All]` to run them sequentially. A progress panel tracks each item's status as the queue runs.
+
+### Review
+
+**Split-view review** — When a spec moves to Review, click it to open a split view: the spec on the left (requirements, acceptance criteria), the multi-file diff on the right, and an execution summary at the bottom (tokens, duration, test results, list of changed files).
+
+Review cards in the Kanban board show a collapsible changed-files list inline — green for added, yellow for modified, red for deleted — so you can triage at a glance without opening the full review.
+
+From the review view you have three choices:
+
+| Action | What happens |
 |---|---|
-| Spec templates | Generate new `.sdd.md` files from Feature / Bug Fix / Refactor templates |
-| Spec validation | On-save validation with red squiggles and Problems panel integration |
-| Lifecycle management | Draft → Ready → In Progress → Review → Done status transitions |
-| AI planning | Describe requirements in plain language; AI decomposes into a set of specs with dependencies |
-| Claude CLI execution | Execute specs via Claude CLI in the integrated terminal with real-time streaming |
-| Sidebar tree view | Browse all specs grouped by status with icons and quick actions |
-| Review flow | Side-by-side spec + multi-file diff view with changed-files summary; approve or request changes |
-| AI Config | Configure AI provider, model, permission mode, tag-to-skill mappings, and post-execution git/PR commands |
-| Cost tracking | Per-spec token usage and cost stored in `.sdd/executions/` |
-| Project initialization | `SDD: Initialize Project` scaffolds `.sdd/`, `.specs/`, conventions, and skills files |
+| **Approve** | Spec status moves to `done`. That's it — git/PR work is handled by the agent if you configured post-execution commands. |
+| **Request Changes** | You write feedback. It gets appended directly to the spec's `## Context` section and the status resets to `ready`. On the next execution the agent reads your feedback as part of the spec. |
+| **Reject** | Agent changes are reverted via `git checkout` and the spec goes back to `draft`. |
 
-### Pro Tier ($12/month)
+### AI Config
 
-| Feature | Description |
-|---|---|
-| **Kanban board** | Visual 5-column board (Draft → Done) with action buttons on cards, drag-and-drop, search/filter, bulk execution, and a "New Spec +" button |
-| **Spec form** | Structured UI for all frontmatter fields and all markdown body sections — create or edit specs without touching raw markdown |
-| **Dashboard** | Project overview: spec counts by status, completion %, recent activity, cost charts |
-| **Scope estimation** | Aggregate spec count × complexity breakdown per phase/area tag |
-| **Multi-project support** | Multiple `.sdd/` configs in a single workspace |
-| **Custom agent skills** | Create unlimited persona files for different agent roles |
+**`SDD: Open AI Config`** — A dedicated settings panel for everything AI-related:
+
+- **Provider & Model** — Select your AI provider and model ID.
+- **Permission Mode** — Control what the agent is allowed to do autonomously.
+- **Tag-to-Skill Mappings** — Map spec tags to agent persona files. When a spec has a matching tag, the mapped skill file is injected instead of the spec's default `agent_skills` value.
+- **Post-Execution Commands** — Enable a commit command and/or PR command that the agent runs automatically after implementation. Use `{spec_id}` and `{title}` as placeholders:
+
+```bash
+# Commit command
+git add -A && git commit -m "feat: {title} ({spec_id})"
+
+# PR command
+gh pr create --title "{title}" --body "Closes {spec_id}"
+```
+
+AI Config is stored in `.sdd/ai-config.json` and version-controlled with your project.
+
+### Tracking & Estimation
+
+**Cost tracking** — Every execution saves a record to `.sdd/executions/{SPEC_ID}/exec-NNN.json` with token usage, cost, duration, status, and the list of changed files. Cost charts appear in the dashboard.
+
+**Scope estimation** — `SDD: Open Dashboard` includes a scope estimate: spec count broken down by complexity (low / medium / high) and grouped by phase or area tag, so you can communicate rough effort before you start executing.
+
+### Onboarding
+
+**Getting Started walkthrough** — On first activation (when no `.sdd/config.json` exists), the native VS Code "Getting Started" walkthrough opens automatically. It walks you through initialization, creating your first spec, marking it ready, executing it, and reviewing the output — one step at a time with links to the exact commands.
 
 ---
 
@@ -65,6 +126,8 @@ Search for **SDD Platform** in the VS Code Extensions panel, or install via:
 ext install sdd-platform
 ```
 
+On first activation the **Getting Started with SDD** walkthrough opens automatically, guiding you through each step below.
+
 ### 2. Initialize a Project
 
 Open your project in VS Code and run:
@@ -73,7 +136,7 @@ Open your project in VS Code and run:
 SDD: Initialize Project
 ```
 
-This creates:
+This scaffolds the SDD folder structure and runs a health check to verify Claude CLI, `gh`, and Git are available:
 
 ```
 your-project/
@@ -86,45 +149,23 @@ your-project/
 │       └── sdd-planner.md   # Default AI planner persona
 ```
 
-The extension runs a health check to verify Claude CLI, `gh`, and Git are available.
+The `conventions.md` file is especially important — anything you write here (naming conventions, architecture rules, preferred libraries) gets injected into every agent execution, so the AI builds to your standards from the start.
 
 ### 3. Configure AI Settings
 
-Run `SDD: Open AI Config` to configure:
-
-- **Provider & Model** — Choose your AI provider and model
-- **Permission Mode** — Control what the agent is allowed to do
-- **Tag-to-Skill Mappings** — Route specs by tag to the right agent persona file
-- **Post-Execution Commands** — Optionally enable a commit command and/or PR command that will be injected into the agent's context so it can run them automatically after implementation. Use `{spec_id}` and `{title}` as placeholders.
-
-Example commit command:
-```
-git add -A && git commit -m "feat: {title} ({spec_id})"
-```
-
-Example PR command:
-```
-gh pr create --title "{title}" --body "Closes {spec_id}"
-```
+Run `SDD: Open AI Config` to choose your provider and model, set the permission mode, and optionally configure tag-to-skill mappings and post-execution git/PR commands.
 
 ### 4. Plan Your Specs
 
-Run `SDD: Plan Specs from Requirements` and describe what you want to build in natural language:
-
-```
-Add user authentication with email/password login, password reset, and session management
-```
-
-The SDD Planner agent decomposes your requirements into a set of `.sdd.md` spec files in `.specs/`, with sequential IDs, dependency links, and relevant file lists pre-filled.
+Run `SDD: Plan Specs from Requirements` and describe what you want to build in natural language. The SDD Planner agent decomposes your requirements into a set of `.sdd.md` spec files in `.specs/`, with sequential IDs, dependency links, and relevant file lists pre-filled.
 
 ### 5. Review and Refine
 
 Generated specs open in the editor. Browse them in the sidebar under "Draft". You can:
 - Edit any spec to adjust scope or acceptance criteria
 - Delete specs you don't want
-- Re-run the planner with feedback: `SDD: Refine Plan`
 
-When a spec is ready, run `SDD: Mark Spec as Ready` (or use the sidebar action). Validation must pass first.
+When a spec is ready, run `SDD: Mark Spec as Ready` (or use the sidebar action). Validation must pass before the transition is allowed.
 
 ### 6. Execute
 
@@ -145,19 +186,13 @@ When execution completes, the spec moves to **Review**. Click it in the sidebar 
 - **Right:** multi-file diff of everything the agent changed
 - **Bottom:** execution summary (tokens, duration, test results, list of changed files)
 
-Then choose:
-
-| Action | Result |
-|---|---|
-| **Approve** | Status → `done` |
-| **Request Changes** | Write feedback → feedback appended to spec's Context section → status back to `ready` → re-execute with feedback included |
-| **Reject** | Status → `draft`, agent changes reverted via `git checkout` |
+Then approve, request changes, or reject.
 
 > **Note:** Post-execution git operations (commit, branch, PR) are performed by the agent itself if you configure the commands in AI Config. The Approve action only transitions the spec status.
 
 ### 8. Ship to GitHub
 
-If you configured post-execution commands in AI Config, the agent runs them automatically at the end of execution. Example flow the agent performs:
+If you configured post-execution commands in AI Config, the agent runs them automatically at the end of execution:
 
 ```bash
 git add -A && git commit -m "feat: add password reset flow (PROJ-043)"
@@ -168,46 +203,9 @@ Alternatively, run these commands manually from the terminal after approving.
 
 ---
 
-## Kanban Board (Pro)
-
-Open with `SDD: Open Kanban Board`.
-
-- All 5 status columns visible simultaneously
-- Cards show: spec_id, title, complexity badge, priority badge, tag chips
-- **Action buttons on cards** based on status:
-  - Draft → `[Mark Ready]`
-  - Ready → `[Execute]` `[+ Bulk]`
-  - Review → `[Approve]` `[Request Changes]`
-- Review cards show a collapsible **changed files list** (green = added, yellow = modified, red = deleted)
-- **Bulk Execution** — select multiple Ready specs with `[+ Bulk]`, then `[Execute All]` to run them sequentially
-- **"New Spec +"** button in the header → opens the Spec Form in Create mode
-- **Search/filter bar** — filter by spec_id, title, or tag in real-time
-- **Drag cards** between adjacent valid columns to transition status
-- **AI Config button** — opens the AI Config panel directly from the Kanban header
-
----
-
-## Spec Form (Pro)
-
-Opens in Create mode from the Kanban "New Spec +" button, or in Edit mode by right-clicking a spec in the sidebar.
-
-Form sections:
-
-| Group | Fields |
-|---|---|
-| Identity | spec_id (auto-generated), title, status, priority, complexity |
-| Classification | tags (chip input), agent_skills |
-| Scope | relevant_files, must_not_touch, depends_on (multi-select) |
-| Budget | budget_max_tokens (number + slider) |
-| Body | Context, Requirements (Functional + Non-Functional), Acceptance Criteria (Automated + Manual), Constraints, Examples |
-
-Saving compiles the form into a valid `.sdd.md` file and writes it to `.specs/`.
-
----
-
 ## Spec File Format
 
-Every spec is a `.sdd.md` file with YAML frontmatter and markdown body sections:
+Every spec is a `.sdd.md` file with YAML frontmatter and a structured markdown body. The frontmatter tells the extension how to manage the spec; the body tells the agent what to build.
 
 ```markdown
 ---
@@ -229,7 +227,7 @@ created: 2026-03-05
 ---
 
 ## Context
-What this spec addresses and why.
+What this spec addresses and why. The agent reads this first.
 
 ## Requirements
 ### Functional
@@ -255,15 +253,25 @@ Input: POST /auth/reset {email: "user@example.com"}
 Output: 200 {message: "Reset email sent"}
 ```
 
-**Hard constraints per spec (enforced by validation):**
-- Maximum 3 files to create/edit (excluding tests)
+**Key frontmatter fields:**
+
+| Field | Purpose |
+|---|---|
+| `relevant_files` | Files the agent should read for context. Be explicit — don't make the agent guess. |
+| `must_not_touch` | Files the agent must not modify. Protects sensitive or shared code. |
+| `depends_on` | Other spec IDs that must be done first. Forms a dependency DAG. |
+| `budget_max_tokens` | Token ceiling for this execution. Defaults to 100,000. |
+| `agent_skills` | Which persona file from `.sdd/skills/` to load for this spec. |
+
+**Constraints enforced by validation:**
+- Maximum 3 files to create/edit (excluding tests) — keeps scope small and reviewable
 - Single responsibility — one spec does one thing
 - Must be completable in ≤ 1 day
-- `relevant_files` provides all context for the agent; `must_not_touch` protects files from modification
+- No circular dependencies — the `depends_on` graph must be a DAG
 
 **Status lifecycle:** `draft → ready → in_progress → review → done`
 
-**Request Changes flow:** Feedback is appended directly to the spec's `## Context` section and status is reset to `ready`. On the next execution, the agent sees the feedback as part of the spec context.
+**Request Changes flow:** Feedback is appended directly to the spec's `## Context` section and status is reset to `ready`. On the next execution, the agent sees the feedback as part of the spec — no separate feedback files, no extra config.
 
 ---
 
@@ -271,20 +279,20 @@ Output: 200 {message: "Reset email sent"}
 
 | Command | Description |
 |---|---|
-| `SDD: Initialize Project` | Scaffold `.sdd/` and `.specs/` folders, health check |
+| `SDD: Initialize Project` | Scaffold `.sdd/` and `.specs/` folders, run health check |
 | `SDD: New Spec from Template` | Generate a spec from Feature / Bug Fix / Refactor template |
+| `SDD: New Spec Form` | Open structured form UI to create or edit a spec |
 | `SDD: Plan Specs from Requirements` | AI decomposes natural language requirements into specs |
 | `SDD: Validate Current Spec` | Manually trigger validation on the open spec file |
 | `SDD: Mark Spec as Ready` | Transition spec from draft → ready (validation must pass) |
-| `SDD: Execute Spec` | Run Claude CLI against a ready spec |
+| `SDD: Execute Spec` | Assemble context and run Claude CLI against a ready spec |
 | `SDD: Review Spec` | Open split view: spec + diff (available for `in_progress` and `review` specs) |
-| `SDD: Approve Spec` | Approve review → status → `done` |
+| `SDD: Approve Spec` | Mark review as approved → status → `done` |
 | `SDD: Request Changes` | Write feedback → appended to spec Context → status → `ready` for re-execution |
-| `SDD: Reject Spec` | Revert agent changes and transition spec back to `draft` |
-| `SDD: Open AI Config` | Configure AI provider, model, permission mode, tag-skill mappings, and git/PR commands |
-| `SDD: Open Dashboard` | Open project analytics webview (Pro) |
-| `SDD: Open Kanban Board` | Open the 5-column kanban webview (Pro) |
-| `SDD: New Spec Form` | Open structured spec form in create mode (Pro) |
+| `SDD: Reject Spec` | Revert agent changes via `git checkout` → status → `draft` |
+| `SDD: Open AI Config` | Configure provider, model, permission mode, tag-skill mappings, and git/PR commands |
+| `SDD: Open Kanban Board` | Open the 5-column visual kanban board |
+| `SDD: Open Dashboard` | Open project analytics: spec counts, cost charts, scope estimate |
 
 ---
 
@@ -300,24 +308,24 @@ Settings available under **SDD Platform** in VS Code preferences:
 | `sdd.defaultBudget` | `100000` | Default `budget_max_tokens` for new specs |
 | `sdd.autoValidate` | `true` | Automatically run test command after execution |
 
-AI-specific settings (stored in `.sdd/ai-config.json`, managed via `SDD: Open AI Config`):
+AI-specific settings are stored in `.sdd/ai-config.json` and managed through `SDD: Open AI Config`:
 
 | Setting | Description |
 |---|---|
 | `provider` | AI provider (e.g., `anthropic`) |
 | `model` | Model ID |
-| `permissionMode` | Agent permission mode |
-| `tagSkillMappings` | Array of `{ tag, skillFile }` mappings |
-| `commitCommand` | Shell command for git commit (supports `{spec_id}`, `{title}` placeholders) |
-| `commitCommandEnabled` | Whether to inject commit command into agent context |
-| `prCommand` | Shell command for PR creation (supports `{spec_id}`, `{title}` placeholders) |
-| `prCommandEnabled` | Whether to inject PR command into agent context |
+| `permissionMode` | What the agent is allowed to do autonomously |
+| `tagSkillMappings` | Array of `{ tag, skillFile }` pairs — overrides `agent_skills` when a spec's tag matches |
+| `commitCommand` | Shell command for git commit; supports `{spec_id}` and `{title}` placeholders |
+| `commitCommandEnabled` | Whether to inject the commit command into the agent's context |
+| `prCommand` | Shell command for PR creation; supports `{spec_id}` and `{title}` placeholders |
+| `prCommandEnabled` | Whether to inject the PR command into the agent's context |
 
 ---
 
 ## Data Storage
 
-All state is file-based and version-controlled — no database, no server:
+All state is file-based and version-controlled — no database, no server, no account required:
 
 ```
 your-project/
@@ -326,7 +334,7 @@ your-project/
 ├── .sdd/
 │   ├── config.json                     # Project settings
 │   ├── ai-config.json                  # AI provider, model, permission mode, git commands
-│   ├── conventions.md                  # Agent conventions
+│   ├── conventions.md                  # Agent conventions injected into every execution
 │   ├── executions/
 │   │   └── PROJ-042/
 │   │       ├── exec-001.json           # Tokens, cost, status, duration, changed files
@@ -336,7 +344,7 @@ your-project/
 │           └── review-001.json         # Reviewer decision + feedback
 ```
 
-Every spec, execution, and review lives in Git history — clone the repo and get the full SDD audit trail.
+Every spec, execution, and review lives in Git history. Clone the repo and you get the full SDD audit trail — what was built, when, by which agent, at what cost, and what feedback it received.
 
 ---
 
