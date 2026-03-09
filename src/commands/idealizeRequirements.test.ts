@@ -4,18 +4,32 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Module mocks — must be hoisted before imports
 // ---------------------------------------------------------------------------
 
-const mockProgressToken = {
-  isCancellationRequested: false,
-  onCancellationRequested: vi.fn(() => ({ dispose: vi.fn() })),
-};
-
 vi.mock('vscode', () => {
+  const EventEmitter = class {
+    private _listeners: ((data: unknown) => void)[] = [];
+    get event() {
+      return (listener: (data: unknown) => void) => {
+        this._listeners.push(listener);
+        return { dispose: () => {} };
+      };
+    }
+    fire(data: unknown) {
+      this._listeners.forEach((l) => l(data));
+    }
+    dispose() {
+      this._listeners = [];
+    }
+  };
+
   return {
+    EventEmitter,
     window: {
       showInformationMessage: vi.fn(),
       showErrorMessage: vi.fn(),
-      withProgress: vi.fn(async (_opts: unknown, task: (p: unknown, t: typeof mockProgressToken) => Promise<void>) => {
-        await task({ report: vi.fn() }, mockProgressToken);
+      // Simulate VS Code calling pty.open() when the terminal is created
+      createTerminal: vi.fn().mockImplementation((opts: { pty?: { open: (dims: undefined) => void } }) => {
+        if (opts.pty?.open) opts.pty.open(undefined);
+        return { show: vi.fn(), dispose: vi.fn() };
       }),
     },
     workspace: {
@@ -29,7 +43,6 @@ vi.mock('vscode', () => {
         createDirectory: vi.fn(),
       },
     },
-    ProgressLocation: { Notification: 15 },
     FileType: { File: 1, Directory: 2 },
     Uri: {
       file: (p: string) => ({ fsPath: p, toString: () => p }),
@@ -58,11 +71,11 @@ vi.mock('../utils/shell', () => ({
 }));
 
 vi.mock('../execution/cliCommandBuilder', () => ({
-  buildCliCommand: vi.fn().mockReturnValue('claude --print'),
+  buildCliCommand: vi.fn().mockReturnValue('claude --model sonnet'),
 }));
 
-vi.mock('../execution/processSpawner', () => ({
-  spawnWithCancellation: vi.fn().mockResolvedValue({ success: true }),
+vi.mock('child_process', () => ({
+  spawn: vi.fn(),
 }));
 
 vi.mock('../utils/frontmatter', () => ({
@@ -79,9 +92,9 @@ vi.mock('../views/webviews/requirementBoard/featureParser', () => ({
 // ---------------------------------------------------------------------------
 
 import * as vscode from 'vscode';
+import * as cp from 'child_process';
 import { getWorkspaceRoot } from '../utils/fileSystem';
 import { isCommandAvailable } from '../utils/shell';
-import { spawnWithCancellation } from '../execution/processSpawner';
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { idealizeRequirements } from './idealizeRequirements';
@@ -92,7 +105,7 @@ import { idealizeRequirements } from './idealizeRequirements';
 
 const mockGetWorkspaceRoot = vi.mocked(getWorkspaceRoot);
 const mockIsCommandAvailable = vi.mocked(isCommandAvailable);
-const mockSpawnWithCancellation = vi.mocked(spawnWithCancellation);
+const mockSpawn = vi.mocked(cp.spawn);
 const mockShowErrorMessage = vi.mocked(vscode.window.showErrorMessage);
 const mockShowInformationMessage = vi.mocked(vscode.window.showInformationMessage);
 const mockParseFrontmatter = vi.mocked(parseFrontmatter);
@@ -112,12 +125,28 @@ const mockFs = vscode.workspace.fs as unknown as {
 const FEATURE_NAME = 'MyFeature';
 const FOLDER_PATH = '/workspace/.sdd/product/MyFeature';
 
-function setupHappyPath() {
-  // idealization.md exists
+/** Creates a mock ChildProcess that emits 'close' asynchronously via setTimeout(0). */
+function makeChildProcessMock(exitCode = 0): cp.ChildProcess {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const NodeEventEmitter = require('events').EventEmitter;
+  const child = new NodeEventEmitter() as unknown as cp.ChildProcess;
+  (child as unknown as Record<string, unknown>).stdout = new NodeEventEmitter();
+  (child as unknown as Record<string, unknown>).stderr = new NodeEventEmitter();
+  (child as unknown as Record<string, unknown>).kill = vi.fn();
+  // Defer close so pty.open() can register listeners synchronously first
+  setTimeout(() => child.emit('close', exitCode), 0);
+  return child;
+}
+
+function setupHappyPathFs() {
   mockFs.stat.mockResolvedValue({});
-  // file has correct frontmatter
-  mockFs.readFile.mockResolvedValue(new TextEncoder().encode('---\nstatus: Idealization In Review\n---\n'));
-  mockParseFrontmatter.mockReturnValue({ data: { status: 'Idealization In Review', date: '2026-03-09' }, body: '' });
+  mockFs.readFile.mockResolvedValue(
+    new TextEncoder().encode('---\nstatus: Idealization In Review\ndate: 2026-03-09\n---\n'),
+  );
+  mockParseFrontmatter.mockReturnValue({
+    data: { status: 'Idealization In Review', date: '2026-03-09' },
+    body: '',
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -129,18 +158,16 @@ describe('idealizeRequirements', () => {
     vi.clearAllMocks();
     mockGetWorkspaceRoot.mockReturnValue('/workspace');
     mockIsCommandAvailable.mockResolvedValue(true);
-    mockSpawnWithCancellation.mockResolvedValue({ success: true });
     mockFs.createDirectory.mockResolvedValue(undefined);
     mockFs.writeFile.mockResolvedValue(undefined);
     mockFs.delete.mockResolvedValue(undefined);
     mockFs.rename.mockResolvedValue(undefined);
     mockUpdateFeatureStatus.mockResolvedValue(undefined);
-    mockProgressToken.isCancellationRequested = false;
-    vi.mocked(vscode.window.withProgress).mockImplementation(
-      async (_opts: unknown, task: (p: unknown, t: typeof mockProgressToken) => Promise<void>) => {
-        await task({ report: vi.fn() }, mockProgressToken);
-      }
-    );
+    // Re-apply createTerminal implementation after vi.clearAllMocks()
+    vi.mocked(vscode.window.createTerminal).mockImplementation((opts: any) => {
+      if (opts.pty?.open) opts.pty.open(undefined);
+      return { show: vi.fn(), dispose: vi.fn() };
+    });
   });
 
   // --- No workspace ---
@@ -157,11 +184,11 @@ describe('idealizeRequirements', () => {
   // --- buildIdealizePrompt ---
 
   it('builds prompt with @ reference to feature file path', async () => {
-    setupHappyPath();
+    // Stop early (after writing prompt) to inspect written content
+    mockIsCommandAvailable.mockResolvedValue(false);
 
     await idealizeRequirements(FEATURE_NAME, FOLDER_PATH);
 
-    // The prompt is written to a temp file via writeFile; find the call
     const writeCalls = mockFs.writeFile.mock.calls;
     const promptCall = writeCalls.find((c) => {
       const uri = c[0] as { fsPath: string };
@@ -181,48 +208,29 @@ describe('idealizeRequirements', () => {
     await idealizeRequirements(FEATURE_NAME, FOLDER_PATH);
 
     expect(mockShowErrorMessage).toHaveBeenCalledWith(expect.stringContaining('AI CLI not found'));
-    expect(mockSpawnWithCancellation).not.toHaveBeenCalled();
+    expect(mockSpawn).not.toHaveBeenCalled();
   });
 
   // --- CLI process fails ---
 
-  it('shows error when CLI process fails', async () => {
-    mockSpawnWithCancellation.mockResolvedValue({ success: false, error: 'process exited with code 1' });
-    mockFs.stat.mockResolvedValue({});
+  it('shows error when CLI process exits with non-zero code', async () => {
+    mockSpawn.mockReturnValue(makeChildProcessMock(1));
 
     await idealizeRequirements(FEATURE_NAME, FOLDER_PATH);
 
     expect(mockShowErrorMessage).toHaveBeenCalledWith(expect.stringContaining('Idealization failed'));
-    expect(mockShowErrorMessage).toHaveBeenCalledWith(expect.stringContaining('process exited with code 1'));
   });
 
-  // --- Cancellation ---
-
-  it('resolves without error when cancelled before CLI runs', async () => {
-    vi.mocked(vscode.window.withProgress).mockImplementationOnce(
-      async (_opts: unknown, task: (p: unknown, t: typeof mockProgressToken) => Promise<void>) => {
-        const cancelledToken = { ...mockProgressToken, isCancellationRequested: true };
-        await task({ report: vi.fn() }, cancelledToken);
-      }
-    );
-
-    await idealizeRequirements(FEATURE_NAME, FOLDER_PATH);
-
-    expect(mockShowErrorMessage).not.toHaveBeenCalled();
-    expect(mockSpawnWithCancellation).not.toHaveBeenCalled();
-  });
-
-  // --- Post-validation: idealization.md exists ---
+  // --- Post-validation: idealization.md exists with correct frontmatter ---
 
   it('reads and checks frontmatter when idealization.md already exists', async () => {
-    mockFs.stat.mockResolvedValue({});
-    mockFs.readFile.mockResolvedValue(new TextEncoder().encode('---\nstatus: Idealization In Review\ndate: 2026-03-09\n---\n'));
-    mockParseFrontmatter.mockReturnValue({ data: { status: 'Idealization In Review', date: '2026-03-09' }, body: '' });
+    mockSpawn.mockReturnValue(makeChildProcessMock(0));
+    setupHappyPathFs();
 
     await idealizeRequirements(FEATURE_NAME, FOLDER_PATH);
 
     expect(mockParseFrontmatter).toHaveBeenCalled();
-    // No rewrite needed since status and date already set
+    // No rewrite needed — status and date are already correct
     const idealizationWrite = mockFs.writeFile.mock.calls.find((c) => {
       const uri = c[0] as { fsPath: string };
       return uri.fsPath.endsWith('idealization.md');
@@ -231,6 +239,7 @@ describe('idealizeRequirements', () => {
   });
 
   it('updates frontmatter when status is missing from idealization.md', async () => {
+    mockSpawn.mockReturnValue(makeChildProcessMock(0));
     mockFs.stat.mockResolvedValue({});
     mockFs.readFile.mockResolvedValue(new TextEncoder().encode('# Content\n'));
     mockParseFrontmatter.mockReturnValue({ data: {}, body: '# Content\n' });
@@ -252,11 +261,9 @@ describe('idealizeRequirements', () => {
   // --- Post-validation: rename fallback ---
 
   it('renames another .md file to idealization.md when idealization.md is missing', async () => {
-    // stat throws → file not found
+    mockSpawn.mockReturnValue(makeChildProcessMock(0));
     mockFs.stat.mockRejectedValue(new Error('not found'));
-    mockFs.readDirectory.mockResolvedValue([
-      ['ai-output.md', 1], // FileType.File = 1
-    ]);
+    mockFs.readDirectory.mockResolvedValue([['ai-output.md', 1]]);
     mockFs.readFile.mockResolvedValue(new TextEncoder().encode(''));
     mockParseFrontmatter.mockReturnValue({ data: {}, body: '' });
 
@@ -271,11 +278,10 @@ describe('idealizeRequirements', () => {
 
   // --- Post-validation: no output file ---
 
-  it('throws post-validation error when no output file exists', async () => {
+  it('shows post-validation error when no output file exists', async () => {
+    mockSpawn.mockReturnValue(makeChildProcessMock(0));
     mockFs.stat.mockRejectedValue(new Error('not found'));
-    mockFs.readDirectory.mockResolvedValue([
-      [`${FEATURE_NAME}.md`, 1], // only the feature file itself, no other .md
-    ]);
+    mockFs.readDirectory.mockResolvedValue([[`${FEATURE_NAME}.md`, 1]]);
 
     await idealizeRequirements(FEATURE_NAME, FOLDER_PATH);
 
@@ -285,7 +291,8 @@ describe('idealizeRequirements', () => {
   // --- Success path ---
 
   it('updates feature file status to "Idealization In Review" on success', async () => {
-    setupHappyPath();
+    mockSpawn.mockReturnValue(makeChildProcessMock(0));
+    setupHappyPathFs();
 
     await idealizeRequirements(FEATURE_NAME, FOLDER_PATH);
 
@@ -296,7 +303,8 @@ describe('idealizeRequirements', () => {
   });
 
   it('shows success message on completion', async () => {
-    setupHappyPath();
+    mockSpawn.mockReturnValue(makeChildProcessMock(0));
+    setupHappyPathFs();
 
     await idealizeRequirements(FEATURE_NAME, FOLDER_PATH);
 
@@ -305,3 +313,4 @@ describe('idealizeRequirements', () => {
     );
   });
 });
+
