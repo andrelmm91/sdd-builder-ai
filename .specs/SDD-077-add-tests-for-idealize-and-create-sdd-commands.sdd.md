@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-077
 title: Add tests for idealizeRequirements and createSddCards commands
-status: ready
+status: done
 priority: medium
 complexity: medium
 tags: [phase-2, testing, backend]
@@ -66,12 +66,12 @@ Use `planFromRequirements.test.ts` and `cliRunner.test.ts` as reference patterns
 ## Acceptance Criteria
 
 ### Automated
-- [ ] All new tests pass (`npm test`)
-- [ ] TypeScript compilation passes on test files
-- [ ] Coverage includes: prompt building, post-validation (happy + error paths), cancellation, timeout
+- [x] All new tests pass (`npm test`)
+- [x] TypeScript compilation passes on test files
+- [x] Coverage includes: prompt building, post-validation (happy + error paths), cancellation, timeout
 
 ### Manual
-- [ ] Running `npm test -- --reporter=verbose` shows all test cases passing with descriptive names
+- [x] Running `npm test -- --reporter=verbose` shows all test cases passing with descriptive names
 
 ## Constraints
 - Do not modify the source files (`must_not_touch`) — tests only
