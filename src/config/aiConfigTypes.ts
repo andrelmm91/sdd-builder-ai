@@ -1,5 +1,6 @@
 export type AIProvider = 'claude' | 'copilot';
 
+export type ClaudeEffort = 'low' | 'medium' | 'high';
 export type ClaudePermissionMode = 'default' | 'dangerously-skip-permissions' | 'plan';
 export type CopilotPermissionMode = 'default' | 'yolo';
 export type PermissionMode = ClaudePermissionMode | CopilotPermissionMode;
@@ -13,6 +14,7 @@ export interface AIConfig {
   provider: AIProvider;
   permissionMode: PermissionMode;
   model: string;
+  effort: ClaudeEffort;
   tagSkillMappings: TagSkillMapping[];
   prePromptTemplate: string;
   commitCommand: string;
@@ -52,6 +54,7 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   provider: 'claude',
   permissionMode: 'default',
   model: 'sonnet',
+  effort: 'medium',
   tagSkillMappings: [],
   prePromptTemplate: DEFAULT_PRE_PROMPT,
   commitCommand: DEFAULT_COMMIT_COMMAND,
@@ -64,6 +67,7 @@ export interface RequirementsAIConfig {
   provider: AIProvider;
   model: string;
   permissionMode: PermissionMode;
+  effort: ClaudeEffort;
   idealizePromptTemplate: string;
   createSddCardsPromptTemplate: string;
 }
@@ -78,12 +82,13 @@ export const DEFAULT_IDEALIZE_PROMPT =
 export const DEFAULT_CREATE_SDD_CARDS_PROMPT =
   'Create new phases and SDDs in {file_prefix}{specs_folder}/ to fulfill the requirements ' +
   'in {file_prefix}{idealization_path} by using skills ' +
-  'in {file_prefix}.claude/skills/sdd-planner/SKILL.md. Add dependency from the other SDDs if needed.';
+  'in {file_prefix}.sdd/skills/sdd-planner/SKILL.md. Add dependency from the other SDDs if needed.';
 
 export const DEFAULT_REQUIREMENTS_AI_CONFIG: RequirementsAIConfig = {
   provider: 'claude',
   model: 'sonnet',
   permissionMode: 'default',
+  effort: 'medium',
   idealizePromptTemplate: DEFAULT_IDEALIZE_PROMPT,
   createSddCardsPromptTemplate: DEFAULT_CREATE_SDD_CARDS_PROMPT,
 };

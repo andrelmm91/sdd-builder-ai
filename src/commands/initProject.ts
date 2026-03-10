@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { fileExists, writeWorkspaceFile, createWorkspaceDirectory } from '../utils/fileSystem';
 import { getDefaultProjectConfig, writeProjectConfig } from '../config/projectConfig';
 import { writeAIConfig, writeRequirementsAIConfig } from '../config/aiConfig';
@@ -30,12 +32,14 @@ const CONVENTIONS_TEMPLATE = `# Project Conventions
 <!-- Describe how errors should be handled and surfaced throughout the codebase. -->
 `;
 
-const SKILL_PLACEHOLDER = `# SDD Planner Skill
-
-This skill is used by the SDD agent to plan and break down specifications.
-
-<!-- Customize this file to adjust planner behavior for your project. -->
-`;
+function loadDefaultSkillContent(): string {
+  const skillPath = path.join(__dirname, '..', 'resources', 'skills', 'sdd-planner', 'SKILL.md');
+  try {
+    return fs.readFileSync(skillPath, 'utf-8');
+  } catch {
+    return '# SDD Planner Skill\n\n<!-- Customize this file to adjust planner behavior for your project. -->\n';
+  }
+}
 
 export async function initProject(): Promise<void> {
   const alreadyInitialized = await fileExists(CONFIG_FILE);
@@ -62,7 +66,7 @@ export async function initProject(): Promise<void> {
   await writeAIConfig({ ...DEFAULT_AI_CONFIG });
   await writeRequirementsAIConfig({ ...DEFAULT_REQUIREMENTS_AI_CONFIG });
   await writeWorkspaceFile(CONVENTIONS_FILE, CONVENTIONS_TEMPLATE);
-  await writeWorkspaceFile(`${SKILLS_FOLDER}/sdd-planner/SKILL.md`, SKILL_PLACEHOLDER);
+  await writeWorkspaceFile(`${SKILLS_FOLDER}/sdd-planner/SKILL.md`, loadDefaultSkillContent());
 
   // Run health checks in parallel
   const claudeBinary = getClaudeCliBinary();

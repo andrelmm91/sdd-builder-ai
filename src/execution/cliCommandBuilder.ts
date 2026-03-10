@@ -1,4 +1,4 @@
-import type { AIConfig, RequirementsAIConfig } from '../config/aiConfigTypes';
+import type { AIConfig, RequirementsAIConfig, ClaudeEffort } from '../config/aiConfigTypes';
 
 /** Wraps a string in single quotes, escaping any internal single quotes. */
 function sq(str: string): string {
@@ -47,6 +47,8 @@ export function buildCliCommand(options: CliCommandOptions): string {
     parts.push('--max-tokens', String(maxTokens));
   }
   if (aiConfig?.model) parts.push('--model', aiConfig.model);
+  const effort = (aiConfig as AIConfig | undefined)?.effort ?? (aiConfig as RequirementsAIConfig | undefined)?.effort;
+  if (effort) parts.push('--effort', effort as ClaudeEffort);
   if (aiConfig?.permissionMode === 'dangerously-skip-permissions') {
     parts.push('--dangerously-skip-permissions');
   }

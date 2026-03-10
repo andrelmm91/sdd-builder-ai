@@ -10,10 +10,13 @@
     skill: string;
   }
 
+  type ClaudeEffort = 'low' | 'medium' | 'high';
+
   interface AIConfig {
     provider: AIProvider;
     permissionMode: PermissionMode;
     model: string;
+    effort: ClaudeEffort;
     tagSkillMappings: TagSkillMapping[];
     prePromptTemplate: string;
     commitCommand: string;
@@ -26,6 +29,7 @@
     provider: AIProvider;
     model: string;
     permissionMode: PermissionMode;
+    effort: ClaudeEffort;
     idealizePromptTemplate: string;
     createSddCardsPromptTemplate: string;
   }
@@ -62,6 +66,7 @@
   let provider = $state<AIProvider>('claude');
   let permissionMode = $state<PermissionMode>('default');
   let model = $state<string>('sonnet');
+  let effort = $state<ClaudeEffort>('medium');
   let tagSkillMappings = $state<TagSkillMapping[]>([]);
   let prePromptTemplate = $state<string>('');
   let availableTags = $state<string[]>([]);
@@ -80,6 +85,7 @@
   let reqProvider = $state<AIProvider>('claude');
   let reqPermissionMode = $state<PermissionMode>('default');
   let reqModel = $state<string>('sonnet');
+  let reqEffort = $state<ClaudeEffort>('medium');
   let reqIdealizePromptTemplate = $state<string>('');
   let reqCreateSddCardsPromptTemplate = $state<string>('');
   let reqSaved = $state(false);
@@ -127,7 +133,7 @@
     // Use JSON round-trip to strip Svelte 5 $state Proxy wrappers —
     // vscodeApi.postMessage cannot serialize Proxy objects.
     const config: AIConfig = JSON.parse(JSON.stringify({
-      provider, permissionMode, model, tagSkillMappings,
+      provider, permissionMode, model, effort, tagSkillMappings,
       prePromptTemplate, commitCommand, commitCommandEnabled,
       prCommand, prCommandEnabled,
     }));
@@ -139,6 +145,7 @@
       provider: reqProvider,
       model: reqModel,
       permissionMode: reqPermissionMode,
+      effort: reqEffort,
       idealizePromptTemplate: reqIdealizePromptTemplate,
       createSddCardsPromptTemplate: reqCreateSddCardsPromptTemplate,
     }));
@@ -167,6 +174,7 @@
         provider = c.provider;
         permissionMode = c.permissionMode;
         model = c.model;
+        effort = c.effort ?? 'medium';
         tagSkillMappings = c.tagSkillMappings;
         prePromptTemplate = c.prePromptTemplate;
         commitCommand = c.commitCommand;
@@ -181,6 +189,7 @@
         reqProvider = c.provider;
         reqModel = c.model;
         reqPermissionMode = c.permissionMode;
+        reqEffort = c.effort ?? 'medium';
         reqIdealizePromptTemplate = c.idealizePromptTemplate;
         reqCreateSddCardsPromptTemplate = c.createSddCardsPromptTemplate;
       } else if (msg.type === 'requirementsSaveConfirmed') {
@@ -245,6 +254,18 @@
         {/each}
       </select>
     </section>
+
+    {#if provider === 'claude'}
+    <section class="form-section">
+      <label class="field-label" for="effort-select">Effort</label>
+      <select id="effort-select" class="form-select" bind:value={effort}>
+        <option value="low">low</option>
+        <option value="medium">medium</option>
+        <option value="high">high</option>
+      </select>
+      <p class="field-hint">Passed as <code>--effort</code> to the Claude CLI.</p>
+    </section>
+    {/if}
 
     <section class="form-section">
       <div class="section-heading">Tag → Skill Mappings</div>
@@ -424,6 +445,18 @@
         {/each}
       </select>
     </section>
+
+    {#if reqProvider === 'claude'}
+    <section class="form-section">
+      <label class="field-label" for="req-effort-select">Effort</label>
+      <select id="req-effort-select" class="form-select" bind:value={reqEffort}>
+        <option value="low">low</option>
+        <option value="medium">medium</option>
+        <option value="high">high</option>
+      </select>
+      <p class="field-hint">Passed as <code>--effort</code> to the Claude CLI.</p>
+    </section>
+    {/if}
 
     <section class="form-section">
       <label class="field-label" for="req-idealize-textarea">Idealize Prompt Template</label>

@@ -19,6 +19,7 @@ export async function readAIConfig(): Promise<AIConfig | undefined> {
       provider: ai.provider ?? DEFAULT_AI_CONFIG.provider,
       permissionMode: ai.permissionMode ?? DEFAULT_AI_CONFIG.permissionMode,
       model: ai.model ?? DEFAULT_AI_CONFIG.model,
+      effort: (ai as Partial<AIConfig>).effort ?? DEFAULT_AI_CONFIG.effort,
       tagSkillMappings: ai.tagSkillMappings ?? [],
       prePromptTemplate: ai.prePromptTemplate ?? DEFAULT_AI_CONFIG.prePromptTemplate,
       commitCommand: ai.commitCommand ?? DEFAULT_AI_CONFIG.commitCommand,
@@ -57,6 +58,7 @@ export async function readRequirementsAIConfig(): Promise<RequirementsAIConfig |
       provider: req.provider ?? DEFAULT_REQUIREMENTS_AI_CONFIG.provider,
       model: req.model ?? DEFAULT_REQUIREMENTS_AI_CONFIG.model,
       permissionMode: req.permissionMode ?? DEFAULT_REQUIREMENTS_AI_CONFIG.permissionMode,
+      effort: req.effort ?? DEFAULT_REQUIREMENTS_AI_CONFIG.effort,
       idealizePromptTemplate: req.idealizePromptTemplate ?? DEFAULT_REQUIREMENTS_AI_CONFIG.idealizePromptTemplate,
       createSddCardsPromptTemplate: req.createSddCardsPromptTemplate ?? DEFAULT_REQUIREMENTS_AI_CONFIG.createSddCardsPromptTemplate,
     };
