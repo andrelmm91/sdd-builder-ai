@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-086
 title: Fix bulk execution frame not clearing after specs transition to review
-status: draft
+status: done
 priority: medium
 complexity: low
 tags: [phase-2, bugfix, frontend, backend]

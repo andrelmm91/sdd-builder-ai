@@ -148,6 +148,12 @@ export class BulkExecutionManager {
 
     this.isRunning = false;
     this.currentIndex = -1;
+    // Remove completed items; failed items remain so the user can see what went wrong
+    const completedIds = new Set(
+      this.items.filter((i) => i.status === 'completed').map((i) => i.specId),
+    );
+    this.items = this.items.filter((i) => i.status !== 'completed');
+    completedIds.forEach((id) => this.filePaths.delete(id));
     this.fireStateChange();
   }
 

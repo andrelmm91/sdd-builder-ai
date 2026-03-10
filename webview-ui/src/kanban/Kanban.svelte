@@ -216,11 +216,11 @@
       >
         <div class="column-header">
           <span class="column-title">{col.label}</span>
-          <span class="column-count">{cards.length + (col.id === 'ready' ? bulkState.items.length : 0)}</span>
+          <span class="column-count">{cards.length + (col.id === 'ready' ? bulkState.items.filter((i) => i.status === 'queued').length : 0)}</span>
         </div>
 
         <!-- Bulk queue frame in Ready column (not running) -->
-        {#if col.id === 'ready' && bulkState.items.length > 0 && !bulkState.isRunning}
+        {#if col.id === 'ready' && bulkState.items.some((i) => i.status === 'queued')}
           <div class="bulk-frame">
             <div class="bulk-frame-header">
               <span class="bulk-frame-title">Bulk Queue ({bulkState.items.length})</span>
@@ -278,7 +278,7 @@
           </div>
         {/if}
 
-        {#if cards.length === 0 && !(col.id === 'ready' && bulkState.items.length > 0)}
+        {#if cards.length === 0 && !(col.id === 'ready' && bulkState.items.some((i) => i.status === 'queued'))}
           <p class="empty-col">No specs</p>
         {:else}
           {#each cards as card (card.spec_id)}
