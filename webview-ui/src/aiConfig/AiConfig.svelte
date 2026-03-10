@@ -49,7 +49,14 @@
 
   const MODELS: Record<AIProvider, string[]> = {
     claude: ['opus', 'sonnet', 'haiku'],
-    copilot: ['claude-sonnet-4.6', 'gpt-4o', 'gpt-5.1', 'codex', 'opus'],
+    copilot: [
+      'claude-sonnet-4.6', 'claude-sonnet-4.5', 'claude-haiku-4.5',
+      'claude-opus-4.6', 'claude-opus-4.6-fast', 'claude-opus-4.5', 'claude-sonnet-4',
+      'gemini-3-pro-preview',
+      'gpt-5.4', 'gpt-5.3-codex', 'gpt-5.2-codex', 'gpt-5.2',
+      'gpt-5.1-codex-max', 'gpt-5.1-codex', 'gpt-5.1', 'gpt-5.1-codex-mini',
+      'gpt-5-mini', 'gpt-4.1',
+    ],
   };
 
   let provider = $state<AIProvider>('claude');
@@ -427,6 +434,7 @@
         bind:value={reqIdealizePromptTemplate}
       ></textarea>
       <p class="field-hint">Use <code>{'{feature_path}'}</code> as a placeholder for the feature file path.</p>
+      <p class="field-hint">Use <code>{'{file_prefix}'}</code> as a file reference prefix — resolves to <code>@</code> for Claude and <code>#file:</code> for Copilot.</p>
     </section>
 
     <section class="form-section">
@@ -438,6 +446,7 @@
         bind:value={reqCreateSddCardsPromptTemplate}
       ></textarea>
       <p class="field-hint">Use <code>{'{idealization_path}'}</code> and <code>{'{specs_folder}'}</code> as placeholders.</p>
+      <p class="field-hint">Use <code>{'{file_prefix}'}</code> as a file reference prefix — resolves to <code>@</code> for Claude and <code>#file:</code> for Copilot.</p>
     </section>
 
     <div class="save-row">

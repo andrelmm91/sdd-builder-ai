@@ -82,7 +82,7 @@ function sq(str: string): string {
  *
  * Completion is detected via a sentinel file so onSuccess/onFailure callbacks still fire.
  */
-export function runInTerminal(options: RunInTerminalOptions): Promise<void> {
+export async function runInTerminal(options: RunInTerminalOptions): Promise<void> {
   const { command, terminalName, cwd, timeoutMs, logName, onSuccess, onFailure } = options;
 
   // Use the real tmpdir path (macOS: /tmp → /private/tmp symlink)
@@ -104,6 +104,12 @@ export function runInTerminal(options: RunInTerminalOptions): Promise<void> {
 
   const terminal = vscode.window.createTerminal({ name: terminalName, cwd });
   terminal.show();
+
+  // Delay sendText to avoid double-echo: if text is sent before the shell finishes
+  // initialising, the PTY echoes it once (pre-prompt) and then the shell echoes it
+  // again after the prompt appears. Waiting ~150 ms lets the shell render its first
+  // prompt before we send the command, so only one echo is visible.
+  await new Promise<void>((r) => setTimeout(r, 150));
 
   // Send as a single line — exactly as if the user pasted it into the terminal.
   // The command and sentinel echo are joined with '; ' so only one line appears.

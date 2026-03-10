@@ -39,14 +39,18 @@ export class AiConfigPanel extends BaseWebviewPanel {
       }
       case 'initProject': {
         await initProject();
-        // Re-send config so the panel loads immediately after init
-        const [config, tags, skills] = await Promise.all([
+        // Re-send both configs so the panel loads immediately after init
+        const [config, tags, skills, reqConfig] = await Promise.all([
           readAIConfig(),
           getAvailableTags(),
           getAvailableSkills(),
+          readRequirementsAIConfig(),
         ]);
         if (config !== undefined) {
           this.post('configData', { config, tags, skills });
+        }
+        if (reqConfig !== undefined) {
+          this.post('requirementsConfigData', { config: reqConfig });
         }
         break;
       }
