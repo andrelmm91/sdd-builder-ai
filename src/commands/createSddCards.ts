@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { getWorkspaceRoot } from '../utils/fileSystem';
 import { getClaudeCliBinary } from '../config/extensionConfig';
-import { readAIConfig } from '../config/aiConfig';
+import { readRequirementsAIConfig } from '../config/aiConfig';
+import { DEFAULT_REQUIREMENTS_AI_CONFIG } from '../config/aiConfigTypes';
 import { SPECS_FOLDER, SPEC_FILE_EXTENSION, IDEALIZATION_FILENAME, PRODUCT_FOLDER } from '../utils/constants';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { isCommandAvailable } from '../utils/shell';
@@ -19,7 +20,11 @@ export async function createSddCards(featureName: string, folderPath: string): P
   }
 
   const idealizationRelativePath = `${PRODUCT_FOLDER}/${featureName}/${IDEALIZATION_FILENAME}`;
-  const prompt = buildCreateSddCardsPrompt(idealizationRelativePath);
+  const reqConfig = await readRequirementsAIConfig();
+  const template = reqConfig?.createSddCardsPromptTemplate ?? DEFAULT_REQUIREMENTS_AI_CONFIG.createSddCardsPromptTemplate;
+  const prompt = template
+    .replace('{idealization_path}', idealizationRelativePath)
+    .replace('{specs_folder}', SPECS_FOLDER);
 
   const tempPromptPath = path.join(root, `.sdd/tmp/create-sdd-cards-${Date.now()}.md`);
   const promptFileUri = vscode.Uri.file(tempPromptPath);
@@ -39,10 +44,9 @@ export async function createSddCards(featureName: string, folderPath: string): P
     // Snapshot existing .sdd.md files before AI call
     const specsBefore = await listSpecFiles(root);
 
-    const aiConfig = await readAIConfig();
     const command = buildCliCommand({
       cliBinary,
-      aiConfig,
+      aiConfig: reqConfig,
       promptArg: `"$(cat '${tempPromptPath}')"`,
     });
 
@@ -86,14 +90,6 @@ export async function createSddCards(featureName: string, folderPath: string): P
       // best-effort cleanup
     }
   }
-}
-
-function buildCreateSddCardsPrompt(idealizationRelativePath: string): string {
-  return (
-    `Create new phases and SDDs in @${SPECS_FOLDER}/ to fulfill the requirements\n` +
-    `in @${idealizationRelativePath} by using skills\n` +
-    `in @.claude/skills/sdd-planner/SKILL.md. Add dependency from the other SDDs if needed.`
-  );
 }
 
 

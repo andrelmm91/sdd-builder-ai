@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-080
 title: Add separate AI config for requirements commands and use configurable prompts
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-2, feature, backend, ai]
@@ -45,8 +45,8 @@ The `AI_CONFIG_FILE` constant (`.sdd/ai-config.json`) already exists in `constan
 ## Acceptance Criteria
 
 ### Automated
-- [ ] `npm run type-check` passes
-- [ ] `npm run build` succeeds
+- [x] `npm run type-check` passes
+- [x] `npm run build` succeeds
 
 ### Manual
 - [ ] AI Config panel shows both "SDD Execution" and "Requirements" configuration sections

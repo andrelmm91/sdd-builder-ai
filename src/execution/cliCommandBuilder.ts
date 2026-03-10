@@ -1,8 +1,8 @@
-import type { AIConfig } from '../config/aiConfigTypes';
+import type { AIConfig, RequirementsAIConfig } from '../config/aiConfigTypes';
 
 export interface CliCommandOptions {
   cliBinary: string;
-  aiConfig?: AIConfig;
+  aiConfig?: AIConfig | RequirementsAIConfig;
   /** Raw argument appended at the end of the command (e.g. `"$(cat 'file')"` or `< "file"`). */
   promptArg: string;
   /** When provided, adds `--print --max-tokens <n>` flags (used by CliRunner for captured output). */

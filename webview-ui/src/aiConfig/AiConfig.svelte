@@ -22,6 +22,14 @@
     prCommandEnabled: boolean;
   }
 
+  interface RequirementsAIConfig {
+    provider: AIProvider;
+    model: string;
+    permissionMode: PermissionMode;
+    idealizePromptTemplate: string;
+    createSddCardsPromptTemplate: string;
+  }
+
   const PROVIDER_OPTIONS: { value: AIProvider; label: string }[] = [
     { value: 'claude', label: 'Claude' },
     { value: 'copilot', label: 'Copilot' },
@@ -61,13 +69,30 @@
   let saveError = $state(false);
   let notInitialized = $state(false);
 
+  // Requirements AI config state
+  let reqProvider = $state<AIProvider>('claude');
+  let reqPermissionMode = $state<PermissionMode>('default');
+  let reqModel = $state<string>('sonnet');
+  let reqIdealizePromptTemplate = $state<string>('');
+  let reqCreateSddCardsPromptTemplate = $state<string>('');
+  let reqSaved = $state(false);
+  let reqSaveError = $state(false);
+
   const permissionOptions = $derived(PERMISSION_MODES[provider]);
   const modelOptions = $derived(MODELS[provider]);
+  const reqPermissionOptions = $derived(PERMISSION_MODES[reqProvider]);
+  const reqModelOptions = $derived(MODELS[reqProvider]);
 
   function onProviderChange(newProvider: AIProvider) {
     provider = newProvider;
     permissionMode = PERMISSION_MODES[newProvider][0].value;
     model = MODELS[newProvider][0];
+  }
+
+  function onReqProviderChange(newProvider: AIProvider) {
+    reqProvider = newProvider;
+    reqPermissionMode = PERMISSION_MODES[newProvider][0].value;
+    reqModel = MODELS[newProvider][0];
   }
 
   function addMapping() {
@@ -102,6 +127,17 @@
     postMessage('saveConfig', config);
   }
 
+  function saveRequirementsConfig() {
+    const config: RequirementsAIConfig = JSON.parse(JSON.stringify({
+      provider: reqProvider,
+      model: reqModel,
+      permissionMode: reqPermissionMode,
+      idealizePromptTemplate: reqIdealizePromptTemplate,
+      createSddCardsPromptTemplate: reqCreateSddCardsPromptTemplate,
+    }));
+    postMessage('saveRequirementsConfig', config);
+  }
+
   /** Bypass Svelte 5 event delegation — attach a real DOM listener. */
   function directClick(node: HTMLElement, handler: () => void) {
     node.addEventListener('click', handler);
@@ -132,11 +168,27 @@
         prCommandEnabled = c.prCommandEnabled;
         availableTags = d.tags;
         availableSkills = d.skills;
+      } else if (msg.type === 'requirementsConfigData') {
+        const d = msg.data as { config: RequirementsAIConfig };
+        const c = d.config;
+        reqProvider = c.provider;
+        reqModel = c.model;
+        reqPermissionMode = c.permissionMode;
+        reqIdealizePromptTemplate = c.idealizePromptTemplate;
+        reqCreateSddCardsPromptTemplate = c.createSddCardsPromptTemplate;
+      } else if (msg.type === 'requirementsSaveConfirmed') {
+        reqSaved = true;
+        reqSaveError = false;
+        setTimeout(() => (reqSaved = false), 2000);
+      } else if (msg.type === 'requirementsSaveError') {
+        reqSaveError = true;
+        setTimeout(() => (reqSaveError = false), 3000);
       } else if (msg.type === 'notInitialized') {
         notInitialized = true;
       }
     });
     postMessage('requestConfig', {});
+    postMessage('requestRequirementsConfig', {});
   });
 </script>
 
@@ -153,6 +205,8 @@
   {/if}
 
   <div class="config-body" class:disabled={notInitialized}>
+    <div class="section-group-heading">SDD Execution</div>
+
     <section class="form-section">
       <label class="field-label" for="provider-select">AI Provider</label>
       <select
@@ -325,6 +379,70 @@
     <div class="save-row">
       <button class="btn-save" class:btn-save-success={saved} class:btn-save-error={saveError} use:directClick={save}>
         {saved ? 'Saved!' : saveError ? 'Error!' : 'Save'}
+      </button>
+    </div>
+
+    <hr class="section-divider" />
+    <div class="section-group-heading">Requirements AI Config</div>
+    <p class="field-hint">Used by <strong>Idealize Requirements</strong> and <strong>Create SDD Cards</strong> commands.</p>
+
+    <section class="form-section">
+      <label class="field-label" for="req-provider-select">AI Provider</label>
+      <select
+        id="req-provider-select"
+        class="form-select"
+        value={reqProvider}
+        onchange={(e) => onReqProviderChange((e.currentTarget as HTMLSelectElement).value as AIProvider)}
+      >
+        {#each PROVIDER_OPTIONS as opt}
+          <option value={opt.value}>{opt.label}</option>
+        {/each}
+      </select>
+    </section>
+
+    <section class="form-section">
+      <label class="field-label" for="req-permission-select">Permission Mode</label>
+      <select id="req-permission-select" class="form-select" bind:value={reqPermissionMode}>
+        {#each reqPermissionOptions as opt}
+          <option value={opt.value}>{opt.label}</option>
+        {/each}
+      </select>
+    </section>
+
+    <section class="form-section">
+      <label class="field-label" for="req-model-select">Model</label>
+      <select id="req-model-select" class="form-select" bind:value={reqModel}>
+        {#each reqModelOptions as m}
+          <option value={m}>{m}</option>
+        {/each}
+      </select>
+    </section>
+
+    <section class="form-section">
+      <label class="field-label" for="req-idealize-textarea">Idealize Prompt Template</label>
+      <textarea
+        id="req-idealize-textarea"
+        class="form-textarea"
+        rows={5}
+        bind:value={reqIdealizePromptTemplate}
+      ></textarea>
+      <p class="field-hint">Use <code>{'{feature_path}'}</code> as a placeholder for the feature file path.</p>
+    </section>
+
+    <section class="form-section">
+      <label class="field-label" for="req-create-sdd-textarea">Create SDD Cards Prompt Template</label>
+      <textarea
+        id="req-create-sdd-textarea"
+        class="form-textarea"
+        rows={5}
+        bind:value={reqCreateSddCardsPromptTemplate}
+      ></textarea>
+      <p class="field-hint">Use <code>{'{idealization_path}'}</code> and <code>{'{specs_folder}'}</code> as placeholders.</p>
+    </section>
+
+    <div class="save-row">
+      <button class="btn-save" class:btn-save-success={reqSaved} class:btn-save-error={reqSaveError} use:directClick={saveRequirementsConfig}>
+        {reqSaved ? 'Saved!' : reqSaveError ? 'Error!' : 'Save Requirements Config'}
       </button>
     </div>
   </div>
@@ -572,4 +690,17 @@
   .btn-save:hover { background: var(--vscode-button-hoverBackground); }
   .btn-save-success { background: #2ea043 !important; }
   .btn-save-error { background: var(--vscode-inputValidation-errorBackground, #be1100) !important; }
+
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--vscode-panel-border);
+    margin: 8px 0;
+  }
+
+  .section-group-heading {
+    font-weight: 700;
+    font-size: 1em;
+    color: var(--vscode-foreground);
+    margin-bottom: 4px;
+  }
 </style>

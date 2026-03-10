@@ -3,7 +3,8 @@ import * as path from 'path';
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
 import { getWorkspaceRoot } from '../utils/fileSystem';
 import { getClaudeCliBinary } from '../config/extensionConfig';
-import { readAIConfig } from '../config/aiConfig';
+import { readRequirementsAIConfig } from '../config/aiConfig';
+import { DEFAULT_REQUIREMENTS_AI_CONFIG } from '../config/aiConfigTypes';
 import { IDEALIZATION_FILENAME, PRODUCT_FOLDER } from '../utils/constants';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { execCommand } from '../utils/shell';
@@ -20,7 +21,9 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
   }
 
   const featureRelativePath = `${PRODUCT_FOLDER}/${featureName}/${featureName}.md`;
-  const prompt = buildIdealizePrompt(featureRelativePath);
+  const reqConfig = await readRequirementsAIConfig();
+  const template = reqConfig?.idealizePromptTemplate ?? DEFAULT_REQUIREMENTS_AI_CONFIG.idealizePromptTemplate;
+  const prompt = template.replace('{feature_path}', featureRelativePath);
 
   const tempPromptPath = path.join(root, `.sdd/tmp/idealize-${Date.now()}.md`);
   const promptFileUri = vscode.Uri.file(tempPromptPath);
@@ -40,10 +43,9 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
     return;
   }
 
-  const aiConfig = await readAIConfig();
   const command = buildCliCommand({
     cliBinary,
-    aiConfig,
+    aiConfig: reqConfig,
     promptArg: `"$(cat '${tempPromptPath}')"`,
   });
 
@@ -69,16 +71,6 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
   });
 
   try { await vscode.workspace.fs.delete(promptFileUri); } catch { /* ignore */ }
-}
-
-function buildIdealizePrompt(featureRelativePath: string): string {
-  return (
-    `Based on the following feature description, acceptance criteria and notes\n` +
-    `in @${featureRelativePath}, create a new markdown file\n` +
-    `(named idealization.md) in the same folder with a concise idealization of this feature.\n` +
-    `Make sure to include all the important information and recommendations.\n` +
-    `The idealization should be clear and easy to understand for the development team.`
-  );
 }
 
 

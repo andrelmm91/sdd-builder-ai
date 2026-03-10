@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import { readWorkspaceFile, writeWorkspaceFile, getWorkspaceRoot } from '../utils/fileSystem';
 import { CONFIG_FILE, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
-import { DEFAULT_AI_CONFIG } from './aiConfigTypes';
-import type { AIConfig } from './aiConfigTypes';
+import { DEFAULT_AI_CONFIG, DEFAULT_REQUIREMENTS_AI_CONFIG } from './aiConfigTypes';
+import type { AIConfig, RequirementsAIConfig } from './aiConfigTypes';
 import { listAvailableSkills } from '../execution/skillsLoader';
 
 export async function readAIConfig(): Promise<AIConfig | undefined> {
@@ -42,6 +42,40 @@ export async function writeAIConfig(config: AIConfig): Promise<void> {
     }
   }
   existing['ai'] = config;
+  await writeWorkspaceFile(CONFIG_FILE, JSON.stringify(existing, null, 2));
+}
+
+export async function readRequirementsAIConfig(): Promise<RequirementsAIConfig | undefined> {
+  const content = await readWorkspaceFile(CONFIG_FILE);
+  if (!content) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(content) as { requirementsAi?: Partial<RequirementsAIConfig> };
+    const req = parsed.requirementsAi ?? {};
+    return {
+      provider: req.provider ?? DEFAULT_REQUIREMENTS_AI_CONFIG.provider,
+      model: req.model ?? DEFAULT_REQUIREMENTS_AI_CONFIG.model,
+      permissionMode: req.permissionMode ?? DEFAULT_REQUIREMENTS_AI_CONFIG.permissionMode,
+      idealizePromptTemplate: req.idealizePromptTemplate ?? DEFAULT_REQUIREMENTS_AI_CONFIG.idealizePromptTemplate,
+      createSddCardsPromptTemplate: req.createSddCardsPromptTemplate ?? DEFAULT_REQUIREMENTS_AI_CONFIG.createSddCardsPromptTemplate,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+export async function writeRequirementsAIConfig(config: RequirementsAIConfig): Promise<void> {
+  const content = await readWorkspaceFile(CONFIG_FILE);
+  let existing: Record<string, unknown> = {};
+  if (content) {
+    try {
+      existing = JSON.parse(content) as Record<string, unknown>;
+    } catch {
+      // keep existing as empty
+    }
+  }
+  existing['requirementsAi'] = config;
   await writeWorkspaceFile(CONFIG_FILE, JSON.stringify(existing, null, 2));
 }
 

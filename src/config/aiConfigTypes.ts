@@ -52,3 +52,31 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   prCommand: DEFAULT_PR_COMMAND,
   prCommandEnabled: false,
 };
+
+export interface RequirementsAIConfig {
+  provider: AIProvider;
+  model: string;
+  permissionMode: PermissionMode;
+  idealizePromptTemplate: string;
+  createSddCardsPromptTemplate: string;
+}
+
+export const DEFAULT_IDEALIZE_PROMPT =
+  'Based on the following feature description, acceptance criteria and notes\n' +
+  'in @{feature_path}, create a new markdown file\n' +
+  '(named idealization.md) in the same folder with a concise idealization of this feature.\n' +
+  'Make sure to include all the important information and recommendations.\n' +
+  'The idealization should be clear and easy to understand for the development team.';
+
+export const DEFAULT_CREATE_SDD_CARDS_PROMPT =
+  'Create new phases and SDDs in @{specs_folder}/ to fulfill the requirements\n' +
+  'in @{idealization_path} by using skills\n' +
+  'in @.claude/skills/sdd-planner/SKILL.md. Add dependency from the other SDDs if needed.';
+
+export const DEFAULT_REQUIREMENTS_AI_CONFIG: RequirementsAIConfig = {
+  provider: 'claude',
+  model: 'sonnet',
+  permissionMode: 'default',
+  idealizePromptTemplate: DEFAULT_IDEALIZE_PROMPT,
+  createSddCardsPromptTemplate: DEFAULT_CREATE_SDD_CARDS_PROMPT,
+};
