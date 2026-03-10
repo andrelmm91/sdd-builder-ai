@@ -144,7 +144,7 @@
     const formData: FormData = JSON.parse(JSON.stringify({
       spec_id: specId,
       title: title.trim(),
-      status,
+      status: mode === 'create' ? 'draft' : status,
       priority,
       complexity,
       tags,
@@ -210,7 +210,7 @@
     <div class="field-row">
       <div class="field">
         <label for="status">Status</label>
-        <select id="status" bind:value={status}>
+        <select id="status" bind:value={status} disabled={mode === 'create'}>
           {#each ['draft','ready','in_progress','review','done'] as s}
             <option value={s}>{s}</option>
           {/each}

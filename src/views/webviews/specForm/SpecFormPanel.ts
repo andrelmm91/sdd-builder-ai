@@ -180,7 +180,7 @@ function serializeSpecDocument(f: FormData): string {
     status: f.status,
     priority: f.priority,
     complexity: f.complexity,
-    tags: f.tags,
+    tags: Array.isArray(f.tags) ? f.tags : [],
     relevant_files: f.relevant_files,
     must_not_touch: f.must_not_touch,
     depends_on: f.depends_on,
@@ -217,7 +217,7 @@ function serializeSpecDocument(f: FormData): string {
   if (f.examples) addSection('Examples', f.examples);
 
   const body = sections.join('\n');
-  return serializeFrontmatter(frontmatterData, body);
+  return serializeFrontmatter(frontmatterData, body, ['tags']);
 }
 
 function slugify(title: string): string {

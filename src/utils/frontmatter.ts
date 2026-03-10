@@ -1,4 +1,4 @@
-import { parse as yamlParse, stringify as yamlStringify } from 'yaml';
+import { parse as yamlParse, stringify as yamlStringify, Document, YAMLSeq } from 'yaml';
 
 export interface ParseResult {
   data: Record<string, unknown>;
@@ -41,9 +41,26 @@ export function parseFrontmatter(content: string): ParseResult {
 
 /**
  * Converts an object back to YAML frontmatter + markdown body.
+ * Keys listed in `flowArrayKeys` are serialized as YAML inline flow sequences (e.g. `tags: [a, b]`).
  */
-export function serializeFrontmatter(data: Record<string, unknown>, body: string): string {
-  const yaml = yamlStringify(data).trimEnd();
+export function serializeFrontmatter(
+  data: Record<string, unknown>,
+  body: string,
+  flowArrayKeys: string[] = [],
+): string {
+  let yaml: string;
+  if (flowArrayKeys.length > 0) {
+    const doc = new Document(data);
+    for (const key of flowArrayKeys) {
+      const node = doc.get(key, true);
+      if (node instanceof YAMLSeq) {
+        node.flow = true;
+      }
+    }
+    yaml = String(doc).trimEnd();
+  } else {
+    yaml = yamlStringify(data).trimEnd();
+  }
   const separator = body.length > 0 ? '\n\n' : '';
   return `---\n${yaml}\n---${separator}${body}`;
 }

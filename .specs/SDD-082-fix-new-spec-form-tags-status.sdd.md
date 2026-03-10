@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-082
 title: Fix new spec form — tags serialize as inline array and status locked to draft
-status: draft
+status: done
 priority: high
 complexity: low
 tags: [phase-2, bugfix, fullstack]
