@@ -66,6 +66,7 @@
         totalTokens = d.totalTokens ?? 0;
       }
     });
+    postMessage('refresh', {});
   });
 
   function openSpec(specId: string) {

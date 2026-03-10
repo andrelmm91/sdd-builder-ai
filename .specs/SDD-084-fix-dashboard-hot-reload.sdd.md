@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-084
 title: Fix dashboard hot-reload for manually added SDD spec files
-status: draft
+status: done
 priority: medium
 complexity: low
 tags: [phase-2, bugfix, backend]
