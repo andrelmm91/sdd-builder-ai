@@ -206,7 +206,9 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
           await updateSpecStatus(uri, content, 'ready');
           doRefresh();
         } catch {
-          // best-effort revert
+          vscode.window.showErrorMessage(
+            `${specId} execution failed and the spec status could not be reverted — please manually set it back to "ready".`
+          );
         }
 
         vscode.window.showErrorMessage(`${specId} execution failed: ${message}`);

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { parseSpec } from '../specs/parser';
+import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
 import type { BulkExecutionItem, BulkExecutionState } from './types';
 
 export class BulkExecutionManager {
@@ -111,6 +112,23 @@ export class BulkExecutionManager {
         this.items[i] = { ...this.items[i], status: success ? 'completed' : 'failed' };
       } catch {
         this.items[i] = { ...this.items[i], status: 'failed' };
+        // If executeFn threw without reverting the spec status, attempt a best-effort revert here.
+        const fp = this.filePaths.get(this.items[i].specId);
+        if (fp) {
+          try {
+            const uri = vscode.Uri.file(fp);
+            const bytes = await vscode.workspace.fs.readFile(uri);
+            const content = Buffer.from(bytes).toString('utf8');
+            const { data, body } = parseFrontmatter(content);
+            if (data['status'] === 'in_progress') {
+              data['status'] = 'ready';
+              const updated = serializeFrontmatter(data, body);
+              await vscode.workspace.fs.writeFile(uri, Buffer.from(updated, 'utf8'));
+            }
+          } catch {
+            // best-effort revert
+          }
+        }
       }
       this.fireStateChange();
 
