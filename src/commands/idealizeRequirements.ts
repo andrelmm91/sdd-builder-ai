@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as cp from 'child_process';
 import * as path from 'path';
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
 import { getWorkspaceRoot } from '../utils/fileSystem';
@@ -9,6 +8,7 @@ import { IDEALIZATION_FILENAME, PRODUCT_FOLDER } from '../utils/constants';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { execCommand } from '../utils/shell';
 import { buildCliCommand } from '../execution/cliCommandBuilder';
+import { runInTerminal } from '../execution/processSpawner';
 
 const IDEALIZATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -47,86 +47,28 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
     promptArg: `"$(cat '${tempPromptPath}')"`,
   });
 
-  await runInTerminal(command, loginShell, root, featureName, async () => {
-    try {
-      await postValidate(root, featureName, folderPath);
-      vscode.window.showInformationMessage(`SDD: Idealization complete for "${featureName}".`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      vscode.window.showErrorMessage(`SDD: Post-validation failed — ${message}`);
-    }
+  await runInTerminal({
+    command,
+    terminalName: `SDD: Idealize ${featureName}`,
+    cwd: root,
+    timeoutMs: IDEALIZATION_TIMEOUT_MS,
+    onSuccess: async () => {
+      try {
+        await postValidate(root, featureName, folderPath);
+        vscode.window.showInformationMessage(`SDD: Idealization complete for "${featureName}".`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`SDD: Post-validation failed — ${message}`);
+      }
+    },
+    onFailure: (exitCode) => {
+      vscode.window.showErrorMessage(
+        `SDD: Idealization failed — AI CLI exited with code ${exitCode ?? 'unknown'}`,
+      );
+    },
   });
 
   try { await vscode.workspace.fs.delete(promptFileUri); } catch { /* ignore */ }
-}
-
-function runInTerminal(
-  command: string,
-  loginShell: string,
-  cwd: string,
-  featureName: string,
-  onSuccess: () => Promise<void>,
-): Promise<void> {
-  return new Promise<void>((resolve) => {
-    const writeEmitter = new vscode.EventEmitter<string>();
-    const closeEmitter = new vscode.EventEmitter<number | void>();
-
-    const pty: vscode.Pseudoterminal = {
-      onDidWrite: writeEmitter.event,
-      onDidClose: closeEmitter.event,
-      open: () => {
-        // Spawn via the user's login shell so the full PATH (nvm, homebrew, etc.) is available
-        const child = cp.spawn(loginShell, ['-l', '-c', command], { cwd });
-
-        const timeout = setTimeout(() => {
-          child.kill('SIGTERM');
-          writeEmitter.fire('\r\n[SDD] Idealization timed out.\r\n');
-          closeEmitter.fire(1);
-        }, IDEALIZATION_TIMEOUT_MS);
-
-        const onData = (chunk: Buffer | string) => {
-          writeEmitter.fire(chunk.toString().replace(/\n/g, '\r\n'));
-        };
-
-        child.stdout?.on('data', onData);
-        child.stderr?.on('data', onData);
-
-        child.on('close', (code) => {
-          clearTimeout(timeout);
-          writeEmitter.fire(`\r\n[SDD] Process exited with code ${code}.\r\n`);
-          closeEmitter.fire(code ?? 1);
-        });
-
-        child.on('error', (err) => {
-          clearTimeout(timeout);
-          writeEmitter.fire(`\r\n[SDD] Error: ${err.message}\r\n`);
-          closeEmitter.fire(1);
-        });
-      },
-      close: () => { /* user closed the terminal — no cleanup needed */ },
-    };
-
-    const terminal = vscode.window.createTerminal({
-      name: `SDD: Idealize ${featureName}`,
-      pty,
-    });
-    terminal.show();
-
-    closeEmitter.event(async (exitCode) => {
-      // Do NOT dispose the terminal here — VS Code keeps it visible ("Process exited")
-      // so the user can read the AI output before closing it themselves.
-      writeEmitter.dispose();
-      closeEmitter.dispose();
-      if (exitCode === 0) {
-        await onSuccess();
-      } else {
-        vscode.window.showErrorMessage(
-          `SDD: Idealization failed — AI CLI exited with code ${exitCode ?? 'unknown'}`,
-        );
-      }
-      resolve();
-    });
-  });
 }
 
 function buildIdealizePrompt(featureRelativePath: string): string {

@@ -18,10 +18,10 @@ export function buildCliCommand(options: CliCommandOptions): string {
   const provider = aiConfig?.provider ?? 'claude';
 
   if (provider === 'copilot') {
-    const parts = ['gh', 'copilot'];
+    const parts = ['gh', 'copilot', 'suggest'];
     if (aiConfig?.model) parts.push('--model', aiConfig.model);
     if (aiConfig?.permissionMode === 'yolo') parts.push('--yolo');
-    parts.push(promptArg);
+    parts.push('-p', promptArg);
     return parts.join(' ');
   }
 

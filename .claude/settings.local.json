@@ -9,7 +9,8 @@
       "Bash(npx:*)",
       "Bash(xargs wc:*)",
       "Bash(python3:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git stash:*)"
     ]
   }
 }

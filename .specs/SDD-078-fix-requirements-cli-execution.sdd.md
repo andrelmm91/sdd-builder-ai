@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-078
 title: Fix requirements CLI execution to use same terminal pattern as SDD execution
-status: draft
+status: done
 priority: critical
 complexity: medium
 tags: [phase-2, bugfix, backend, ai]
@@ -46,8 +46,8 @@ The SDD execution flow (`executeSpec.ts` + `cliRunner.ts`) works correctly becau
 ## Acceptance Criteria
 
 ### Automated
-- [ ] `npm run type-check` passes
-- [ ] `npm run build` succeeds
+- [x] `npm run type-check` passes
+- [x] `npm run build` succeeds
 
 ### Manual
 - [ ] "Idealize Requirements" with Claude provider shows output in VS Code terminal and creates `idealization.md`

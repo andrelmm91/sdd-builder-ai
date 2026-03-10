@@ -7,7 +7,7 @@ import { SPECS_FOLDER, SPEC_FILE_EXTENSION, IDEALIZATION_FILENAME, PRODUCT_FOLDE
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { isCommandAvailable } from '../utils/shell';
 import { buildCliCommand } from '../execution/cliCommandBuilder';
-import { spawnWithCancellation } from '../execution/processSpawner';
+import { runInTerminal } from '../execution/processSpawner';
 
 const SDD_CARDS_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -18,61 +18,40 @@ export async function createSddCards(featureName: string, folderPath: string): P
     return;
   }
 
-  await vscode.window.withProgress(
-    {
-      location: vscode.ProgressLocation.Notification,
-      title: `Creating SDD cards for ${featureName}...`,
-      cancellable: true,
-    },
-    async (progress, token) => {
-      progress.report({ message: 'Preparing prompt...' });
+  const idealizationRelativePath = `${PRODUCT_FOLDER}/${featureName}/${IDEALIZATION_FILENAME}`;
+  const prompt = buildCreateSddCardsPrompt(idealizationRelativePath);
 
-      // Snapshot existing .sdd.md files before AI call
-      const specsBefore = await listSpecFiles(root);
+  const tempPromptPath = path.join(root, `.sdd/tmp/create-sdd-cards-${Date.now()}.md`);
+  const promptFileUri = vscode.Uri.file(tempPromptPath);
+  await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(tempPromptPath)));
+  await vscode.workspace.fs.writeFile(promptFileUri, new TextEncoder().encode(prompt));
 
-      const idealizationRelativePath = `${PRODUCT_FOLDER}/${featureName}/${IDEALIZATION_FILENAME}`;
-      const prompt = buildCreateSddCardsPrompt(idealizationRelativePath);
+  try {
+    const cliBinary = getClaudeCliBinary();
+    const available = await isCommandAvailable(cliBinary);
+    if (!available) {
+      vscode.window.showErrorMessage(
+        `SDD: AI CLI not found: "${cliBinary}". Install it or update sdd.claudeCliBinary in settings.`,
+      );
+      return;
+    }
 
-      const tempPromptFile = `.sdd/tmp/create-sdd-cards-${Date.now()}.md`;
-      const promptFileUri = vscode.Uri.file(path.join(root, tempPromptFile));
-      await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(promptFileUri.fsPath)));
-      await vscode.workspace.fs.writeFile(promptFileUri, new TextEncoder().encode(prompt));
+    // Snapshot existing .sdd.md files before AI call
+    const specsBefore = await listSpecFiles(root);
 
-      try {
-        const cliBinary = getClaudeCliBinary();
-        const available = await isCommandAvailable(cliBinary);
-        if (!available) {
-          vscode.window.showErrorMessage(
-            `SDD: AI CLI not found: "${cliBinary}". Install it or update sdd.claudeCliBinary in settings.`,
-          );
-          return;
-        }
+    const aiConfig = await readAIConfig();
+    const command = buildCliCommand({
+      cliBinary,
+      aiConfig,
+      promptArg: `"$(cat '${tempPromptPath}')"`,
+    });
 
-        if (token.isCancellationRequested) return;
-
-        progress.report({ message: 'Running AI...' });
-
-        const aiConfig = await readAIConfig();
-        const command = buildCliCommand({
-          cliBinary,
-          aiConfig,
-          promptArg: `"$(cat '${promptFileUri.fsPath}')"`,
-        });
-
-        const result = await spawnWithCancellation(command, root, token, SDD_CARDS_TIMEOUT_MS);
-
-        if (token.isCancellationRequested) return;
-
-        if (!result.success) {
-          vscode.window.showErrorMessage(
-            `SDD: SDD card creation failed — ${result.error ?? 'AI CLI returned an error'}`,
-          );
-          return;
-        }
-
-        progress.report({ message: 'Validating output...' });
-
-        // Detect newly created spec files
+    await runInTerminal({
+      command,
+      terminalName: `SDD: Create Cards ${featureName}`,
+      cwd: root,
+      timeoutMs: SDD_CARDS_TIMEOUT_MS,
+      onSuccess: async () => {
         const specsAfter = await listSpecFiles(root);
         const newSpecs = specsAfter.filter((f) => !specsBefore.includes(f));
 
@@ -83,7 +62,6 @@ export async function createSddCards(featureName: string, folderPath: string): P
           return;
         }
 
-        // Update statuses to "SDD Created"
         const folderUri = vscode.Uri.file(folderPath);
         const idealizationUri = vscode.Uri.joinPath(folderUri, IDEALIZATION_FILENAME);
         const featureFileUri = vscode.Uri.joinPath(folderUri, `${featureName}.md`);
@@ -94,15 +72,20 @@ export async function createSddCards(featureName: string, folderPath: string): P
         vscode.window.showInformationMessage(
           `SDD: Created ${newSpecs.length} spec file${newSpecs.length !== 1 ? 's' : ''} for "${featureName}".`,
         );
-      } finally {
-        try {
-          await vscode.workspace.fs.delete(promptFileUri);
-        } catch {
-          // best-effort cleanup
-        }
-      }
-    },
-  );
+      },
+      onFailure: () => {
+        vscode.window.showErrorMessage(
+          `SDD: SDD card creation failed — AI CLI exited with an error. Check the terminal output.`,
+        );
+      },
+    });
+  } finally {
+    try {
+      await vscode.workspace.fs.delete(promptFileUri);
+    } catch {
+      // best-effort cleanup
+    }
+  }
 }
 
 function buildCreateSddCardsPrompt(idealizationRelativePath: string): string {
