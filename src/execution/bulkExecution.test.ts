@@ -302,6 +302,38 @@ describe('BulkExecutionManager', () => {
       expect(executeFn).toHaveBeenCalledTimes(1);
     });
 
+    it('runs specs in ascending numerical order regardless of insertion order', async () => {
+      await addReadySpec('SDD-003');
+      await addReadySpec('SDD-001');
+      await addReadySpec('SDD-002');
+
+      const order: string[] = [];
+      const executeFn = vi.fn(async (specId: string) => {
+        order.push(specId);
+        return true;
+      });
+
+      await BulkExecutionManager.getInstance().executeAll(executeFn);
+
+      expect(order).toEqual(['SDD-001', 'SDD-002', 'SDD-003']);
+    });
+
+    it('sorts alpha suffix after numeric when numeric parts are equal', async () => {
+      await addReadySpec('SDD-001b');
+      await addReadySpec('SDD-001a');
+      await addReadySpec('SDD-002');
+
+      const order: string[] = [];
+      const executeFn = vi.fn(async (specId: string) => {
+        order.push(specId);
+        return true;
+      });
+
+      await BulkExecutionManager.getInstance().executeAll(executeFn);
+
+      expect(order).toEqual(['SDD-001a', 'SDD-001b', 'SDD-002']);
+    });
+
     it('does not start if already running', async () => {
       await addReadySpec('SDD-001');
       const manager = BulkExecutionManager.getInstance() as unknown as { isRunning: boolean };

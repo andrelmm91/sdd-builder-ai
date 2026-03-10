@@ -95,6 +95,17 @@ export class BulkExecutionManager {
   async executeAll(executeFn: (specId: string) => Promise<boolean>): Promise<void> {
     if (this.isRunning || this.items.length === 0) return;
 
+    this.items.sort((a, b) => {
+      const parse = (specId: string) => {
+        const suffix = specId.replace(/^[^-]+-/, '');
+        const m = suffix.match(/^(\d+)(.*)/);
+        return { num: m ? parseInt(m[1], 10) : 0, alpha: m ? m[2] : suffix };
+      };
+      const pa = parse(a.specId);
+      const pb = parse(b.specId);
+      return pa.num !== pb.num ? pa.num - pb.num : pa.alpha.localeCompare(pb.alpha);
+    });
+
     this.isRunning = true;
     this.cancelled = false;
     this.currentIndex = 0;

@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-085
-title: Fix bulk execution to run specs in numerical ID order
-status: draft
+title: Fix bulk execution to run specs in numerical and alphabetical ID order
+status: done
 priority: medium
 complexity: low
 tags: [phase-2, bugfix, backend]
