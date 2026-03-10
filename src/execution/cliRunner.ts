@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
-import * as cp from 'child_process';
+import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { writeWorkspaceFile, fileExists, getWorkspaceRoot } from '../utils/fileSystem';
 import { isCommandAvailable } from '../utils/shell';
@@ -8,9 +10,10 @@ import type { ExecutionConfig, ExecutionResult, ExecutionRunner } from './types'
 import type { AIConfig } from '../config/aiConfigTypes';
 import { DEFAULT_PRE_PROMPT } from '../config/aiConfigTypes';
 import { getSkillsPath } from './skillsLoader';
-import { SPECS_FOLDER } from '../utils/constants';
+import { SPECS_FOLDER, EXECUTIONS_FOLDER } from '../utils/constants';
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const SENTINEL_POLL_MS = 500;
 
 /** Wraps a string in single quotes, escaping any internal single quotes. */
 function sq(str: string): string {
@@ -25,7 +28,7 @@ const TOKEN_PATTERN =
 
 export class CliRunner implements ExecutionRunner {
   private _running = false;
-  private _process: cp.ChildProcess | null = null;
+  private _terminal: vscode.Terminal | null = null;
   private _aborted = false;
 
   isRunning(): boolean {
@@ -34,9 +37,9 @@ export class CliRunner implements ExecutionRunner {
 
   abort(): void {
     this._aborted = true;
-    if (this._process) {
-      this._process.kill('SIGTERM');
-      this._process = null;
+    if (this._terminal) {
+      // Send Ctrl+C to interrupt the running process inside the real terminal
+      this._terminal.sendText('\x03', false);
     }
     this._running = false;
   }
@@ -58,6 +61,14 @@ export class CliRunner implements ExecutionRunner {
 
     const specId = spec.frontmatter.spec_id;
     const contextFile = `.sdd/context-${specId}.md`;
+    // Unique temp-file paths so concurrent executions don't collide
+    const ts = Date.now();
+    const sentinel = path.join(os.tmpdir(), `sdd-${specId}-${ts}.sentinel`);
+    // Persistent log: .sdd/executions/<specId>/exec-<ts>.log (kept after execution for auditing)
+    const root2 = getWorkspaceRoot();
+    const persistentLogDir = root2 ? path.join(root2, EXECUTIONS_FOLDER, specId) : os.tmpdir();
+    fsSync.mkdirSync(persistentLogDir, { recursive: true });
+    const logFile = path.join(persistentLogDir, `exec-${ts}.log`);
 
     try {
       // Pre-flight: ensure claude CLI is available
@@ -79,104 +90,63 @@ export class CliRunner implements ExecutionRunner {
 
       const command = await this._buildCommand(spec, config, aiConfig, specFilePath);
 
-      // Collect output chunks both for capture and terminal display
-      const outputChunks: string[] = [];
+      // Wrap the command so that:
+      //   • `tee` captures stdout+stderr to a log file (for token parsing)
+      //   • `set -o pipefail` makes $? reflect the original command's exit code, not tee's
+      //   • A sentinel file is written with the exit code once the pipeline finishes
+      // When the sentinel file appears, the log file is guaranteed to be fully flushed.
+      const wrappedCommand =
+        `set -o pipefail; ${command} 2>&1 | tee ${sq(logFile)}; echo $? > ${sq(sentinel)}`;
 
-      // SDD-026 compliance note: The VS Code Terminal API is used via a Pseudoterminal
-      // for user-visible output. The underlying process is spawned with child_process
-      // because the stable VS Code Terminal API does not expose an output-capture stream
-      // (vscode.window.onDidWriteTerminalData is a proposed API). This hybrid approach
-      // satisfies the spec's intent — all terminal display goes through VS Code — while
-      // enabling programmatic result capture for token counting and log storage.
-      await new Promise<void>((resolve, reject) => {
-        const writeEmitter = new vscode.EventEmitter<string>();
-        const closeEmitter = new vscode.EventEmitter<number | void>();
-
-        const pty: vscode.Pseudoterminal = {
-          onDidWrite: writeEmitter.event,
-          onDidClose: closeEmitter.event,
-          open: () => {
-            // Show the exact command being run so failures are diagnosable
-            writeEmitter.fire(`[SDD] Running: ${command}\r\n\r\n`);
-
-            // Use the user's login shell so PATH includes nvm, homebrew, etc.
-            const userShell = process.env.SHELL || '/bin/zsh';
-            const child = cp.spawn(userShell, ['-l', '-c', command], {
-              cwd: root,
-              // Explicitly ignore stdin so tools like `claude --print` don't
-              // hang waiting for an open pipe to close (which manifests as a
-              // SIGTERM exit code 143 in non-interactive environments).
-              stdio: ['ignore', 'pipe', 'pipe'],
-            });
-            this._process = child;
-
-            const timeout = setTimeout(() => {
-              child.kill('SIGTERM');
-              writeEmitter.fire('\r\n[SDD] Execution timed out.\r\n');
-              closeEmitter.fire(1);
-            }, config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-
-            const onData = (chunk: Buffer | string) => {
-              const text = chunk.toString();
-              outputChunks.push(text);
-              // Convert LF → CRLF for terminal display
-              writeEmitter.fire(text.replace(/\n/g, '\r\n'));
-            };
-
-            child.stdout?.on('data', onData);
-            child.stderr?.on('data', onData);
-
-            child.on('close', (code) => {
-              clearTimeout(timeout);
-              this._process = null;
-              writeEmitter.fire(`\r\n[SDD] Process exited with code ${code}.\r\n`);
-              closeEmitter.fire(code ?? 0);
-            });
-
-            child.on('error', (err) => {
-              clearTimeout(timeout);
-              this._process = null;
-              writeEmitter.fire(`\r\n[SDD] Error: ${err.message}\r\n`);
-              closeEmitter.fire(1);
-            });
-          },
-          close: () => {
-            if (this._process) {
-              this._process.kill('SIGTERM');
-              this._process = null;
-            }
-          },
-        };
-
-        const terminal = vscode.window.createTerminal({
-          name: `SDD: ${specId}`,
-          pty,
-        });
-        terminal.show();
-
-        closeEmitter.event((exitCode) => {
-          writeEmitter.dispose();
-          closeEmitter.dispose();
-          // Do NOT dispose the terminal — keep it visible so the user can
-          // read the output. VS Code will mark it as "[terminated]" automatically.
-          if (typeof exitCode === 'number' && exitCode !== 0 && !this._aborted) {
-            reject(new Error(`Process exited with code ${exitCode}`));
-          } else {
-            resolve();
-          }
-        });
+      // Create a REAL VS Code terminal so Claude sees a genuine PTY.
+      // With a real PTY, plan/ask modes work interactively — the user can type responses
+      // exactly as if they had pasted the command into their own terminal session.
+      const terminal = vscode.window.createTerminal({
+        name: `SDD: ${specId}`,
+        cwd: root,
       });
+      this._terminal = terminal;
+      terminal.show();
+      terminal.sendText(wrappedCommand);
 
-      const output = outputChunks.join('');
-      const { tokensIn, tokensOut } = parseTokenUsage(output);
+      // Block until the sentinel file signals completion (or timeout / abort)
+      await this._waitForCompletion(sentinel, config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+
+      // Read exit code written by the shell's `echo $?`
+      let exitCode = 0;
+      try {
+        exitCode = parseInt((await fs.readFile(sentinel, 'utf8')).trim(), 10);
+      } catch {
+        // Missing on abort or timeout — treat as failure only when not aborted
+      }
+
+      // Give tee a moment to flush any buffered tail bytes before reading the log
+      await new Promise<void>((r) => setTimeout(r, 150));
+      const capturedOutput = await fs.readFile(logFile, 'utf8').catch(() => '');
+
+      const { tokensIn, tokensOut } = parseTokenUsage(capturedOutput);
       const duration = Date.now() - startTime;
 
-      return { success: true, output, tokensIn, tokensOut, duration };
+      if (exitCode !== 0 && !this._aborted) {
+        return {
+          success: false,
+          output: capturedOutput,
+          tokensIn,
+          tokensOut,
+          duration,
+          error: `Process exited with code ${exitCode}`,
+        };
+      }
+
+      return { success: true, output: capturedOutput, tokensIn, tokensOut, duration };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return this._fail(startTime, message);
     } finally {
       this._running = false;
+      this._terminal = null;
+      // Clean up sentinel only; logFile is persisted to .sdd/executions/<specId>/
+      await fs.unlink(sentinel).catch(() => {});
       // Clean up temp context file
       try {
         const root = getWorkspaceRoot();
@@ -190,6 +160,41 @@ export class CliRunner implements ExecutionRunner {
         // best-effort cleanup — do not mask the original result
       }
     }
+  }
+
+  /**
+   * Polls every SENTINEL_POLL_MS for the sentinel file to appear.
+   * Resolves when found, rejects on timeout, and resolves immediately when aborted.
+   */
+  private _waitForCompletion(sentinel: string, timeoutMs: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const poll = setInterval(async () => {
+        if (this._aborted) {
+          clearInterval(poll);
+          clearTimeout(timeoutHandle);
+          resolve();
+          return;
+        }
+        try {
+          await fs.access(sentinel);
+          // Sentinel exists → the wrapped command has finished
+          clearInterval(poll);
+          clearTimeout(timeoutHandle);
+          resolve();
+        } catch {
+          // Not yet present — keep polling
+        }
+      }, SENTINEL_POLL_MS);
+
+      const timeoutHandle = setTimeout(() => {
+        clearInterval(poll);
+        // Interrupt whatever is running in the terminal
+        if (this._terminal) {
+          this._terminal.sendText('\x03', false);
+        }
+        reject(new Error('Execution timed out'));
+      }, timeoutMs);
+    });
   }
 
   private async _buildCommand(
@@ -247,7 +252,9 @@ export class CliRunner implements ExecutionRunner {
       promptParts.push(`After completion run: \`${cmd}\``);
     }
 
-    const prompt = promptParts.join(' ');
+    // Normalize newlines to spaces so the shell argument never triggers readline's
+    // `quote>` continuation prompt when the command is sent to the terminal.
+    const prompt = promptParts.join(' ').replace(/\n+/g, ' ').trim();
 
     // --- Build CLI command ---
 
@@ -260,13 +267,14 @@ export class CliRunner implements ExecutionRunner {
     }
 
     // Claude provider
-    const parts = [config.claudeCliBinary, '--print'];
+    // No --print flag: the terminal is a real PTY so Claude runs interactively,
+    // which is required for plan/ask modes to display prompts and receive user input.
+    const parts = [config.claudeCliBinary];
     if (aiConfig?.model) parts.push('--model', aiConfig.model);
     if (aiConfig?.permissionMode === 'dangerously-skip-permissions') {
       parts.push('--dangerously-skip-permissions');
-    } else if (aiConfig?.permissionMode === 'plan') {
-      parts.push('--plan');
     }
+    // plan mode: no extra flag — Claude's default interactive mode asks for tool approval
     parts.push(sq(prompt));
     return parts.join(' ');
   }

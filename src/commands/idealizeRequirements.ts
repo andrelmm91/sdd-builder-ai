@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
 import { getWorkspaceRoot } from '../utils/fileSystem';
 import { getClaudeCliBinary } from '../config/extensionConfig';
@@ -7,7 +6,7 @@ import { readRequirementsAIConfig } from '../config/aiConfig';
 import { DEFAULT_REQUIREMENTS_AI_CONFIG } from '../config/aiConfigTypes';
 import { IDEALIZATION_FILENAME, PRODUCT_FOLDER } from '../utils/constants';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
-import { execCommand } from '../utils/shell';
+import { isCommandAvailable } from '../utils/shell';
 import { buildCliCommand } from '../execution/cliCommandBuilder';
 import { runInTerminal } from '../execution/processSpawner';
 
@@ -25,35 +24,23 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
   const template = reqConfig?.idealizePromptTemplate ?? DEFAULT_REQUIREMENTS_AI_CONFIG.idealizePromptTemplate;
   const prompt = template.replace('{feature_path}', featureRelativePath);
 
-  const tempPromptPath = path.join(root, `.sdd/tmp/idealize-${Date.now()}.md`);
-  const promptFileUri = vscode.Uri.file(tempPromptPath);
-  await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(tempPromptPath)));
-  await vscode.workspace.fs.writeFile(promptFileUri, new TextEncoder().encode(prompt));
-
-  const loginShell = process.env.SHELL || '/bin/zsh';
   const cliBinary = getClaudeCliBinary();
-
-  // Check availability using the login shell so we respect the user's full PATH
-  const which = await execCommand(`${loginShell} -l -c "which ${cliBinary}"`, { timeout: 5000 });
-  if (!which.success) {
+  const available = await isCommandAvailable(cliBinary);
+  if (!available) {
     vscode.window.showErrorMessage(
       `SDD: AI CLI not found: "${cliBinary}". Install it or update sdd.claudeCliBinary in settings.`,
     );
-    try { await vscode.workspace.fs.delete(promptFileUri); } catch { /* ignore */ }
     return;
   }
 
-  const command = buildCliCommand({
-    cliBinary,
-    aiConfig: reqConfig,
-    promptArg: `"$(cat '${tempPromptPath}')"`,
-  });
+  const command = buildCliCommand({ cliBinary, aiConfig: reqConfig, prompt });
 
   await runInTerminal({
     command,
     terminalName: `SDD: Idealize ${featureName}`,
     cwd: root,
     timeoutMs: IDEALIZATION_TIMEOUT_MS,
+    logName: featureName,
     onSuccess: async () => {
       try {
         await postValidate(root, featureName, folderPath);
@@ -69,8 +56,6 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
       );
     },
   });
-
-  try { await vscode.workspace.fs.delete(promptFileUri); } catch { /* ignore */ }
 }
 
 

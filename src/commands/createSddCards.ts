@@ -26,70 +26,54 @@ export async function createSddCards(featureName: string, folderPath: string): P
     .replace('{idealization_path}', idealizationRelativePath)
     .replace('{specs_folder}', SPECS_FOLDER);
 
-  const tempPromptPath = path.join(root, `.sdd/tmp/create-sdd-cards-${Date.now()}.md`);
-  const promptFileUri = vscode.Uri.file(tempPromptPath);
-  await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(tempPromptPath)));
-  await vscode.workspace.fs.writeFile(promptFileUri, new TextEncoder().encode(prompt));
-
-  try {
-    const cliBinary = getClaudeCliBinary();
-    const available = await isCommandAvailable(cliBinary);
-    if (!available) {
-      vscode.window.showErrorMessage(
-        `SDD: AI CLI not found: "${cliBinary}". Install it or update sdd.claudeCliBinary in settings.`,
-      );
-      return;
-    }
-
-    // Snapshot existing .sdd.md files before AI call
-    const specsBefore = await listSpecFiles(root);
-
-    const command = buildCliCommand({
-      cliBinary,
-      aiConfig: reqConfig,
-      promptArg: `"$(cat '${tempPromptPath}')"`,
-    });
-
-    await runInTerminal({
-      command,
-      terminalName: `SDD: Create Cards ${featureName}`,
-      cwd: root,
-      timeoutMs: SDD_CARDS_TIMEOUT_MS,
-      onSuccess: async () => {
-        const specsAfter = await listSpecFiles(root);
-        const newSpecs = specsAfter.filter((f) => !specsBefore.includes(f));
-
-        if (newSpecs.length === 0) {
-          vscode.window.showErrorMessage(
-            `SDD: No .sdd.md files were created in ${SPECS_FOLDER}. Check the AI output.`,
-          );
-          return;
-        }
-
-        const folderUri = vscode.Uri.file(folderPath);
-        const idealizationUri = vscode.Uri.joinPath(folderUri, IDEALIZATION_FILENAME);
-        const featureFileUri = vscode.Uri.joinPath(folderUri, `${featureName}.md`);
-
-        await updateFeatureStatus(idealizationUri, 'SDD Created');
-        await updateFeatureStatus(featureFileUri, 'SDD Created');
-
-        vscode.window.showInformationMessage(
-          `SDD: Created ${newSpecs.length} spec file${newSpecs.length !== 1 ? 's' : ''} for "${featureName}".`,
-        );
-      },
-      onFailure: () => {
-        vscode.window.showErrorMessage(
-          `SDD: SDD card creation failed — AI CLI exited with an error. Check the terminal output.`,
-        );
-      },
-    });
-  } finally {
-    try {
-      await vscode.workspace.fs.delete(promptFileUri);
-    } catch {
-      // best-effort cleanup
-    }
+  const cliBinary = getClaudeCliBinary();
+  const available = await isCommandAvailable(cliBinary);
+  if (!available) {
+    vscode.window.showErrorMessage(
+      `SDD: AI CLI not found: "${cliBinary}". Install it or update sdd.claudeCliBinary in settings.`,
+    );
+    return;
   }
+
+  // Snapshot existing .sdd.md files before AI call
+  const specsBefore = await listSpecFiles(root);
+
+  const command = buildCliCommand({ cliBinary, aiConfig: reqConfig, prompt });
+
+  await runInTerminal({
+    command,
+    terminalName: `SDD: Create Cards ${featureName}`,
+    cwd: root,
+    timeoutMs: SDD_CARDS_TIMEOUT_MS,
+    logName: featureName,
+    onSuccess: async () => {
+      const specsAfter = await listSpecFiles(root);
+      const newSpecs = specsAfter.filter((f) => !specsBefore.includes(f));
+
+      if (newSpecs.length === 0) {
+        vscode.window.showErrorMessage(
+          `SDD: No .sdd.md files were created in ${SPECS_FOLDER}. Check the AI output.`,
+        );
+        return;
+      }
+
+      const folderUri = vscode.Uri.file(folderPath);
+      const idealizationUri = vscode.Uri.joinPath(folderUri, IDEALIZATION_FILENAME);
+      const featureFileUri = vscode.Uri.joinPath(folderUri, `${featureName}.md`);
+
+      await updateFeatureStatus(idealizationUri, 'SDD Created');
+      await updateFeatureStatus(featureFileUri, 'SDD Created');
+
+      vscode.window.showInformationMessage(
+        `SDD: Created ${newSpecs.length} spec file${newSpecs.length !== 1 ? 's' : ''} for "${featureName}".`,
+      );
+    },
+    onFailure: () => {
+      vscode.window.showErrorMessage(
+        `SDD: SDD card creation failed — AI CLI exited with an error. Check the terminal output.`,
+      );
+    },
+  });
 }
 
 

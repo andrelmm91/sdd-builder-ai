@@ -67,6 +67,10 @@
     showFeatureForm = false;
   }
 
+  function openAiConfig() {
+    postMessage('openAiConfig', {});
+  }
+
   function statusBadgeClass(status: FeatureStatus): string {
     if (status === 'Feature Backlog') return 'badge-low';
     if (status === 'Idealization In Review') return 'badge-medium';
@@ -76,8 +80,9 @@
 
 <div class="board-root">
   <header class="board-header">
-    <span class="board-title">Requirement Board</span>
     <button class="btn-new" onclick={addNewFeature}>Add New Feature +</button>
+    <button class="btn-new btn-config" onclick={openAiConfig}>⚙ AI Config</button>
+    <span class="board-title">Requirement Board</span>
   </header>
 
   {#if showFeatureForm}
@@ -170,7 +175,7 @@
     font-weight: 700;
     font-size: 1.1em;
     white-space: nowrap;
-    flex: 1;
+    margin-left: auto;
   }
 
   .btn-new {
@@ -185,6 +190,12 @@
     white-space: nowrap;
   }
   .btn-new:hover { background: var(--vscode-button-hoverBackground); }
+
+  .btn-config {
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+  }
+  .btn-config:hover { background: var(--vscode-button-secondaryHoverBackground); }
 
   .board {
     display: flex;

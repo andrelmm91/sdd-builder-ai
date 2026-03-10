@@ -62,15 +62,15 @@ export interface RequirementsAIConfig {
 }
 
 export const DEFAULT_IDEALIZE_PROMPT =
-  'Based on the following feature description, acceptance criteria and notes\n' +
-  'in @{feature_path}, create a new markdown file\n' +
-  '(named idealization.md) in the same folder with a concise idealization of this feature.\n' +
-  'Make sure to include all the important information and recommendations.\n' +
+  'Based on the following feature description, acceptance criteria and notes ' +
+  'in @{feature_path}, create a new markdown file ' +
+  '(named idealization.md) in the same folder with a concise idealization of this feature. ' +
+  'Make sure to include all the important information and recommendations. ' +
   'The idealization should be clear and easy to understand for the development team.';
 
 export const DEFAULT_CREATE_SDD_CARDS_PROMPT =
-  'Create new phases and SDDs in @{specs_folder}/ to fulfill the requirements\n' +
-  'in @{idealization_path} by using skills\n' +
+  'Create new phases and SDDs in @{specs_folder}/ to fulfill the requirements ' +
+  'in @{idealization_path} by using skills ' +
   'in @.claude/skills/sdd-planner/SKILL.md. Add dependency from the other SDDs if needed.';
 
 export const DEFAULT_REQUIREMENTS_AI_CONFIG: RequirementsAIConfig = {

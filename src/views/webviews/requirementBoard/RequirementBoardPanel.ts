@@ -37,6 +37,9 @@ export class RequirementBoardPanel extends BaseWebviewPanel {
         await vscode.commands.executeCommand('sdd.createSddCards', featureName, folderPath);
         break;
       }
+      case 'openAiConfig':
+        await vscode.commands.executeCommand('sdd.openAiConfig');
+        break;
       case 'requestRequirementBoardData':
         await this.sendFeatureCards();
         break;

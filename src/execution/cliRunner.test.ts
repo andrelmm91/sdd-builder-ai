@@ -3,38 +3,23 @@ import type { SpecDocument } from '../specs/types';
 import type { ExecutionConfig } from './types';
 
 // Mock VS Code API
-vi.mock('vscode', () => {
-  const EventEmitter = class {
-    private _listeners: ((data: unknown) => void)[] = [];
-    get event() {
-      return (listener: (data: unknown) => void) => {
-        this._listeners.push(listener);
-        return { dispose: () => {} };
-      };
-    }
-    fire(data: unknown) {
-      this._listeners.forEach((l) => l(data));
-    }
-    dispose() {
-      this._listeners = [];
-    }
-  };
-
-  return {
-    EventEmitter,
-    window: {
-      createTerminal: vi.fn().mockReturnValue({ show: vi.fn(), dispose: vi.fn() }),
+vi.mock('vscode', () => ({
+  window: {
+    createTerminal: vi.fn().mockReturnValue({
+      show: vi.fn(),
+      sendText: vi.fn(),
+      dispose: vi.fn(),
+    }),
+  },
+  workspace: {
+    fs: {
+      delete: vi.fn().mockResolvedValue(undefined),
     },
-    workspace: {
-      fs: {
-        delete: vi.fn().mockResolvedValue(undefined),
-      },
-    },
-    Uri: {
-      file: (p: string) => ({ fsPath: p }),
-    },
-  };
-});
+  },
+  Uri: {
+    file: (p: string) => ({ fsPath: p }),
+  },
+}));
 
 vi.mock('../utils/fileSystem', () => ({
   writeWorkspaceFile: vi.fn().mockResolvedValue(undefined),
@@ -46,19 +31,13 @@ vi.mock('../utils/shell', () => ({
   isCommandAvailable: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock('child_process', () => ({
-  spawn: vi.fn(),
-}));
-
 import { CliRunner, parseTokenUsage } from './cliRunner';
 import { isCommandAvailable } from '../utils/shell';
 import { writeWorkspaceFile, getWorkspaceRoot } from '../utils/fileSystem';
-import * as cp from 'child_process';
 
 const mockIsCommandAvailable = vi.mocked(isCommandAvailable);
 const mockWriteWorkspaceFile = vi.mocked(writeWorkspaceFile);
 const mockGetWorkspaceRoot = vi.mocked(getWorkspaceRoot);
-const mockSpawn = vi.mocked(cp.spawn);
 
 function makeSpec(overrides: Partial<SpecDocument> = {}): SpecDocument {
   return {
@@ -95,22 +74,6 @@ function makeConfig(overrides: Partial<ExecutionConfig> = {}): ExecutionConfig {
     autoValidate: true,
     ...overrides,
   };
-}
-
-function makeChildProcessMock(exitCode = 0): cp.ChildProcess {
-  const EventEmitter = require('events').EventEmitter;
-  const child = new EventEmitter() as unknown as cp.ChildProcess;
-
-  (child as unknown as Record<string, unknown>).stdout = new EventEmitter();
-  (child as unknown as Record<string, unknown>).stderr = new EventEmitter();
-  (child as unknown as Record<string, unknown>).kill = vi.fn();
-
-  // Emit close asynchronously so the PTY open callback can set up listeners first
-  setTimeout(() => {
-    child.emit('close', exitCode);
-  }, 0);
-
-  return child;
 }
 
 beforeEach(() => {
@@ -157,15 +120,15 @@ describe('CliRunner.abort', () => {
     expect(runner.isRunning()).toBe(false);
   });
 
-  it('kills the child process if one is running', () => {
+  it('sends Ctrl+C to the terminal if one is active', () => {
     const runner = new CliRunner();
-    const mockKill = vi.fn();
-    (runner as unknown as Record<string, unknown>)['_process'] = { kill: mockKill };
+    const mockSendText = vi.fn();
+    (runner as unknown as Record<string, unknown>)['_terminal'] = { sendText: mockSendText };
     (runner as unknown as Record<string, unknown>)['_running'] = true;
 
     runner.abort();
 
-    expect(mockKill).toHaveBeenCalledWith('SIGTERM');
+    expect(mockSendText).toHaveBeenCalledWith('\x03', false);
     expect(runner.isRunning()).toBe(false);
   });
 });
@@ -206,11 +169,6 @@ describe('CliRunner.execute', () => {
   });
 
   it('writes context to the correct temp file path', async () => {
-    const child = makeChildProcessMock(0);
-    mockSpawn.mockReturnValue(child);
-
-    // We need to intercept the PTY open call. Since VS Code mock just calls open immediately
-    // via the terminal creation, we need a more integrated test. We test indirectly here.
     mockGetWorkspaceRoot.mockReturnValue(undefined); // stop early
     const runner = new CliRunner();
 
@@ -223,7 +181,6 @@ describe('CliRunner.execute', () => {
   });
 
   it('constructs correct Claude CLI command from config', async () => {
-    // Verify command construction by checking spawn is called with the right shell command
     mockGetWorkspaceRoot.mockReturnValue(undefined); // stop after writing
     const runner = new CliRunner();
     const config = makeConfig({ claudeCliBinary: 'my-claude', maxTokens: 50000 });
