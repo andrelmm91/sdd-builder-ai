@@ -22,7 +22,9 @@ export async function createSddCards(featureName: string, folderPath: string): P
   const idealizationRelativePath = `${PRODUCT_FOLDER}/${featureName}/${IDEALIZATION_FILENAME}`;
   const reqConfig = await readRequirementsAIConfig();
   const template = reqConfig?.createSddCardsPromptTemplate ?? DEFAULT_REQUIREMENTS_AI_CONFIG.createSddCardsPromptTemplate;
+  const filePrefix = (reqConfig?.provider ?? 'claude') === 'copilot' ? '#file:' : '@';
   const prompt = template
+    .replace(/{file_prefix}/g, filePrefix)
     .replace('{idealization_path}', idealizationRelativePath)
     .replace('{specs_folder}', SPECS_FOLDER);
 

@@ -22,7 +22,10 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
   const featureRelativePath = `${PRODUCT_FOLDER}/${featureName}/${featureName}.md`;
   const reqConfig = await readRequirementsAIConfig();
   const template = reqConfig?.idealizePromptTemplate ?? DEFAULT_REQUIREMENTS_AI_CONFIG.idealizePromptTemplate;
-  const prompt = template.replace('{feature_path}', featureRelativePath);
+  const filePrefix = (reqConfig?.provider ?? 'claude') === 'copilot' ? '#file:' : '@';
+  const prompt = template
+    .replace(/{file_prefix}/g, filePrefix)
+    .replace('{feature_path}', featureRelativePath);
 
   const cliBinary = getClaudeCliBinary();
   const available = await isCommandAvailable(cliBinary);
