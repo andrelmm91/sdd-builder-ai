@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-081
 title: Remove git diff capture from execution records and changed-files display from kanban
-status: draft
+status: done
 priority: medium
 complexity: low
 tags: [phase-2, bugfix, frontend, backend]

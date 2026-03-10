@@ -1,5 +1,4 @@
-import { execCommand, isCommandAvailable } from '../utils/shell';
-import { writeWorkspaceFile, readWorkspaceFile, listFiles, getWorkspaceRoot } from '../utils/fileSystem';
+import { writeWorkspaceFile, readWorkspaceFile, listFiles } from '../utils/fileSystem';
 import { EXECUTIONS_FOLDER, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
 import { parseFrontmatter } from '../utils/frontmatter';
 import { estimateCost } from './budgetEnforcer';
@@ -20,36 +19,7 @@ export async function captureResults(
   executionResult: ExecutionResult,
 ): Promise<CaptureResult> {
   const mustNotTouch = await loadMustNotTouch(specId);
-  const root = getWorkspaceRoot();
-
-  // Capture git diff info
-  let changedFiles: string[] = [];
-  let diffContent = '';
-
-  const gitAvailable = await isCommandAvailable('git');
-  if (gitAvailable && root) {
-    const nameStatusResult = await execCommand('git diff --name-status', { cwd: root });
-    if (nameStatusResult.success) {
-      changedFiles = nameStatusResult.stdout
-        .split('\n')
-        .map((line) => {
-          const [status, ...pathParts] = line.trim().split('\t');
-          return status && pathParts.length ? `${status.trim()} ${pathParts.join('\t').trim()}` : '';
-        })
-        .filter(Boolean);
-    } else {
-      console.warn('[SDD] git diff --name-status failed:', nameStatusResult.stderr);
-    }
-
-    const diffResult = await execCommand('git diff', { cwd: root });
-    if (diffResult.success) {
-      diffContent = diffResult.stdout;
-    } else {
-      console.warn('[SDD] git diff failed:', diffResult.stderr);
-    }
-  } else {
-    console.warn('[SDD] git is not available — skipping diff capture');
-  }
+  const changedFiles: string[] = [];
 
   // Detect scope violations
   const scopeViolation =
@@ -102,10 +72,6 @@ export async function captureResults(
     '--- Output ---',
     executionResult.output,
   ];
-
-  if (diffContent) {
-    logLines.push('', '--- Git Diff ---', diffContent);
-  }
 
   if (executionResult.error) {
     logLines.push('', '--- Error ---', executionResult.error);
