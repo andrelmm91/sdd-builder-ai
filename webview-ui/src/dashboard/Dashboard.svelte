@@ -22,7 +22,6 @@
 
   let specs: SpecData[] = $state([]);
   let executions: ExecutionRecord[] = $state([]);
-  let totalCost = $state(0);
   let totalTokens = $state(0);
 
   const STATUS_ORDER = ['draft', 'ready', 'in_progress', 'review', 'done'];
@@ -40,8 +39,8 @@
 
   const recentActivity = $derived(executions.slice(0, 10));
 
-  const avgCost = $derived(
-    executions.length > 0 ? totalCost / Math.max(1, new Set(executions.map((e) => e.specId)).size) : 0,
+  const avgTokensPerExecution = $derived(
+    executions.length > 0 ? Math.round(totalTokens / executions.length) : 0,
   );
 
   const phaseBreakdown = $derived.by(() => {
@@ -60,12 +59,10 @@
         const d = msg.data as typeof msg.data & {
           specs: SpecData[];
           executions: ExecutionRecord[];
-          totalCost: number;
           totalTokens: number;
         };
         specs = d.specs ?? [];
         executions = d.executions ?? [];
-        totalCost = d.totalCost ?? 0;
         totalTokens = d.totalTokens ?? 0;
       }
     });
@@ -87,9 +84,6 @@
     return new Date(iso).toLocaleString();
   }
 
-  function formatCost(cost: number) {
-    return `$${cost.toFixed(4)}`;
-  }
 </script>
 
 <main>
@@ -153,9 +147,8 @@
     <h2>Cost Summary</h2>
     <dl class="stats">
       <dt>Total tokens</dt><dd>{totalTokens.toLocaleString()}</dd>
-      <dt>Total cost</dt><dd>{formatCost(totalCost)}</dd>
       <dt>Executions</dt><dd>{executions.length}</dd>
-      <dt>Avg cost / spec</dt><dd>{formatCost(avgCost)}</dd>
+      <dt>Avg tokens / execution</dt><dd>{avgTokensPerExecution.toLocaleString()}</dd>
     </dl>
   </section>
 
@@ -171,7 +164,7 @@
             <th>Spec</th>
             <th>Time</th>
             <th>Status</th>
-            <th>Cost</th>
+            <th>Tokens</th>
           </tr>
         </thead>
         <tbody>
@@ -186,7 +179,7 @@
               <td>
                 <span class="badge exec-{exec.status}">{exec.status}</span>
               </td>
-              <td>{formatCost(exec.cost)}</td>
+              <td>{(exec.tokensIn + exec.tokensOut).toLocaleString()}</td>
             </tr>
           {/each}
         </tbody>

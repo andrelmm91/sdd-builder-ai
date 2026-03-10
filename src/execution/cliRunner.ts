@@ -17,9 +17,11 @@ function sq(str: string): string {
   return `'${str.replace(/'/g, "'\\''")}'`;
 }
 
-// Matches token usage lines emitted by claude CLI:
-//   "Tokens: in=1234 out=5678"  OR  "tokens_input: 1234 / tokens_output: 5678"
-const TOKEN_PATTERN = /(?:tokens?[\s:_]*in(?:put)?[\s=:]*(\d+).*?out(?:put)?[\s=:]*(\d+))/i;
+// Matches token usage lines emitted by claude CLI. Supports two formats:
+//   "Tokens: in=1234 out=5678"        (older claude CLI)
+//   "tokens_input: 1234 / tokens_output: 5678"  (newer claude CLI / copilot)
+const TOKEN_PATTERN =
+  /Tokens:\s*in=(\d+)\s+out=(\d+)|tokens_input:\s*(\d+)\s*\/\s*tokens_output:\s*(\d+)/i;
 
 export class CliRunner implements ExecutionRunner {
   private _running = false;
@@ -75,7 +77,6 @@ export class CliRunner implements ExecutionRunner {
         return this._fail(startTime, 'No workspace folder is open');
       }
 
-      const contextFilePath = path.join(root, contextFile);
       const command = await this._buildCommand(spec, config, aiConfig, specFilePath);
 
       // Collect output chunks both for capture and terminal display
@@ -279,7 +280,10 @@ export class CliRunner implements ExecutionRunner {
 export function parseTokenUsage(output: string): { tokensIn: number; tokensOut: number } {
   const match = TOKEN_PATTERN.exec(output);
   if (match) {
-    return { tokensIn: parseInt(match[1], 10), tokensOut: parseInt(match[2], 10) };
+    // Group 1+2: "Tokens: in=N out=M" format; Group 3+4: "tokens_input: N / tokens_output: M" format
+    const tokensIn = parseInt(match[1] ?? match[3], 10);
+    const tokensOut = parseInt(match[2] ?? match[4], 10);
+    return { tokensIn, tokensOut };
   }
   return { tokensIn: 0, tokensOut: 0 };
 }

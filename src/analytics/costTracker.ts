@@ -6,10 +6,9 @@ import type { ExecutionRecord } from '../execution/types';
 export interface CostSummary {
   totalTokensIn: number;
   totalTokensOut: number;
-  totalCost: number;
   specCount: number;
-  averageCostPerSpec: number;
   executionCount: number;
+  averageTokensPerExecution: number;
 }
 
 export interface SpecCostEntry {
@@ -43,26 +42,25 @@ export async function getProjectCostSummary(): Promise<CostSummary> {
     return {
       totalTokensIn: 0,
       totalTokensOut: 0,
-      totalCost: 0,
       specCount: 0,
-      averageCostPerSpec: 0,
       executionCount: 0,
+      averageTokensPerExecution: 0,
     };
   }
 
   const specIds = new Set(records.map((r) => r.specId));
   const totalTokensIn = records.reduce((sum, r) => sum + r.tokensIn, 0);
   const totalTokensOut = records.reduce((sum, r) => sum + r.tokensOut, 0);
-  const totalCost = records.reduce((sum, r) => sum + r.cost, 0);
   const specCount = specIds.size;
+  const executionCount = records.length;
+  const totalTokens = totalTokensIn + totalTokensOut;
 
   return {
     totalTokensIn,
     totalTokensOut,
-    totalCost,
     specCount,
-    averageCostPerSpec: totalCost / specCount,
-    executionCount: records.length,
+    executionCount,
+    averageTokensPerExecution: Math.round(totalTokens / executionCount),
   };
 }
 

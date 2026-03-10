@@ -45,10 +45,9 @@ describe('getProjectCostSummary', () => {
 
     expect(summary.totalTokensIn).toBe(0);
     expect(summary.totalTokensOut).toBe(0);
-    expect(summary.totalCost).toBe(0);
     expect(summary.specCount).toBe(0);
-    expect(summary.averageCostPerSpec).toBe(0);
     expect(summary.executionCount).toBe(0);
+    expect(summary.averageTokensPerExecution).toBe(0);
   });
 
   it('aggregates multiple execution records correctly', async () => {
@@ -66,10 +65,10 @@ describe('getProjectCostSummary', () => {
 
     expect(summary.totalTokensIn).toBe(6000);
     expect(summary.totalTokensOut).toBe(2300);
-    expect(summary.totalCost).toBeCloseTo(0.06);
     expect(summary.specCount).toBe(2);
-    expect(summary.averageCostPerSpec).toBeCloseTo(0.03);
     expect(summary.executionCount).toBe(3);
+    // (6000+2300) / 3 = 2766.67 → rounded to 2767
+    expect(summary.averageTokensPerExecution).toBe(2767);
   });
 
   it('skips malformed records', async () => {
@@ -84,7 +83,6 @@ describe('getProjectCostSummary', () => {
     const summary = await getProjectCostSummary();
 
     expect(summary.executionCount).toBe(1);
-    expect(summary.totalCost).toBeCloseTo(0.05);
   });
 });
 

@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-083
 title: Refactor cost summary to token-only display and fix token retrieval
-status: draft
+status: done
 priority: high
 complexity: medium
 tags: [phase-2, bugfix, frontend, backend]
