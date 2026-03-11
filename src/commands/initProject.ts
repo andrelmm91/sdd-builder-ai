@@ -15,6 +15,7 @@ import {
   EXECUTIONS_FOLDER,
   REVIEWS_FOLDER,
   SKILLS_FOLDER,
+  PRODUCT_FOLDER,
 } from '../utils/constants';
 
 const CONVENTIONS_TEMPLATE = `# Project Conventions
@@ -60,6 +61,7 @@ export async function initProject(): Promise<void> {
   await createWorkspaceDirectory(EXECUTIONS_FOLDER);
   await createWorkspaceDirectory(REVIEWS_FOLDER);
   await createWorkspaceDirectory(SKILLS_FOLDER);
+  await createWorkspaceDirectory(PRODUCT_FOLDER);
 
   // Write config and scaffold files (project config first, then AI defaults)
   await writeProjectConfig(getDefaultProjectConfig());
