@@ -19,7 +19,7 @@ Currently, features go directly from informal requirements to SDD specs. This fe
 
 ### Phase 1: Feature Capture (Feature Backlog)
 
-1. User clicks **"Open Requirement Board"** button in the Dashboard (next to "Open Kanban Board").
+1. User clicks **"Open Requirement Board"** button in the Dashboard (next to "Open SDD Kanban").
 2. A new kanban board opens with three columns: **Feature Backlog** | **Idealization In Review** | **SDD Created**.
 3. User clicks **"Add New Feature"** → a form opens with fields:
    - **Feature Name** (required) — used as folder name and card title
@@ -125,7 +125,7 @@ date: 2026-03-09
 | Component | Change |
 |-----------|--------|
 | `DashboardPanel.ts` | Add `openRequirementBoard` message handler |
-| Dashboard Svelte UI | Add "Open Requirement Board" button next to "Open Kanban Board" |
+| Dashboard Svelte UI | Add "Open Requirement Board" button next to "Open SDD Kanban" |
 | `extension.ts` | Register `sdd.openRequirementBoard` command |
 | `constants.ts` | Add `PRODUCT_FOLDER = '.sdd/product'` constant |
 

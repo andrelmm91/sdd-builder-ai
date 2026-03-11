@@ -58,7 +58,7 @@ The planner figures out the right order — foundation types first, features nex
 
 **Sidebar tree view** — The SDD sidebar groups all your specs by status (Draft, Ready, In Progress, Review, Done) with quick-action buttons for each state. Right-click any spec for context menu actions.
 
-**Kanban board** — Open `SDD: Open Kanban Board` for a visual 5-column board. Cards show spec ID, title, complexity, priority, and tags. You can drag cards between adjacent valid columns to transition status, filter by ID, title, or tag in real-time, and open AI Config directly from the board header.
+**Kanban board** — Open `SDD: Open SDD Kanban` for a visual 5-column board. Cards show spec ID, title, complexity, priority, and tags. You can drag cards between adjacent valid columns to transition status, filter by ID, title, or tag in real-time, and open AI Config directly from the board header.
 
 **Status bar** — The VS Code status bar always shows a live count of specs in flight (`SDD: N ready, N running`). Click it to jump to the dashboard.
 
@@ -318,7 +318,7 @@ Output: 200 {message: "Reset email sent"}
 | `SDD: Request Changes` | Write feedback → appended to spec Context → status → `ready` for re-execution |
 | `SDD: Reject Spec` | Revert agent changes via `git checkout` → status → `draft` |
 | `SDD: Open AI Config` | Configure provider, model, permission mode, tag-skill mappings, and git/PR commands |
-| `SDD: Open Kanban Board` | Open the 5-column visual kanban board |
+| `SDD: Open SDD Kanban` | Open the 5-column visual kanban board |
 | `SDD: Open Requirement Board` | Open the 3-column feature idealization board |
 | `SDD: Idealize Requirements` | AI-powered idealization of a feature into structured requirements |
 | `SDD: Create SDD Cards` | AI-powered generation of SDD spec files from an idealization |

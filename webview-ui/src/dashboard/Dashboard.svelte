@@ -99,7 +99,7 @@
   <div class="page-header">
     <h1 class="page-title">Builder AI Dashboard</h1>
     <div class="header-actions">
-      <button class="kanban-btn" onclick={openKanban}>Open Kanban Board</button>
+      <button class="kanban-btn" onclick={openKanban}>Open SDD Kanban</button>
       <button class="kanban-btn" onclick={openRequirementBoard}>Open Requirement Board</button>
     </div>
   </div>

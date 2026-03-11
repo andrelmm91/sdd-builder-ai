@@ -31,11 +31,11 @@ All individual components (types, parser, panel, Svelte UI, form, and AI command
   - `sdd.idealizeRequirements` → wired from `src/commands/idealizeRequirements.ts`
   - `sdd.createSddCards` → wired from `src/commands/createSddCards.ts`
 - In `src/views/webviews/dashboard/DashboardPanel.ts`, add a message handler for `openRequirementBoard` that calls `RequirementBoardPanel.createOrShow(this.extensionUri)`
-- In `webview-ui/src/dashboard/Dashboard.svelte`, add an "Open Requirement Board" button next to the existing "Open Kanban Board" button that posts an `openRequirementBoard` message
+- In `webview-ui/src/dashboard/Dashboard.svelte`, add an "Open Requirement Board" button next to the existing "Open SDD Kanban" button that posts an `openRequirementBoard` message
 - Add `sdd.openRequirementBoard` to `package.json` commands contribution if applicable
 
 ### Non-Functional
-- The "Open Requirement Board" button must visually match the "Open Kanban Board" button styling
+- The "Open Requirement Board" button must visually match the "Open SDD Kanban" button styling
 - Importing `RequirementBoardPanel` must not cause circular dependencies
 
 ## Acceptance Criteria
@@ -46,7 +46,7 @@ All individual components (types, parser, panel, Svelte UI, form, and AI command
 - [ ] No circular dependency warnings
 
 ### Manual
-- [ ] "Open Requirement Board" button appears on the Dashboard next to "Open Kanban Board"
+- [ ] "Open Requirement Board" button appears on the Dashboard next to "Open SDD Kanban"
 - [ ] Clicking "Open Requirement Board" opens the RequirementBoardPanel webview
 - [ ] The `sdd.openRequirementBoard` command is executable from the VS Code command palette
 - [ ] The full flow works: add feature → idealize → create SDD cards → cards appear in `.specs/`

@@ -371,7 +371,7 @@ sdd-vscode/
       { "command": "sdd.approveSpec",       "title": "SDD: Approve & Create PR" },
       { "command": "sdd.requestChanges",    "title": "SDD: Request Changes" },
       { "command": "sdd.openDashboard",     "title": "SDD: Open Dashboard" },
-      { "command": "sdd.openKanban",        "title": "SDD: Open Kanban Board" }
+      { "command": "sdd.openKanban",        "title": "SDD: Open SDD Kanban" }
     ],
     "viewsContainers": {
       "activitybar": [
@@ -607,7 +607,7 @@ Builder approves spec
 ### Flow 7: Kanban Board
 
 ```
-Builder clicks "SDD: Open Kanban Board"
+Builder clicks "SDD: Open SDD Kanban"
     │
     ├──▶ Webview panel opens with 5 columns: Draft | Ready | In Progress | Review | Done
     │    Each column lists spec cards containing:

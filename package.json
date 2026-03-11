@@ -80,8 +80,8 @@
         "title": "SDD: Open Dashboard"
       },
       {
-        "command": "sdd.openKanbanBoard",
-        "title": "SDD: Open Kanban Board"
+        "command": "sdd.openSddKanban",
+        "title": "SDD: Open SDD Kanban"
       },
       {
         "command": "sdd.openRequirementBoard",

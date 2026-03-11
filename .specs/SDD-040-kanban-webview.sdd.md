@@ -19,7 +19,7 @@ created: 2026-03-05
 
 ## Context
 
-The kanban board is the primary visual interface for managing spec lifecycle. It opens as a webview panel via "SDD: Open Kanban Board" and shows all specs grouped into 5 status columns. Cards include contextual action buttons so builders can trigger status transitions without leaving the board. A "New Spec +" button in the header opens the Spec Form panel. A search/filter bar lets builders find cards quickly by ID, title, or tag. This is a Pro tier feature.
+The kanban board is the primary visual interface for managing spec lifecycle. It opens as a webview panel via "SDD: Open SDD Kanban" and shows all specs grouped into 5 status columns. Cards include contextual action buttons so builders can trigger status transitions without leaving the board. A "New Spec +" button in the header opens the Spec Form panel. A search/filter bar lets builders find cards quickly by ID, title, or tag. This is a Pro tier feature.
 
 ## Requirements
 
@@ -74,7 +74,7 @@ The kanban board is the primary visual interface for managing spec lifecycle. It
 - [ ] Webview build completes without errors
 
 ### Manual
-- [ ] Kanban board opens via "SDD: Open Kanban Board" command
+- [ ] Kanban board opens via "SDD: Open SDD Kanban" command
 - [ ] All 5 columns render with correct specs
 - [ ] Complexity and priority badges display with correct colors
 - [ ] Search/filter input narrows cards in real-time
