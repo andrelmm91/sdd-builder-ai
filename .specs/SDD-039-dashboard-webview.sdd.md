@@ -26,7 +26,7 @@ The dashboard webview provides a project overview: spec counts by status, comple
 ### Functional
 - `src/views/webviews/dashboard/DashboardPanel.ts` must export:
   - `DashboardPanel` class extending a base webview panel:
-    - Creates/reveals a webview panel with title "SDD Dashboard"
+    - Creates/reveals a webview panel with title "Builder Dashboard"
     - Loads the built Svelte app from `dist/webviews/dashboard/`
     - Sends spec data, execution records, and cost data to the webview via postMessage
     - Handles navigation messages from the webview (e.g., "open spec X")

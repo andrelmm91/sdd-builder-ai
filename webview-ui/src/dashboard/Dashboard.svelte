@@ -97,7 +97,7 @@
 
 <main>
   <div class="page-header">
-    <h1 class="page-title">SDD Dashboard</h1>
+    <h1 class="page-title">Builder Dashboard</h1>
     <div class="header-actions">
       <button class="kanban-btn" onclick={openKanban}>Open Kanban Board</button>
       <button class="kanban-btn" onclick={openRequirementBoard}>Open Requirement Board</button>

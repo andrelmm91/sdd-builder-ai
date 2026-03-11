@@ -28,7 +28,7 @@ export class DashboardPanel extends BaseWebviewPanel {
   }
 
   private constructor(extensionUri: vscode.Uri) {
-    super(extensionUri, 'sddDashboard', 'SDD Dashboard', vscode.ViewColumn.One);
+    super(extensionUri, 'sddDashboard', 'Builder Dashboard', vscode.ViewColumn.One);
     this.setupWatcher();
     void this.sendData();
   }
