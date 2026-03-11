@@ -5,7 +5,6 @@ import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
 import { getWorkspaceRoot, writeWorkspaceFile, readWorkspaceFile } from '../utils/fileSystem';
 import { isCommandAvailable } from '../utils/shell';
 import { validateBudget } from '../execution/budgetEnforcer';
-import { assembleExecutionContext } from '../execution/contextAssembler';
 import { CliRunner } from '../execution/cliRunner';
 import { captureResults } from '../execution/resultCapture';
 import { runPostValidation } from '../execution/postValidation';
@@ -123,15 +122,11 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
 
       let executionResult: Awaited<ReturnType<typeof _runner.execute>> | undefined;
       try {
-        // Assemble context
-        progress.report({ message: 'Assembling context…', increment: 25 });
-        const context = await assembleExecutionContext(spec, { aiConfig });
-
         // Execute via CliRunner
-        progress.report({ message: 'Running CLI…', increment: 20 });
+        progress.report({ message: 'Running CLI…', increment: 45 });
         const root = getWorkspaceRoot();
         const relativeSpecPath = root ? path.relative(root, filePath) : filePath;
-        executionResult = await _runner.execute(spec, context, config, aiConfig, relativeSpecPath);
+        executionResult = await _runner.execute(spec, config, aiConfig, relativeSpecPath);
 
         if (token.isCancellationRequested) {
           // Save partial results then revert status

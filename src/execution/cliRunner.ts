@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
-import { writeWorkspaceFile, fileExists, getWorkspaceRoot } from '../utils/fileSystem';
+import { getWorkspaceRoot } from '../utils/fileSystem';
 import { isCommandAvailable } from '../utils/shell';
 import type { SpecDocument } from '../specs/types';
 import type { ExecutionConfig, ExecutionResult, ExecutionRunner } from './types';
@@ -39,9 +39,8 @@ export class CliRunner implements ExecutionRunner {
 
   async execute(
     spec: SpecDocument,
-    context: string,
     config: ExecutionConfig,
-    aiConfig?: AIConfig,
+    aiConfig?: Partial<AIConfig>,
     specFilePath?: string,
   ): Promise<ExecutionResult> {
     if (this._running) {
@@ -53,9 +52,9 @@ export class CliRunner implements ExecutionRunner {
     const startTime = Date.now();
 
     const specId = spec.frontmatter.spec_id;
-    const contextFile = `.sdd/context-${specId}.md`;
     const ts = Date.now();
     const sentinel = path.join(os.tmpdir(), `sdd-${specId}-${ts}.sentinel`);
+    const logFile = path.join(os.tmpdir(), `sdd-${specId}-${ts}.log`);
 
     try {
       // Pre-flight: ensure claude CLI is available
@@ -67,36 +66,62 @@ export class CliRunner implements ExecutionRunner {
         );
       }
 
-      // Write assembled context to temp file
-      await writeWorkspaceFile(contextFile, context);
-
       const root = getWorkspaceRoot();
       if (!root) {
         return this._fail(startTime, 'No workspace folder is open');
       }
 
-      const command = await this._buildCommand(spec, config, aiConfig, specFilePath);
+      const { command, terminalInput, interactive } = await this._buildCommand(spec, config, aiConfig, specFilePath);
 
-      // Append sentinel write so we can detect when the command finishes.
-      // No tee/pipe — all modes run with direct PTY access so interactive
-      // prompts (plan/ask) work correctly in the terminal.
-      const wrappedCommand = `${command}; echo $? > ${sq(sentinel)}`;
+      // For non-interactive (one-shot) commands, wrap so that:
+      //  1. Output streams to the terminal AND is captured to a log file (via tee).
+      //  2. The sentinel file gets the real exit code of the AI command.
+      // Interactive commands (Claude ask/plan, Copilot default) stay in REPL —
+      // the user signals completion via the "Complete & Close Terminal" button.
+      const wrappedCommand = interactive
+        ? command
+        : `{ ${command}; echo $? > ${sq(sentinel)}; } 2>&1 | tee ${sq(logFile)}`;
 
       // Create a REAL VS Code terminal so Claude sees a genuine PTY.
-      // With a real PTY, plan/ask modes work interactively — the user can type responses
-      // exactly as if they had pasted the command into their own terminal session.
       const terminal = vscode.window.createTerminal({
         name: `SDD: ${specId}`,
         cwd: root,
       });
       this._terminal = terminal;
       terminal.show();
+
+      // Wait for shell to initialize before sending any text.
+      // Without this delay, sendText fires before the PTY is ready and the
+      // command text gets consumed by the shell incorrectly.
+      await new Promise(resolve => setTimeout(resolve, 1000));
       terminal.sendText(wrappedCommand);
 
-      // Block until the sentinel file signals completion (or timeout / abort)
+      // For providers that need the prompt delivered as separate terminal input,
+      // wait for the CLI process to start before sending the prompt.
+      if (terminalInput !== undefined) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        terminal.sendText(terminalInput);
+      }
+
+      if (interactive) {
+        // Interactive modes: show a notification with a button so the user can
+        // signal completion without having to close the terminal manually.
+        vscode.window.showInformationMessage(
+          `SDD: ${specId} is running interactively. Click below when the AI is done.`,
+          'Complete & Close Terminal',
+        ).then(selection => {
+          if (selection && this._terminal) {
+            this._terminal.dispose();
+          }
+        });
+        await this._waitForTerminalClose(config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+        return { success: true, output: '', duration: Date.now() - startTime };
+      }
+
+      // Non-interactive: poll for sentinel file
       await this._waitForCompletion(sentinel, config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
-      // Read exit code written by the shell's `echo $?`
+      // Read exit code written inside the group command
       let exitCode = 0;
       try {
         exitCode = parseInt((await fs.readFile(sentinel, 'utf8')).trim(), 10);
@@ -104,18 +129,26 @@ export class CliRunner implements ExecutionRunner {
         // Missing on abort or timeout — treat as failure only when not aborted
       }
 
+      // Read captured output from the log file
+      let logOutput = '';
+      try {
+        logOutput = await fs.readFile(logFile, 'utf8');
+      } catch {
+        // Log file absent (e.g. aborted early) — not critical
+      }
+
       const duration = Date.now() - startTime;
 
       if (exitCode !== 0 && !this._aborted) {
         return {
           success: false,
-          output: '',
+          output: logOutput,
           duration,
           error: `Process exited with code ${exitCode}`,
         };
       }
 
-      return { success: true, output: '', duration };
+      return { success: true, output: logOutput, duration };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return this._fail(startTime, message);
@@ -123,62 +156,115 @@ export class CliRunner implements ExecutionRunner {
       this._running = false;
       this._terminal = null;
       await fs.unlink(sentinel).catch(() => {});
-      // Clean up temp context file
-      try {
-        const root = getWorkspaceRoot();
-        if (root) {
-          const exists = await fileExists(contextFile);
-          if (exists) {
-            await vscode.workspace.fs.delete(vscode.Uri.file(path.join(root, contextFile)));
-          }
-        }
-      } catch {
-        // best-effort cleanup — do not mask the original result
-      }
+      await fs.unlink(logFile).catch(() => {});
     }
   }
 
   /**
    * Polls every SENTINEL_POLL_MS for the sentinel file to appear.
    * Resolves when found, rejects on timeout, and resolves immediately when aborted.
+   * Also resolves when the terminal closes (handles cases where the sentinel is never
+   * written — e.g. dangerously-skip-permissions mode where the shell may not survive
+   * to execute `echo $?`).
    */
   private _waitForCompletion(sentinel: string, timeoutMs: number): Promise<void> {
     return new Promise((resolve, reject) => {
+      let settled = false;
+
+      const cleanup = () => {
+        clearInterval(poll);
+        clearTimeout(timeoutHandle);
+        terminalCloseDisposable.dispose();
+      };
+
+      const settle = (fn: () => void) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        fn();
+      };
+
       const poll = setInterval(async () => {
         if (this._aborted) {
-          clearInterval(poll);
-          clearTimeout(timeoutHandle);
-          resolve();
+          settle(resolve);
           return;
         }
         try {
           await fs.access(sentinel);
           // Sentinel exists → the wrapped command has finished
-          clearInterval(poll);
-          clearTimeout(timeoutHandle);
-          resolve();
+          settle(resolve);
         } catch {
           // Not yet present — keep polling
         }
       }, SENTINEL_POLL_MS);
 
       const timeoutHandle = setTimeout(() => {
-        clearInterval(poll);
         // Interrupt whatever is running in the terminal
         if (this._terminal) {
           this._terminal.sendText('\x03', false);
         }
-        reject(new Error('Execution timed out'));
+        settle(() => reject(new Error('Execution timed out')));
       }, timeoutMs);
+
+      // Resolve when the terminal closes — this handles the case where the shell
+      // never writes the sentinel (e.g. dangerously-skip-permissions causes the
+      // process to exit in a way that skips the trailing `echo $?`).
+      const terminalCloseDisposable = vscode.window.onDidCloseTerminal((closed) => {
+        if (closed === this._terminal) {
+          settle(resolve);
+        }
+      });
+    });
+  }
+
+  /**
+   * Waits for the terminal to be closed by the user (interactive modes).
+   * Resolves on terminal close or abort, rejects on timeout.
+   */
+  private _waitForTerminalClose(timeoutMs: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+
+      const cleanup = () => {
+        clearInterval(abortPoll);
+        clearTimeout(timeoutHandle);
+        terminalCloseDisposable.dispose();
+      };
+
+      const settle = (fn: () => void) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        fn();
+      };
+
+      const abortPoll = setInterval(() => {
+        if (this._aborted) {
+          settle(resolve);
+        }
+      }, SENTINEL_POLL_MS);
+
+      const timeoutHandle = setTimeout(() => {
+        if (this._terminal) {
+          this._terminal.sendText('\x03', false);
+        }
+        settle(() => reject(new Error('Execution timed out')));
+      }, timeoutMs);
+
+      const terminalCloseDisposable = vscode.window.onDidCloseTerminal((closed) => {
+        if (closed === this._terminal) {
+          settle(resolve);
+        }
+      });
     });
   }
 
   private async _buildCommand(
     spec: SpecDocument,
     config: ExecutionConfig,
-    aiConfig: AIConfig | undefined,
+    aiConfig: Partial<AIConfig> | undefined,
     specFilePath?: string,
-  ): Promise<string> {
+  ): Promise<{ command: string; terminalInput?: string; interactive?: boolean }> {
     const fm = spec.frontmatter;
     const provider = aiConfig?.provider ?? 'claude';
 
@@ -237,22 +323,36 @@ export class CliRunner implements ExecutionRunner {
     if (provider === 'copilot') {
       const parts = ['gh', 'copilot'];
       if (aiConfig?.model) parts.push('--model', aiConfig.model);
-      if (aiConfig?.permissionMode === 'yolo') parts.push('--yolo');
+
+      if (aiConfig?.permissionMode === 'yolo') {
+        // Yolo mode: pass prompt via -p flag for non-interactive batch execution.
+        parts.push('--yolo');
+        parts.push('-p', sq(prompt));
+        return { command: parts.join(' ') };
+      }
+
+      // Default (ask) mode: gh copilot is a TUI that pauses for permission on
+      // each tool use — it must run in interactive mode, just like Claude default.
+      // We pass the prompt via -p so it starts immediately, then wait for the
+      // user to signal completion via the "Complete & Close Terminal" button.
       parts.push('-p', sq(prompt));
-      return parts.join(' ');
+      return { command: parts.join(' '), interactive: true };
     }
 
     // Claude provider
-    // No --print flag: the terminal is a real PTY so Claude runs interactively,
-    // which is required for plan/ask modes to display prompts and receive user input.
     const parts = [config.claudeCliBinary];
     if (aiConfig?.model) parts.push('--model', aiConfig.model);
     if (aiConfig?.permissionMode === 'dangerously-skip-permissions') {
-      parts.push('--dangerously-skip-permissions');
+      // -p (print mode) makes Claude one-shot: execute and exit.
+      // Without it, Claude enters REPL mode and the sentinel never runs.
+      parts.push('-p', '--dangerously-skip-permissions');
     }
-    // plan mode: no extra flag — Claude's default interactive mode asks for tool approval
     parts.push(sq(prompt));
-    return parts.join(' ');
+
+    // Default and plan modes are interactive — Claude stays in REPL,
+    // user approves/denies tools. Sentinel won't work; use terminal close.
+    const interactive = aiConfig?.permissionMode !== 'dangerously-skip-permissions';
+    return { command: parts.join(' '), interactive };
   }
 
   private _fail(startTime: number, error: string): ExecutionResult {

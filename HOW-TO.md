@@ -78,6 +78,16 @@ The planner figures out the right order — foundation types first, features nex
 
 **Bulk execution** — In the Kanban board, use `[+ Bulk]` to queue multiple Ready specs, then `[Execute All]` to run them sequentially. Selected specs are grouped in a visual frame with real-time progress: a loading spinner on the current spec, checkmarks for completed, and X marks for failed. Specs execute in dependency order and cards move through columns as status changes.
 
+### logging
+For non-interactive modes (Claude dangerously-skip-permissions, Copilot yolo), the command is now wrapped as:
+  { <command>; echo $? > sentinel; } 2>&1 | tee /tmp/sdd-<id>.log
+  - tee writes everything to a temp log file and keeps it visible in the terminal
+  - After the sentinel is detected, the log file is read and returned as output
+  - captureResults then gets the real AI output and writes it to .sdd/executions/<id>/exec-NNN.log
+
+  Streaming note: Claude's -p (print mode) buffers output internally — this is a Claude CLI limitation unrelated to our code. The tee wrapper
+   ensures logs are captured regardless. Copilot yolo already streams natively.
+
 ### Review
 
 **Split-view review** — When a spec moves to Review, click it to open a split view: the spec on the left (requirements, acceptance criteria), the multi-file diff on the right, and an execution summary at the bottom (duration, test results, list of changed files).
