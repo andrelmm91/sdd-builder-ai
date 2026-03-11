@@ -45,7 +45,7 @@ export const COPILOT_PERMISSION_MODES: readonly CopilotPermissionMode[] = [
 ] as const;
 
 export const DEFAULT_PRE_PROMPT =
-  'Implement {spec_file}. Update open tasks and status (done) in the spec after completion. Add unit tests if necessary.';
+  'Implement {spec_file}. Update open tasks and status (review) in the spec after completion. Add unit tests if necessary.';
 
 export const DEFAULT_COMMIT_COMMAND = 'git add -A && git commit -m "{spec_id}: {title}"';
 export const DEFAULT_PR_COMMAND = 'gh pr create --title "feat: {title} ({spec_id})" --body "Implements {spec_id}"';
