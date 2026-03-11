@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs/promises';
-import * as fsSync from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { writeWorkspaceFile, fileExists, getWorkspaceRoot } from '../utils/fileSystem';
@@ -10,7 +9,7 @@ import type { ExecutionConfig, ExecutionResult, ExecutionRunner } from './types'
 import type { AIConfig } from '../config/aiConfigTypes';
 import { DEFAULT_PRE_PROMPT } from '../config/aiConfigTypes';
 import { getSkillsPath } from './skillsLoader';
-import { SPECS_FOLDER, EXECUTIONS_FOLDER } from '../utils/constants';
+import { SPECS_FOLDER } from '../utils/constants';
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const SENTINEL_POLL_MS = 500;
@@ -19,12 +18,6 @@ const SENTINEL_POLL_MS = 500;
 function sq(str: string): string {
   return `'${str.replace(/'/g, "'\\''")}'`;
 }
-
-// Matches token usage lines emitted by claude CLI. Supports two formats:
-//   "Tokens: in=1234 out=5678"        (older claude CLI)
-//   "tokens_input: 1234 / tokens_output: 5678"  (newer claude CLI / copilot)
-const TOKEN_PATTERN =
-  /Tokens:\s*in=(\d+)\s+out=(\d+)|tokens_input:\s*(\d+)\s*\/\s*tokens_output:\s*(\d+)/i;
 
 export class CliRunner implements ExecutionRunner {
   private _running = false;
@@ -52,7 +45,7 @@ export class CliRunner implements ExecutionRunner {
     specFilePath?: string,
   ): Promise<ExecutionResult> {
     if (this._running) {
-      return { success: false, output: '', tokensIn: 0, tokensOut: 0, duration: 0, error: 'Already running' };
+      return { success: false, output: '', duration: 0, error: 'Already running' };
     }
 
     this._aborted = false;
@@ -61,14 +54,8 @@ export class CliRunner implements ExecutionRunner {
 
     const specId = spec.frontmatter.spec_id;
     const contextFile = `.sdd/context-${specId}.md`;
-    // Unique temp-file paths so concurrent executions don't collide
     const ts = Date.now();
     const sentinel = path.join(os.tmpdir(), `sdd-${specId}-${ts}.sentinel`);
-    // Persistent log: .sdd/executions/<specId>/exec-<ts>.log (kept after execution for auditing)
-    const root2 = getWorkspaceRoot();
-    const persistentLogDir = root2 ? path.join(root2, EXECUTIONS_FOLDER, specId) : os.tmpdir();
-    fsSync.mkdirSync(persistentLogDir, { recursive: true });
-    const logFile = path.join(persistentLogDir, `exec-${ts}.log`);
 
     try {
       // Pre-flight: ensure claude CLI is available
@@ -90,13 +77,10 @@ export class CliRunner implements ExecutionRunner {
 
       const command = await this._buildCommand(spec, config, aiConfig, specFilePath);
 
-      // Wrap the command so that:
-      //   • `tee` captures stdout+stderr to a log file (for token parsing)
-      //   • `set -o pipefail` makes $? reflect the original command's exit code, not tee's
-      //   • A sentinel file is written with the exit code once the pipeline finishes
-      // When the sentinel file appears, the log file is guaranteed to be fully flushed.
-      const wrappedCommand =
-        `set -o pipefail; ${command} 2>&1 | tee ${sq(logFile)}; echo $? > ${sq(sentinel)}`;
+      // Append sentinel write so we can detect when the command finishes.
+      // No tee/pipe — all modes run with direct PTY access so interactive
+      // prompts (plan/ask) work correctly in the terminal.
+      const wrappedCommand = `${command}; echo $? > ${sq(sentinel)}`;
 
       // Create a REAL VS Code terminal so Claude sees a genuine PTY.
       // With a real PTY, plan/ask modes work interactively — the user can type responses
@@ -120,32 +104,24 @@ export class CliRunner implements ExecutionRunner {
         // Missing on abort or timeout — treat as failure only when not aborted
       }
 
-      // Give tee a moment to flush any buffered tail bytes before reading the log
-      await new Promise<void>((r) => setTimeout(r, 150));
-      const capturedOutput = await fs.readFile(logFile, 'utf8').catch(() => '');
-
-      const { tokensIn, tokensOut } = parseTokenUsage(capturedOutput);
       const duration = Date.now() - startTime;
 
       if (exitCode !== 0 && !this._aborted) {
         return {
           success: false,
-          output: capturedOutput,
-          tokensIn,
-          tokensOut,
+          output: '',
           duration,
           error: `Process exited with code ${exitCode}`,
         };
       }
 
-      return { success: true, output: capturedOutput, tokensIn, tokensOut, duration };
+      return { success: true, output: '', duration };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return this._fail(startTime, message);
     } finally {
       this._running = false;
       this._terminal = null;
-      // Clean up sentinel only; logFile is persisted to .sdd/executions/<specId>/
       await fs.unlink(sentinel).catch(() => {});
       // Clean up temp context file
       try {
@@ -281,17 +257,6 @@ export class CliRunner implements ExecutionRunner {
 
   private _fail(startTime: number, error: string): ExecutionResult {
     this._running = false;
-    return { success: false, output: '', tokensIn: 0, tokensOut: 0, duration: Date.now() - startTime, error };
+    return { success: false, output: '', duration: Date.now() - startTime, error };
   }
-}
-
-export function parseTokenUsage(output: string): { tokensIn: number; tokensOut: number } {
-  const match = TOKEN_PATTERN.exec(output);
-  if (match) {
-    // Group 1+2: "Tokens: in=N out=M" format; Group 3+4: "tokens_input: N / tokens_output: M" format
-    const tokensIn = parseInt(match[1] ?? match[3], 10);
-    const tokensOut = parseInt(match[2] ?? match[4], 10);
-    return { tokensIn, tokensOut };
-  }
-  return { tokensIn: 0, tokensOut: 0 };
 }

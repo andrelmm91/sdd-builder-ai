@@ -31,7 +31,7 @@ vi.mock('../utils/shell', () => ({
   isCommandAvailable: vi.fn().mockResolvedValue(true),
 }));
 
-import { CliRunner, parseTokenUsage } from './cliRunner';
+import { CliRunner } from './cliRunner';
 import { isCommandAvailable } from '../utils/shell';
 import { writeWorkspaceFile, getWorkspaceRoot } from '../utils/fileSystem';
 
@@ -81,24 +81,6 @@ beforeEach(() => {
   mockGetWorkspaceRoot.mockReturnValue('/workspace');
   mockIsCommandAvailable.mockResolvedValue(true);
   mockWriteWorkspaceFile.mockResolvedValue(undefined);
-});
-
-// ---------------------------------------------------------------------------
-// parseTokenUsage
-// ---------------------------------------------------------------------------
-describe('parseTokenUsage', () => {
-  it('returns zero tokens when output has no token info', () => {
-    expect(parseTokenUsage('Some random output')).toEqual({ tokensIn: 0, tokensOut: 0 });
-  });
-
-  it('parses "Tokens: in=1234 out=5678" format', () => {
-    expect(parseTokenUsage('Tokens: in=1234 out=5678')).toEqual({ tokensIn: 1234, tokensOut: 5678 });
-  });
-
-  it('parses case-insensitive token line embedded in output', () => {
-    const output = 'Some output\ntokens: input=500 output=250\nMore output';
-    expect(parseTokenUsage(output)).toEqual({ tokensIn: 500, tokensOut: 250 });
-  });
 });
 
 // ---------------------------------------------------------------------------

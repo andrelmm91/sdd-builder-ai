@@ -64,7 +64,7 @@ The planner figures out the right order — foundation types first, features nex
 
 **Requirement board** — `SDD: Open Requirement Board` provides a three-column board for managing feature ideas through the idealization pipeline (Feature Backlog → Idealization In Review → SDD Created).
 
-**Dashboard** — `SDD: Open Dashboard` gives you a project overview: spec counts by status, completion percentage, recent activity, and token usage charts — so you always know where the project stands. The dashboard hot-reloads when specs are added or modified.
+**Dashboard** — `SDD: Open Dashboard` gives you a project overview: spec counts by status, completion percentage, and recent activity — so you always know where the project stands. The dashboard hot-reloads when specs are added or modified.
 
 ### Execution
 
@@ -80,7 +80,7 @@ The planner figures out the right order — foundation types first, features nex
 
 ### Review
 
-**Split-view review** — When a spec moves to Review, click it to open a split view: the spec on the left (requirements, acceptance criteria), the multi-file diff on the right, and an execution summary at the bottom (tokens, duration, test results, list of changed files).
+**Split-view review** — When a spec moves to Review, click it to open a split view: the spec on the left (requirements, acceptance criteria), the multi-file diff on the right, and an execution summary at the bottom (duration, test results, list of changed files).
 
 Review cards in the Kanban board show a collapsible changed-files list inline — green for added, yellow for modified, red for deleted — so you can triage at a glance without opening the full review. Changed files are persisted in execution records for reliable display.
 
@@ -114,7 +114,7 @@ AI Config is stored in `.sdd/ai-config.json` and version-controlled with your pr
 
 ### Tracking & Estimation
 
-**Token tracking** — Every execution saves a record to `.sdd/executions/{SPEC_ID}/exec-NNN.json` with token usage, duration, status, and the list of changed files. Token usage charts appear in the dashboard, which hot-reloads when specs are added or modified.
+**Execution tracking** — Every execution saves a record to `.sdd/executions/{SPEC_ID}/exec-NNN.json` with duration, status, and the list of changed files. The dashboard hot-reloads when specs are added or modified.
 
 **Scope estimation** — `SDD: Open Dashboard` includes a scope estimate: spec count broken down by complexity (low / medium / high) and grouped by phase or area tag, so you can communicate rough effort before you start executing.
 
@@ -203,7 +203,7 @@ The extension:
 2. Injects post-execution git/PR commands (if enabled in AI Config)
 3. Spawns Claude CLI in a dedicated terminal
 4. Sets spec status to `in_progress`
-5. After completion: captures `git diff`, changed files list, token usage, and runs your test command
+5. After completion: captures `git diff`, changed files list, and runs your test command
 
 ### 7. Review the Output
 

@@ -39,7 +39,7 @@ import * as shell from '../utils/shell';
 import * as assembler from './planContextAssembler';
 import * as batchWriter from './specBatchWriter';
 import * as depResolver from './dependencyResolver';
-import { PlannerOrchestrator, parseTokenUsage } from './planner';
+import { PlannerOrchestrator } from './planner';
 import type { PlanningRequest } from './types';
 
 // ---------------------------------------------------------------------------
@@ -430,28 +430,3 @@ describe('PlannerOrchestrator', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// parseTokenUsage
-// ---------------------------------------------------------------------------
-
-describe('parseTokenUsage', () => {
-  it('parses input and output token counts from Claude CLI output', () => {
-    const output = 'Here is the result.\n\nTokens: 1234 input tokens, 567 output tokens used.';
-    const usage = parseTokenUsage(output);
-    expect(usage.inputTokens).toBe(1234);
-    expect(usage.outputTokens).toBe(567);
-  });
-
-  it('returns undefined fields when token info is absent', () => {
-    const usage = parseTokenUsage('just a response with no token info');
-    expect(usage.inputTokens).toBeUndefined();
-    expect(usage.outputTokens).toBeUndefined();
-  });
-
-  it('is case-insensitive when matching token labels', () => {
-    const output = '100 Input Tokens used, 50 Output Tokens generated.';
-    const usage = parseTokenUsage(output);
-    expect(usage.inputTokens).toBe(100);
-    expect(usage.outputTokens).toBe(50);
-  });
-});

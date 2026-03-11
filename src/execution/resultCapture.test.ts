@@ -34,8 +34,6 @@ function makeExecutionResult(overrides: Partial<ExecutionResult> = {}): Executio
   return {
     success: true,
     output: 'Claude output here',
-    tokensIn: 1000,
-    tokensOut: 500,
     duration: 12345,
     ...overrides,
   };
@@ -73,14 +71,12 @@ describe('captureResults', () => {
   });
 
   it('execution record JSON is correctly structured', async () => {
-    const executionResult = makeExecutionResult({ tokensIn: 2000, tokensOut: 800, duration: 5000 });
+    const executionResult = makeExecutionResult({ duration: 5000 });
     const { record } = await captureResults('SDD-028', executionResult);
 
     expect(record.specId).toBe('SDD-028');
     expect(record.executionNumber).toBe(1);
     expect(typeof record.timestamp).toBe('string');
-    expect(record.tokensIn).toBe(2000);
-    expect(record.tokensOut).toBe(800);
     expect(record.status).toBe('completed');
     expect(record.duration).toBe(5000);
     expect(record.testsPassed).toBeNull();

@@ -49,7 +49,7 @@ The result: **small, focused diffs you can actually review in minutes, not hours
 
 - Add feature ideas to the **Requirement Board** — a three-column kanban where ideas flow from backlog through AI-assisted idealization to structured SDD specs
 - AI decomposes your requirements into dependency-ordered spec cards automatically — foundation first, features next, integration last
-- Track progress on the **Kanban Board** — five columns from Draft to Done, drag cards to transition, see completion percentages and token usage on the **Dashboard**
+- Track progress on the **Kanban Board** — five columns from Draft to Done, drag cards to transition, see completion percentages on the **Dashboard**
 - Every spec, execution, and review can be version-controlled in Git — full audit trail of what was built, when, by which agent, and at what cost
 
 You don't need to write code. You write requirements. The AI builds. You ship with confidence.
@@ -101,7 +101,7 @@ You stay in control. The AI stays in scope.
 | **Review** | Massive, unstructured diff | Small, focused diff with acceptance criteria |
 | **Reproducibility** | Same prompt, different results | Same spec, consistent execution |
 | **Traceability** | Lost in chat history | Version-controlled in Git with full audit trail |
-| **Budget** | Unlimited token burn | Token ceiling per spec |
+| **Budget** | Unlimited — no guardrails | Token ceiling per spec |
 | **Feedback loop** | Start over from scratch | Feedback injected into next execution |
 
 ---
@@ -124,7 +124,7 @@ Install, authenticate with your own account, and that's all. Your keys, your bil
 - **Bulk Execution** — Queue and run multiple specs sequentially with progress tracking
 - **AI Config** — Separate configuration for requirements AI and execution AI, with customizable prompt templates
 - **Choose skills per spec tags** - Tag specs with required skills (e.g. "python", "react", "database") and configure them. The execution will inject the SKILL.md into the prompt context whenever the spec is executed.
-- **Dashboard** — Spec counts, completion tracking, token usage charts, scope estimation
+- **Dashboard** — Spec counts, completion tracking, scope estimation
 - **Prompt-Execution Git** — Configurable commit and PR commands injected into the agent's context
 - **Convention Injection** — Your coding standards applied to every AI execution
 - **File Protection** — `must_not_touch` prevents the AI from modifying critical files

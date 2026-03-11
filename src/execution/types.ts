@@ -2,8 +2,6 @@ export interface ExecutionRecord {
   specId: string;
   executionNumber: number;
   timestamp: string;
-  tokensIn: number;
-  tokensOut: number;
   status: 'running' | 'completed' | 'failed' | 'aborted';
   duration: number;
   testsPassed: boolean | null;
@@ -14,8 +12,6 @@ export interface ExecutionRecord {
 export interface ExecutionResult {
   success: boolean;
   output: string;
-  tokensIn: number;
-  tokensOut: number;
   duration: number;
   error?: string;
 }

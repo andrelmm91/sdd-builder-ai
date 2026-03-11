@@ -11,7 +11,6 @@ import type { ExecutionRecord } from '../../../execution/types';
 export interface DashboardData {
   specs: SpecData[];
   executions: ExecutionRecord[];
-  totalTokens: number;
 }
 
 export class DashboardPanel extends BaseWebviewPanel {
@@ -74,9 +73,8 @@ export class DashboardPanel extends BaseWebviewPanel {
     }
     const specs = await this.loadSpecs();
     const executions = await this.loadAllExecutions(specs);
-    const totalTokens = executions.reduce((sum, e) => sum + e.tokensIn + e.tokensOut, 0);
 
-    this.post('dashboardData', { specs, executions, totalTokens });
+    this.post('dashboardData', { specs, executions });
   }
 
   private async loadSpecs(): Promise<SpecData[]> {

@@ -14,12 +14,6 @@ const CONTEXT_FILE = '.sdd/plan-context.md';
 
 export type ProgressCallback = (message: string) => void;
 
-/** Token usage extracted from Claude CLI output when available. */
-export interface TokenUsage {
-  inputTokens?: number;
-  outputTokens?: number;
-}
-
 export class PlannerOrchestrator {
   constructor(private readonly onProgress?: ProgressCallback) {}
 
@@ -79,14 +73,6 @@ export class PlannerOrchestrator {
 
     if (invokeError !== undefined) {
       return { success: false, error: invokeError };
-    }
-
-    // Report token usage via progress when present
-    const usage = parseTokenUsage(cliOutput);
-    if (usage.inputTokens !== undefined || usage.outputTokens !== undefined) {
-      this.progress(
-        `Token usage — input: ${usage.inputTokens ?? '?'}, output: ${usage.outputTokens ?? '?'}`
-      );
     }
 
     // Step 5: Parse CLI output
@@ -220,21 +206,6 @@ function generatedSpecsToSpecData(specs: GeneratedSpec[]): SpecData[] {
     }
   }
   return results;
-}
-
-/**
- * Best-effort extraction of token usage numbers from Claude CLI output.
- * Claude CLI may append lines such as:
- *   Tokens: 1234 input, 567 output
- * or similar. Returns undefined fields when the pattern is absent.
- */
-export function parseTokenUsage(output: string): TokenUsage {
-  const inputMatch = /(\d+)\s*input\s*token/i.exec(output);
-  const outputMatch = /(\d+)\s*output\s*token/i.exec(output);
-  return {
-    inputTokens: inputMatch ? parseInt(inputMatch[1], 10) : undefined,
-    outputTokens: outputMatch ? parseInt(outputMatch[1], 10) : undefined,
-  };
 }
 
 async function cleanupContextFile(workspaceRoot: string): Promise<void> {
