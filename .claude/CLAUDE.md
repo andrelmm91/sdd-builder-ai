@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Key Files
 
-- `.sdd/product/Idea_1_SDD_VSCode_Extension.md` — Full MVP architecture, feature mapping, development plan, and monetization strategy (the project bible)
+- `.sdd/product_feature/Idea_1_SDD_VSCode_Extension.md` — Full MVP architecture, feature mapping, development plan, and monetization strategy (the project bible)
 - `.claude/skills/sdd-planner.md` — SDD Planner agent persona definition (decomposition rules, spec format, planning process)
 - `.specs/` — Will contain `.sdd.md` spec files (currently empty)
 
