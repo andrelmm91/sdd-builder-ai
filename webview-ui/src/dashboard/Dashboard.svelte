@@ -23,6 +23,7 @@
   let specs: SpecData[] = $state([]);
   let executions: ExecutionRecord[] = $state([]);
   let totalTokens = $state(0);
+  let notInitialized = $state(false);
 
   const STATUS_ORDER = ['draft', 'ready', 'in_progress', 'review', 'done'];
 
@@ -56,6 +57,7 @@
   onMount(() => {
     onMessage((msg) => {
       if (msg.type === 'dashboardData') {
+        notInitialized = false;
         const d = msg.data as typeof msg.data & {
           specs: SpecData[];
           executions: ExecutionRecord[];
@@ -64,6 +66,8 @@
         specs = d.specs ?? [];
         executions = d.executions ?? [];
         totalTokens = d.totalTokens ?? 0;
+      } else if (msg.type === 'notInitialized') {
+        notInitialized = true;
       }
     });
     postMessage('refresh', {});
@@ -81,6 +85,10 @@
     postMessage('openRequirementBoard', {});
   }
 
+  function handleInitProject() {
+    postMessage('initProject', {});
+  }
+
   function formatDate(iso: string) {
     return new Date(iso).toLocaleString();
   }
@@ -95,6 +103,13 @@
       <button class="kanban-btn" onclick={openRequirementBoard}>Open Requirement Board</button>
     </div>
   </div>
+
+  {#if notInitialized}
+    <section class="card init-card">
+      <p>Project not initialized. Initialize to start using SDD.</p>
+      <button class="btn-init" onclick={handleInitProject}>Initialize SDD Project</button>
+    </section>
+  {/if}
 
   <!-- Spec Status Summary -->
   <section class="card">
@@ -228,6 +243,29 @@
   .header-actions {
     display: flex;
     gap: 8px;
+  }
+
+  .init-card {
+    text-align: center;
+    padding: 24px 16px;
+  }
+  .init-card p {
+    margin: 0 0 12px;
+    color: var(--vscode-descriptionForeground);
+  }
+  .btn-init {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    font-family: inherit;
+    font-weight: 600;
+  }
+  .btn-init:hover {
+    background: var(--vscode-button-hoverBackground);
   }
 
   .card {

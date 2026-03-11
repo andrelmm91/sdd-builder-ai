@@ -71,6 +71,10 @@
     postMessage('openAiConfig', {});
   }
 
+  function refresh() {
+    postMessage('requestRequirementBoardData', {});
+  }
+
   function statusBadgeClass(status: FeatureStatus): string {
     if (status === 'Feature Backlog') return 'badge-low';
     if (status === 'Idealization In Review') return 'badge-medium';
@@ -80,9 +84,15 @@
 
 <div class="board-root">
   <header class="board-header">
+    <span class="board-title">Requirement Board</span>
+    <button class="btn-refresh" onclick={refresh} title="Refresh">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M14 8A6 6 0 1 1 8 2" stroke-linecap="round"/>
+        <path d="M8 0l3 2-3 2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <button class="btn-new" onclick={addNewFeature}>Add New Feature +</button>
     <button class="btn-new btn-config" onclick={openAiConfig}>⚙ AI Config</button>
-    <span class="board-title">Requirement Board</span>
   </header>
 
   {#if showFeatureForm}
@@ -175,7 +185,22 @@
     font-weight: 700;
     font-size: 1.1em;
     white-space: nowrap;
-    margin-left: auto;
+  }
+
+  .btn-refresh {
+    background: none;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 3px;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    padding: 4px 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .btn-refresh:hover {
+    background: var(--vscode-button-secondaryHoverBackground);
   }
 
   .btn-new {

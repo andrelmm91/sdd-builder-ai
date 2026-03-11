@@ -135,6 +135,10 @@
     postMessage('openAiConfig', {});
   }
 
+  function refresh() {
+    postMessage('refresh', {});
+  }
+
   function cardAction(action: string, specId: string) {
     postMessage('cardAction', { action, specId });
   }
@@ -192,6 +196,12 @@
 <div class="kanban-root">
   <header class="kanban-header">
     <span class="kanban-title">SDD Kanban</span>
+    <button class="btn-refresh" onclick={refresh} title="Refresh">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M14 8A6 6 0 1 1 8 2" stroke-linecap="round"/>
+        <path d="M8 0l3 2-3 2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <button class="btn-new" onclick={openSpecForm}>New Spec +</button>
     <button class="btn-new btn-config" onclick={openAiConfig}>⚙ AI Config</button>
     <input
@@ -407,6 +417,22 @@
     font-weight: 700;
     font-size: 1.1em;
     white-space: nowrap;
+  }
+
+  .btn-refresh {
+    background: none;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 3px;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    padding: 4px 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .btn-refresh:hover {
+    background: var(--vscode-button-secondaryHoverBackground);
   }
 
   .filter-input {

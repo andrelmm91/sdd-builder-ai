@@ -91,6 +91,9 @@ export class KanbanPanel extends BaseWebviewPanel {
       case 'requestBulkState':
         this.post('bulkState', BulkExecutionManager.getInstance().getQueue());
         break;
+      case 'refresh':
+        await this.sendSpecs();
+        break;
       case 'clearBulk':
         BulkExecutionManager.getInstance().clear();
         break;

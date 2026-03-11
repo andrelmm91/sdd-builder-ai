@@ -2,7 +2,9 @@ import * as vscode from 'vscode';
 import { BaseWebviewPanel } from '../BaseWebviewPanel';
 import { parseSpec } from '../../../specs/parser';
 import { getExecutionHistory } from '../../../execution/resultCapture';
-import { SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../../../utils/constants';
+import { SPECS_FOLDER, SPEC_FILE_EXTENSION, CONFIG_FILE } from '../../../utils/constants';
+import { fileExists } from '../../../utils/fileSystem';
+import { initProject } from '../../../commands/initProject';
 import type { SpecData } from '../../../specs/types';
 import type { ExecutionRecord } from '../../../execution/types';
 
@@ -41,6 +43,9 @@ export class DashboardPanel extends BaseWebviewPanel {
       await vscode.commands.executeCommand('sdd.openKanbanBoard');
     } else if (message.type === 'openRequirementBoard') {
       await vscode.commands.executeCommand('sdd.openRequirementBoard');
+    } else if (message.type === 'initProject') {
+      await initProject();
+      await this.sendData();
     } else if (message.type === 'refresh') {
       await this.sendData();
     }
@@ -63,6 +68,11 @@ export class DashboardPanel extends BaseWebviewPanel {
   }
 
   private async sendData(): Promise<void> {
+    const initialized = await fileExists(CONFIG_FILE);
+    if (!initialized) {
+      this.post('notInitialized', {});
+      return;
+    }
     const specs = await this.loadSpecs();
     const executions = await this.loadAllExecutions(specs);
     const totalCost = executions.reduce((sum, e) => sum + e.cost, 0);
