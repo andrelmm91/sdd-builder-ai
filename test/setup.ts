@@ -163,7 +163,6 @@ export function createMockExecutionRecord(overrides: Partial<ExecutionRecord> = 
     timestamp: '2026-01-01T00:00:00.000Z',
     tokensIn: 1000,
     tokensOut: 2000,
-    cost: 0.05,
     status: 'completed',
     duration: 5000,
     testsPassed: true,

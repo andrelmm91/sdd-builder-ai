@@ -16,10 +16,6 @@ vi.mock('../utils/frontmatter', () => ({
   parseFrontmatter: vi.fn(),
 }));
 
-vi.mock('./budgetEnforcer', () => ({
-  estimateCost: vi.fn().mockReturnValue(0.05),
-}));
-
 import { captureResults, getExecutionHistory, getLatestExecution } from './resultCapture';
 import { execCommand, isCommandAvailable } from '../utils/shell';
 import { writeWorkspaceFile, readWorkspaceFile, listFiles, getWorkspaceRoot } from '../utils/fileSystem';
@@ -85,7 +81,6 @@ describe('captureResults', () => {
     expect(typeof record.timestamp).toBe('string');
     expect(record.tokensIn).toBe(2000);
     expect(record.tokensOut).toBe(800);
-    expect(typeof record.cost).toBe('number');
     expect(record.status).toBe('completed');
     expect(record.duration).toBe(5000);
     expect(record.testsPassed).toBeNull();

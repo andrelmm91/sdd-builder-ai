@@ -1,7 +1,6 @@
 import { writeWorkspaceFile, readWorkspaceFile, listFiles } from '../utils/fileSystem';
 import { EXECUTIONS_FOLDER, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
 import { parseFrontmatter } from '../utils/frontmatter';
-import { estimateCost } from './budgetEnforcer';
 import type { ExecutionRecord, ExecutionResult } from './types';
 
 export type CaptureResult = {
@@ -36,7 +35,6 @@ export async function captureResults(
 
   // Build execution record
   const status = executionResult.success ? 'completed' : 'failed';
-  const cost = estimateCost(executionResult.tokensIn, executionResult.tokensOut);
 
   const record: ExecutionRecord = {
     specId,
@@ -44,7 +42,6 @@ export async function captureResults(
     timestamp: new Date().toISOString(),
     tokensIn: executionResult.tokensIn,
     tokensOut: executionResult.tokensOut,
-    cost,
     status,
     duration: executionResult.duration,
     testsPassed: null,
@@ -63,7 +60,6 @@ export async function captureResults(
     `Duration  : ${record.duration}ms`,
     `Tokens In : ${record.tokensIn}`,
     `Tokens Out: ${record.tokensOut}`,
-    `Cost      : $${record.cost.toFixed(6)}`,
     `Scope OK  : ${scopeViolation ? 'VIOLATION DETECTED' : 'ok'}`,
     '',
     '--- Changed Files ---',

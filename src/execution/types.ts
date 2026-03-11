@@ -4,7 +4,6 @@ export interface ExecutionRecord {
   timestamp: string;
   tokensIn: number;
   tokensOut: number;
-  cost: number;
   status: 'running' | 'completed' | 'failed' | 'aborted';
   duration: number;
   testsPassed: boolean | null;

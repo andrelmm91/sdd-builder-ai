@@ -1,4 +1,3 @@
-import { COST_RATES } from '../execution/budgetEnforcer';
 import type { SpecData } from '../specs/types';
 
 export interface ScopeEstimate {
@@ -8,7 +7,6 @@ export interface ScopeEstimate {
   byArea: Record<string, number>;
   estimatedTotalTokens: number;
   dependencyChainDepth: number;
-  estimatedCost: number;
 }
 
 export function estimateScope(specs: SpecData[]): ScopeEstimate {
@@ -30,8 +28,6 @@ export function estimateScope(specs: SpecData[]): ScopeEstimate {
     }
   }
 
-  const estimatedCost = (estimatedTotalTokens / 1_000_000) * COST_RATES.inputPerMillion;
-
   return {
     totalSpecs: specs.length,
     byComplexity,
@@ -39,7 +35,6 @@ export function estimateScope(specs: SpecData[]): ScopeEstimate {
     byArea,
     estimatedTotalTokens,
     dependencyChainDepth: computeChainDepth(specs),
-    estimatedCost,
   };
 }
 
@@ -50,7 +45,6 @@ export function formatScopeEstimate(estimate: ScopeEstimate): string {
     `Total Specs    : ${estimate.totalSpecs}`,
     `By Complexity  : low=${estimate.byComplexity.low}  medium=${estimate.byComplexity.medium}  high=${estimate.byComplexity.high}`,
     `Token Budget   : ${estimate.estimatedTotalTokens.toLocaleString()} tokens`,
-    `Est. Cost      : $${estimate.estimatedCost.toFixed(4)}`,
     `Chain Depth    : ${estimate.dependencyChainDepth}`,
   ];
 

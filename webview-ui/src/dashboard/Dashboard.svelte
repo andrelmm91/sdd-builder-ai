@@ -15,14 +15,12 @@
     specId: string;
     timestamp: string;
     status: string;
-    cost: number;
     tokensIn: number;
     tokensOut: number;
   }
 
   let specs: SpecData[] = $state([]);
   let executions: ExecutionRecord[] = $state([]);
-  let totalTokens = $state(0);
   let notInitialized = $state(false);
 
   const STATUS_ORDER = ['draft', 'ready', 'in_progress', 'review', 'done'];
@@ -39,10 +37,6 @@
   const completionPct = $derived(total > 0 ? Math.round((doneCount / total) * 100) : 0);
 
   const recentActivity = $derived(executions.slice(0, 10));
-
-  const avgTokensPerExecution = $derived(
-    executions.length > 0 ? Math.round(totalTokens / executions.length) : 0,
-  );
 
   const phaseBreakdown = $derived.by(() => {
     const map = new Map<string, number>();
@@ -61,11 +55,9 @@
         const d = msg.data as typeof msg.data & {
           specs: SpecData[];
           executions: ExecutionRecord[];
-          totalTokens: number;
         };
         specs = d.specs ?? [];
         executions = d.executions ?? [];
-        totalTokens = d.totalTokens ?? 0;
       } else if (msg.type === 'notInitialized') {
         notInitialized = true;
       }
@@ -156,16 +148,6 @@
         {/each}
       </ul>
     {/if}
-  </section>
-
-  <!-- Cost Summary -->
-  <section class="card">
-    <h2>Cost Summary</h2>
-    <dl class="stats">
-      <dt>Total tokens</dt><dd>{totalTokens.toLocaleString()}</dd>
-      <dt>Executions</dt><dd>{executions.length}</dd>
-      <dt>Avg tokens / execution</dt><dd>{avgTokensPerExecution.toLocaleString()}</dd>
-    </dl>
   </section>
 
   <!-- Recent Activity -->

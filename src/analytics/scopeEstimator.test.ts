@@ -25,7 +25,6 @@ describe('estimateScope', () => {
     expect(estimate.totalSpecs).toBe(0);
     expect(estimate.byComplexity).toEqual({ low: 0, medium: 0, high: 0 });
     expect(estimate.estimatedTotalTokens).toBe(0);
-    expect(estimate.estimatedCost).toBe(0);
     expect(estimate.dependencyChainDepth).toBe(0);
     expect(estimate.byPhase).toEqual({});
     expect(estimate.byArea).toEqual({});
@@ -98,14 +97,6 @@ describe('estimateScope', () => {
     expect(estimate.dependencyChainDepth).toBe(0);
   });
 
-  it('computes estimated cost from token budget', () => {
-    const specs = [makeSpec({ spec_id: 'SDD-001', budget_max_tokens: 1_000_000 })];
-
-    const estimate = estimateScope(specs);
-
-    // 1M input tokens at $3 per million = $3
-    expect(estimate.estimatedCost).toBeCloseTo(3.0);
-  });
 });
 
 describe('formatScopeEstimate', () => {

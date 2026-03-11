@@ -2,10 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   validateBudget,
   checkBudgetExceeded,
-  estimateCost,
   formatTokenCount,
   getBudgetForComplexity,
-  COST_RATES,
 } from './budgetEnforcer';
 
 describe('validateBudget', () => {
@@ -60,33 +58,6 @@ describe('checkBudgetExceeded', () => {
 
   it('returns true when tokens used exceed budget', () => {
     expect(checkBudgetExceeded(100000, 100001)).toBe(true);
-  });
-});
-
-describe('estimateCost', () => {
-  it('returns 0 for zero tokens', () => {
-    expect(estimateCost(0, 0)).toBe(0);
-  });
-
-  it('computes reasonable cost for 1M input tokens', () => {
-    const cost = estimateCost(1_000_000, 0);
-    expect(cost).toBeCloseTo(COST_RATES.inputPerMillion, 5);
-  });
-
-  it('computes reasonable cost for 1M output tokens', () => {
-    const cost = estimateCost(0, 1_000_000);
-    expect(cost).toBeCloseTo(COST_RATES.outputPerMillion, 5);
-  });
-
-  it('combines input and output costs correctly', () => {
-    const cost = estimateCost(100_000, 50_000);
-    const expected = (100_000 / 1_000_000) * COST_RATES.inputPerMillion +
-                     (50_000 / 1_000_000) * COST_RATES.outputPerMillion;
-    expect(cost).toBeCloseTo(expected, 10);
-  });
-
-  it('returns a positive value for typical usage', () => {
-    expect(estimateCost(50000, 20000)).toBeGreaterThan(0);
   });
 });
 

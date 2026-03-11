@@ -9,12 +9,6 @@ const BUDGET_MIN = 10_000;
 const BUDGET_MAX = 500_000;
 const BUDGET_WARN_THRESHOLD = 200_000;
 
-// Anthropic pricing constants (USD per million tokens)
-export const COST_RATES = {
-  inputPerMillion: 3.0,
-  outputPerMillion: 15.0,
-};
-
 const BUDGET_BY_COMPLEXITY: Record<SpecComplexity, number> = {
   low: 50_000,
   medium: 100_000,
@@ -36,12 +30,6 @@ export function validateBudget(budget: number): BudgetValidation {
 
 export function checkBudgetExceeded(budget: number, tokensUsed: number): boolean {
   return tokensUsed > budget;
-}
-
-export function estimateCost(tokensIn: number, tokensOut: number): number {
-  const inputCost = (tokensIn / 1_000_000) * COST_RATES.inputPerMillion;
-  const outputCost = (tokensOut / 1_000_000) * COST_RATES.outputPerMillion;
-  return inputCost + outputCost;
 }
 
 export function formatTokenCount(tokens: number): string {
