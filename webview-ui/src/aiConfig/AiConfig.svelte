@@ -98,13 +98,13 @@
 
   function onProviderChange(newProvider: AIProvider) {
     provider = newProvider;
-    permissionMode = PERMISSION_MODES[newProvider][0].value;
+    permissionMode = PERMISSION_MODES[newProvider][1].value;
     model = MODELS[newProvider][0];
   }
 
   function onReqProviderChange(newProvider: AIProvider) {
     reqProvider = newProvider;
-    reqPermissionMode = PERMISSION_MODES[newProvider][0].value;
+    reqPermissionMode = PERMISSION_MODES[newProvider][1].value;
     reqModel = MODELS[newProvider][0];
   }
 
