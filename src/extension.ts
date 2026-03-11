@@ -5,7 +5,7 @@ import { initProject } from "./commands/initProject";
 import { newSpec } from "./commands/newSpec";
 import { createMarkReadyCommand } from "./commands/markReady";
 import { createValidateSpecCommand } from "./commands/validateSpec";
-import { createExecuteSpecCommand, executeSingleSpec } from "./commands/executeSpec";
+import { createExecuteSpecCommand, executeSingleSpec, requireFullPermissionForBulk } from "./commands/executeSpec";
 import { BulkExecutionManager } from "./execution/bulkExecution";
 import { planFromRequirements } from "./commands/planFromRequirements";
 import { refinePlan } from "./commands/refinePlan";
@@ -115,6 +115,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
     vscode.commands.registerCommand("sdd.executeAllBulk", async () => {
+      if (!await requireFullPermissionForBulk()) return;
       const manager = BulkExecutionManager.getInstance();
       const refresh = () => specTreeProvider.refresh();
       await manager.executeAll(async (specId) => {

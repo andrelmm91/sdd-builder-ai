@@ -37,6 +37,13 @@ export class CliRunner implements ExecutionRunner {
     this._running = false;
   }
 
+  /** Closes the terminal to signal successful completion of an interactive session. */
+  completeInteractive(): void {
+    if (this._terminal) {
+      this._terminal.dispose();
+    }
+  }
+
   async execute(
     spec: SpecDocument,
     config: ExecutionConfig,
@@ -104,16 +111,8 @@ export class CliRunner implements ExecutionRunner {
       }
 
       if (interactive) {
-        // Interactive modes: show a notification with a button so the user can
-        // signal completion without having to close the terminal manually.
-        vscode.window.showInformationMessage(
-          `SDD: ${specId} is running interactively. Click below when the AI is done.`,
-          'Complete & Close Terminal',
-        ).then(selection => {
-          if (selection && this._terminal) {
-            this._terminal.dispose();
-          }
-        });
+        // Interactive modes: the caller is responsible for showing any
+        // notification and calling completeInteractive() when done.
         await this._waitForTerminalClose(config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
         return { success: true, output: '', duration: Date.now() - startTime };
       }
@@ -331,11 +330,11 @@ export class CliRunner implements ExecutionRunner {
         return { command: parts.join(' ') };
       }
 
-      // Default (ask) mode: gh copilot is a TUI that pauses for permission on
-      // each tool use — it must run in interactive mode, just like Claude default.
-      // We pass the prompt via -p so it starts immediately, then wait for the
-      // user to signal completion via the "Complete & Close Terminal" button.
-      parts.push('-p', sq(prompt));
+      // Default (ask) mode: interactive, analogous to Claude's ask/plan mode.
+      // Pass the prompt as a positional argument (NOT -p) so gh copilot opens
+      // an interactive session instead of non-interactive batch mode.
+      // Without --yolo the agent will pause for permission on each tool use.
+      parts.push(sq(prompt));
       return { command: parts.join(' '), interactive: true };
     }
 

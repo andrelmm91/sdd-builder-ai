@@ -246,7 +246,7 @@ describe('CliRunner.execute — terminal commands', () => {
     expect(sentCommand).toContain('tee');
   });
 
-  it('Claude default mode: interactive, no sentinel, shows info message', async () => {
+  it('Claude default mode: interactive, no sentinel, no info message from runner', async () => {
     // For interactive mode, simulate terminal close
     mockOnDidCloseTerminal.mockImplementation((cb: (t: unknown) => void) => {
       // Store callback, we'll trigger it after delays
@@ -270,14 +270,12 @@ describe('CliRunner.execute — terminal commands', () => {
     const result = await promise;
 
     expect(result.success).toBe(true);
-    // Command should NOT include sentinel suffix
+    // Command should NOT include sentinel or tee (interactive mode)
     const sentCommand = mockSendText.mock.calls[0][0] as string;
     expect(sentCommand).not.toContain('echo $?');
-    // Should show info message with "Complete & Close Terminal" button
-    expect(mockShowInformationMessage).toHaveBeenCalledWith(
-      expect.stringContaining('SDD-026'),
-      'Complete & Close Terminal',
-    );
+    expect(sentCommand).not.toContain('tee');
+    // Runner no longer shows a notification — that's executeSpec.ts's responsibility
+    expect(mockShowInformationMessage).not.toHaveBeenCalled();
   });
 
   it('Copilot ask mode: interactive (same as Claude default), prompt embedded via -p', async () => {
@@ -299,11 +297,11 @@ describe('CliRunner.execute — terminal commands', () => {
     expect(mockSendText).toHaveBeenCalledTimes(1);
     const sentCommand = mockSendText.mock.calls[0][0] as string;
     expect(sentCommand).toContain('gh copilot');
-    // Prompt is embedded via -p flag
-    expect(sentCommand).toContain('-p');
+    // Prompt is passed as a positional arg — NOT via -p (which would be batch/non-interactive)
+    expect(sentCommand).not.toContain(' -p ');
     // Should NOT use --yolo (ask mode keeps permission prompts)
     expect(sentCommand).not.toContain('--yolo');
-    // Should NOT include sentinel suffix (interactive mode)
+    // Should NOT include sentinel or tee (interactive mode)
     expect(sentCommand).not.toContain('echo $?');
 
     // Advance past terminal close simulation and abort poll
@@ -312,10 +310,7 @@ describe('CliRunner.execute — terminal commands', () => {
 
     const result = await promise;
     expect(result.success).toBe(true);
-    // Should show info message with "Complete & Close Terminal" button
-    expect(mockShowInformationMessage).toHaveBeenCalledWith(
-      expect.stringContaining('SDD-026'),
-      'Complete & Close Terminal',
-    );
+    // Runner no longer shows a notification — that's executeSpec.ts's responsibility
+    expect(mockShowInformationMessage).not.toHaveBeenCalled();
   });
 });

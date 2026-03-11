@@ -5,7 +5,7 @@ import { canTransition } from '../../../specs/lifecycle';
 import { serializeFrontmatter, parseFrontmatter } from '../../../utils/frontmatter';
 import { SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../../../utils/constants';
 import { BulkExecutionManager } from '../../../execution/bulkExecution';
-import { executeSingleSpec } from '../../../commands/executeSpec';
+import { executeSingleSpec, requireFullPermissionForBulk } from '../../../commands/executeSpec';
 import { getLatestExecution } from '../../../execution/resultCapture';
 import { applyRequestChanges } from '../../../commands/reviewCommands';
 import type { SpecData, SpecStatus } from '../../../specs/types';
@@ -79,6 +79,7 @@ export class KanbanPanel extends BaseWebviewPanel {
         break;
       }
       case 'executeAll': {
+        if (!await requireFullPermissionForBulk()) break;
         const manager = BulkExecutionManager.getInstance();
         const executeFn = async (specId: string) => {
           const fp = manager.getFilePath(specId) ?? this.specFilePaths.get(specId);

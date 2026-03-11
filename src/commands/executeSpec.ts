@@ -97,7 +97,98 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     autoValidate,
   };
 
-  // --- Execute with progress ---
+  const root = getWorkspaceRoot();
+  const relativeSpecPath = root ? path.relative(root, filePath) : filePath;
+
+  // ── Interactive execution path ────────────────────────────────────────────
+  // Interactive modes (Claude default/plan, Copilot ask) use a single persistent
+  // notification with the "Complete & Close Terminal" action button.
+  // withProgress cannot host custom buttons, so we use showInformationMessage
+  // as the sole control point for the duration of the AI session.
+  if (isInteractiveMode(aiConfig)) {
+    try {
+      await updateSpecStatus(uri, content, 'in_progress');
+      doRefresh();
+    } catch {
+      vscode.window.showErrorMessage(`Failed to update spec status for ${specId}.`);
+      return false;
+    }
+
+    // Start execution non-blocking so the notification can appear simultaneously.
+    const executePromise = _runner.execute(spec, config, aiConfig, relativeSpecPath);
+    let cancelledByUser = false;
+
+    vscode.window.showInformationMessage(
+      `Executing ${specId}: AI is running interactively. Click when done.`,
+      'Complete & Close Terminal',
+      'Cancel',
+    ).then(selection => {
+      if (selection === 'Complete & Close Terminal') {
+        _runner.completeInteractive();
+      } else if (selection === 'Cancel') {
+        cancelledByUser = true;
+        _runner.abort();
+      }
+    });
+
+    let executionResult: Awaited<ReturnType<typeof _runner.execute>>;
+    try {
+      executionResult = await executePromise;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await updateSpecStatus(uri, content, 'ready').catch(() => {});
+      doRefresh();
+      vscode.window.showErrorMessage(`${specId} execution failed: ${message}`);
+      return false;
+    }
+
+    if (cancelledByUser) {
+      try {
+        const capture = await captureResults(specId, {
+          ...executionResult,
+          success: false,
+          error: executionResult.error ?? 'Cancelled by user',
+        });
+        await patchExecutionRecord(capture, { status: 'aborted' });
+        await updateSpecStatus(uri, content, 'ready');
+        doRefresh();
+      } catch { /* best-effort */ }
+      vscode.window.showWarningMessage(`${specId} execution cancelled.`);
+      return false;
+    }
+
+    try {
+      const capture = await captureResults(specId, executionResult);
+      if (!executionResult.success) {
+        throw new Error(executionResult.error ?? 'CLI execution failed');
+      }
+      if (autoValidate && testCommand) {
+        const validation = await runPostValidation(config, root ?? undefined);
+        await patchExecutionRecord(capture, { testsPassed: validation.passed });
+      }
+      await updateSpecStatus(uri, content, 'review');
+      doRefresh();
+      vscode.window.showInformationMessage(`${specId} execution complete — ready for review.`);
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      try {
+        await captureResults(specId, { ...executionResult, success: false, error: message });
+      } catch { /* best-effort */ }
+      try {
+        await updateSpecStatus(uri, content, 'ready');
+        doRefresh();
+      } catch {
+        vscode.window.showErrorMessage(
+          `${specId} execution failed and the spec status could not be reverted — please manually set it back to "ready".`
+        );
+      }
+      vscode.window.showErrorMessage(`${specId} execution failed: ${message}`);
+      return false;
+    }
+  }
+
+  // ── Non-interactive execution path (progress notification) ────────────────
   let success = false;
   await vscode.window.withProgress(
     {
@@ -122,10 +213,8 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
 
       let executionResult: Awaited<ReturnType<typeof _runner.execute>> | undefined;
       try {
-        // Execute via CliRunner
+        // Execute via CliRunner (relativeSpecPath computed above, outside withProgress)
         progress.report({ message: 'Running CLI…', increment: 45 });
-        const root = getWorkspaceRoot();
-        const relativeSpecPath = root ? path.relative(root, filePath) : filePath;
         executionResult = await _runner.execute(spec, config, aiConfig, relativeSpecPath);
 
         if (token.isCancellationRequested) {
@@ -152,13 +241,10 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
         }
 
         // Post-validation
-        let testsPassed: boolean | null = null;
         if (autoValidate && testCommand) {
           progress.report({ message: 'Running tests…', increment: 20 });
-          const root = getWorkspaceRoot();
           const validation = await runPostValidation(config, root ?? undefined);
-          testsPassed = validation.passed;
-          await patchExecutionRecord(capture, { testsPassed });
+          await patchExecutionRecord(capture, { testsPassed: validation.passed });
         }
 
         // Transition → review
@@ -166,9 +252,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
         await updateSpecStatus(uri, content, 'review');
         doRefresh();
 
-        vscode.window.showInformationMessage(
-          `${specId} execution complete — ready for review.`
-        );
+        vscode.window.showInformationMessage(`${specId} execution complete — ready for review.`);
         success = true;
       } catch (err) {
         if (token.isCancellationRequested) {
@@ -234,6 +318,52 @@ export function createExecuteSpecCommand(refresh: () => void) {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Returns true for modes where the AI runs in an interactive REPL (not one-shot). */
+function isInteractiveMode(aiConfig: Awaited<ReturnType<typeof readAIConfig>>): boolean {
+  if (!aiConfig) return true; // default to interactive if config is absent
+  if (aiConfig.provider === 'copilot') {
+    return aiConfig.permissionMode !== 'yolo';
+  }
+  return aiConfig.permissionMode !== 'dangerously-skip-permissions';
+}
+
+/**
+ * Guards bulk execution: shows a blocking warning modal when the current AI
+ * config is not set to a full-permission mode (Claude dangerously-skip-permissions
+ * or Copilot yolo).  Interactive modes require manual approval per tool use,
+ * which makes unattended sequential bulk execution impossible.
+ *
+ * Returns `true` if execution may proceed, `false` if the user should abort.
+ */
+export async function requireFullPermissionForBulk(): Promise<boolean> {
+  const aiConfig = await readAIConfig();
+
+  // Full-permission check
+  const isFullPermission = aiConfig
+    ? aiConfig.provider === 'copilot'
+      ? aiConfig.permissionMode === 'yolo'
+      : aiConfig.permissionMode === 'dangerously-skip-permissions'
+    : false;
+
+  if (isFullPermission) return true;
+
+  const provider = aiConfig?.provider ?? 'claude';
+  const permissionMode = aiConfig?.permissionMode ?? 'default';
+  const providerLabel = provider === 'copilot' ? 'Copilot' : 'Claude';
+  const fullPermLabel = provider === 'copilot' ? '"yolo"' : '"dangerously-skip-permissions"';
+
+  const selection = await vscode.window.showWarningMessage(
+    `Bulk execution requires full permission mode.\n\nCurrent: ${providerLabel} — ${permissionMode}\n\nIn interactive modes each tool use requires manual approval, making unattended bulk execution impossible. Switch to ${fullPermLabel} in AI Settings to continue.`,
+    { modal: true },
+    'Open AI Settings',
+  );
+
+  if (selection === 'Open AI Settings') {
+    void vscode.commands.executeCommand('sdd.openAiConfig');
+  }
+  return false;
+}
 
 async function updateSpecStatus(
   uri: vscode.Uri,
