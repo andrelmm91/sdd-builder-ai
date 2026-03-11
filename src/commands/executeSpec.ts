@@ -5,7 +5,6 @@ import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
 import { getWorkspaceRoot, writeWorkspaceFile, readWorkspaceFile } from '../utils/fileSystem';
 import { isCommandAvailable } from '../utils/shell';
 import { validateBudget } from '../execution/budgetEnforcer';
-import { loadSkills } from '../execution/skillsLoader';
 import { assembleExecutionContext } from '../execution/contextAssembler';
 import { CliRunner } from '../execution/cliRunner';
 import { captureResults } from '../execution/resultCapture';
@@ -124,15 +123,9 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
 
       let executionResult: Awaited<ReturnType<typeof _runner.execute>> | undefined;
       try {
-        // Load skills
-        progress.report({ message: 'Loading skills…', increment: 10 });
-        const skills = spec.frontmatter.agent_skills
-          ? await loadSkills(spec.frontmatter.agent_skills)
-          : undefined;
-
         // Assemble context
-        progress.report({ message: 'Assembling context…', increment: 15 });
-        const context = await assembleExecutionContext(spec, { skills, aiConfig });
+        progress.report({ message: 'Assembling context…', increment: 25 });
+        const context = await assembleExecutionContext(spec, { aiConfig });
 
         // Execute via CliRunner
         progress.report({ message: 'Running CLI…', increment: 20 });

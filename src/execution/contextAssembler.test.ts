@@ -3,14 +3,12 @@ import type { SpecDocument } from '../specs/types';
 
 vi.mock('../utils/fileSystem', () => ({
   readWorkspaceFile: vi.fn(),
-  fileExists: vi.fn().mockResolvedValue(false),
 }));
 
 import { assembleExecutionContext } from './contextAssembler';
-import { readWorkspaceFile, fileExists } from '../utils/fileSystem';
+import { readWorkspaceFile } from '../utils/fileSystem';
 
 const mockReadWorkspaceFile = vi.mocked(readWorkspaceFile);
-const mockFileExists = vi.mocked(fileExists);
 
 function makeSpec(overrides: Partial<SpecDocument> = {}): SpecDocument {
   return {
@@ -103,29 +101,6 @@ describe('assembleExecutionContext', () => {
     mockReadWorkspaceFile.mockResolvedValue(undefined);
     const result = await assembleExecutionContext(makeSpec(), {});
     expect(result).not.toContain('## Conventions');
-  });
-
-  it('includes Agent Skills section when skills option is provided', async () => {
-    const result = await assembleExecutionContext(makeSpec(), {
-      skills: '# Backend Dev Skills\n\nUse async/await patterns.',
-    });
-    expect(result).toContain('## Agent Skills');
-    expect(result).toContain('Backend Dev Skills');
-  });
-
-  it('includes Agent Skills from filesystem with instruction prefix when not provided in options', async () => {
-    mockFileExists.mockImplementation(async (p: string) => p === '.sdd/skills/backend-dev.md');
-    mockReadWorkspaceFile.mockImplementation(async (path: string) => {
-      if (path === '.sdd/skills/backend-dev.md') {
-        return '# Backend Dev\n\nWrite clean code.';
-      }
-      return undefined;
-    });
-
-    const result = await assembleExecutionContext(makeSpec(), {});
-    expect(result).toContain('## Agent Skills');
-    expect(result).toContain('Use the following skill for this task: "backend-dev".');
-    expect(result).toContain('Write clean code.');
   });
 
   it('includes Scope Constraints section listing must_not_touch files', async () => {

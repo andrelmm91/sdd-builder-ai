@@ -1,6 +1,6 @@
 import { fileExists, listFiles, readWorkspaceFile } from '../utils/fileSystem';
 
-const SEARCH_DIRS = ['.sdd/skills', '.claude/skills'];
+const SEARCH_DIRS = ['.sdd/skills', '.claude/skills', '.github/skills', '.agents/skills'];
 
 function candidatePaths(skillsName: string): string[] {
   return SEARCH_DIRS.flatMap((dir) => [
@@ -47,6 +47,10 @@ export async function listAvailableSkills(): Promise<string[]> {
     '.sdd/skills/*.md',
     '.claude/skills/**/SKILL.md',
     '.claude/skills/*.md',
+    '.github/skills/**/SKILL.md',
+    '.github/skills/*.md',
+    '.agents/skills/**/SKILL.md',
+    '.agents/skills/*.md',
   ];
 
   const allFiles: string[] = [];
@@ -57,11 +61,11 @@ export async function listAvailableSkills(): Promise<string[]> {
 
   const names = new Set<string>();
   for (const filePath of allFiles) {
-    // .sdd/skills/name/SKILL.md  →  name
-    // .sdd/skills/name.md        →  name
+    // dir/skills/name/SKILL.md  →  name
+    // dir/skills/name.md        →  name
     const match =
-      filePath.match(/(?:\.sdd|\.claude)\/skills\/(.+?)\/SKILL\.md$/) ??
-      filePath.match(/(?:\.sdd|\.claude)\/skills\/(.+?)\.md$/);
+      filePath.match(/(?:\.sdd|\.claude|\.github|\.agents)\/skills\/(.+?)\/SKILL\.md$/) ??
+      filePath.match(/(?:\.sdd|\.claude|\.github|\.agents)\/skills\/(.+?)\.md$/);
     if (match) {
       names.add(match[1]);
     }

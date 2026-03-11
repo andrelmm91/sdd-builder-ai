@@ -6,6 +6,7 @@ import { getNextSpecId } from '../../../specs/specIdGenerator';
 import { serializeFrontmatter } from '../../../utils/frontmatter';
 import { listFiles, getWorkspaceRoot } from '../../../utils/fileSystem';
 import { SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../../../utils/constants';
+import { listAvailableSkills } from '../../../execution/skillsLoader';
 import type { SpecDocument } from '../../../specs/types';
 
 interface FormData {
@@ -42,11 +43,15 @@ export class SpecFormPanel extends BaseWebviewPanel {
     SpecFormPanel.instance = panel;
 
     const specId = await panel.generateNextSpecId();
-    const allSpecIds = await panel.loadAllSpecIds();
+    const [allSpecIds, availableSkills] = await Promise.all([
+      panel.loadAllSpecIds(),
+      listAvailableSkills(),
+    ]);
     panel.post('initForm', {
       mode: 'create',
       specId,
       allSpecIds,
+      availableSkills,
       formData: null,
     });
   }
@@ -72,12 +77,16 @@ export class SpecFormPanel extends BaseWebviewPanel {
     );
     SpecFormPanel.instance = panel;
 
-    const allSpecIds = await panel.loadAllSpecIds();
+    const [allSpecIds, availableSkills] = await Promise.all([
+      panel.loadAllSpecIds(),
+      listAvailableSkills(),
+    ]);
     panel.post('initForm', {
       mode: 'edit',
       specId: doc.frontmatter.spec_id,
       filePath,
       allSpecIds,
+      availableSkills,
       formData: specDocToFormData(doc),
     });
   }

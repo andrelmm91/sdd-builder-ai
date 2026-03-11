@@ -30,6 +30,7 @@
   let specId = $state('');
   let filePath = $state<string | undefined>(undefined);
   let allSpecIds = $state<string[]>([]);
+  let availableSkills = $state<string[]>([]);
 
   let title = $state('');
   let status = $state('draft');
@@ -69,12 +70,14 @@
           specId: string;
           filePath?: string;
           allSpecIds: string[];
+          availableSkills: string[];
           formData: FormData | null;
         };
         mode = d.mode;
         specId = d.specId;
         filePath = d.filePath;
         allSpecIds = d.allSpecIds;
+        availableSkills = d.availableSkills ?? [];
 
         if (d.formData) {
           populateForm(d.formData);
@@ -264,10 +267,15 @@
     <div class="field">
       <label for="agent_skills">Agent Skills</label>
       <select id="agent_skills" bind:value={agentSkills}>
-        {#each ['backend-dev','frontend-dev','sdd-planner'] as skill}
-          <option value={skill}>{skill}</option>
-        {/each}
+        {#if availableSkills.length > 0}
+          {#each availableSkills as skill}
+            <option value={skill}>{skill}</option>
+          {/each}
+        {:else}
+          <option value={agentSkills}>{agentSkills}</option>
+        {/if}
       </select>
+      <span class="hint-msg">Skills loaded from <code>.sdd/skills</code>, <code>.claude/skills</code>, <code>.github/skills</code>, <code>.agents/skills</code></span>
     </div>
   </fieldset>
 
@@ -463,6 +471,8 @@
 
   .error-msg { font-size: 0.8em; color: var(--vscode-inputValidation-errorForeground, #f00); }
   .warn-msg  { font-size: 0.8em; color: var(--vscode-charts-yellow, #cc0); }
+  .hint-msg  { font-size: 0.78em; color: var(--vscode-descriptionForeground); }
+  .hint-msg code { font-family: var(--vscode-editor-font-family, monospace); font-size: 0.95em; }
   .muted { color: var(--vscode-descriptionForeground); font-size: 0.85em; }
   .required { color: var(--vscode-charts-red, #c00); }
 

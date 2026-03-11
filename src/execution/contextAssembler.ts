@@ -1,6 +1,5 @@
 import { readWorkspaceFile } from '../utils/fileSystem';
 import { CONVENTIONS_FILE } from '../utils/constants';
-import { loadSkills } from './skillsLoader';
 import type { SpecDocument } from '../specs/types';
 import type { AIConfig } from '../config/aiConfigTypes';
 
@@ -8,7 +7,6 @@ const MAX_CONTEXT_BYTES = 100 * 1024;
 
 export type ContextOptions = {
   conventions?: string;
-  skills?: string;
   feedback?: string;
   previousOutput?: string;
   aiConfig?: AIConfig;
@@ -53,47 +51,6 @@ function buildRawSpec(spec: SpecDocument): string {
     .join('\n\n');
 
   return `${frontmatter}\n\n${body}`;
-}
-
-/**
- * Resolves skills content by checking tag-skill mappings from AIConfig first,
- * falling back to the spec's agent_skills field.
- */
-async function resolveSkills(
-  fm: SpecDocument['frontmatter'],
-  aiConfig?: AIConfig,
-): Promise<string | undefined> {
-  // Check for tag-skill mappings from AIConfig
-  if (aiConfig?.tagSkillMappings && aiConfig.tagSkillMappings.length > 0) {
-    const specTags = new Set(fm.tags ?? []);
-    const matchedSkills = aiConfig.tagSkillMappings
-      .filter((m) => specTags.has(m.tag))
-      .map((m) => m.skill);
-
-    if (matchedSkills.length > 0) {
-      const uniqueSkills = [...new Set(matchedSkills)];
-      const skillSections: string[] = [];
-      for (const skillName of uniqueSkills) {
-        const content = await loadSkills(skillName);
-        if (content) {
-          skillSections.push(content);
-        }
-      }
-      if (skillSections.length > 0) {
-        const instruction = `Use the following skill(s) for this task: ${uniqueSkills.map((s) => `"${s}"`).join(', ')}.`;
-        return `${instruction}\n\n${skillSections.join('\n\n---\n\n')}`;
-      }
-    }
-  }
-
-  // Fallback: use spec's agent_skills field
-  if (fm.agent_skills) {
-    const content = await loadSkills(fm.agent_skills);
-    if (content) {
-      return `Use the following skill for this task: "${fm.agent_skills}".\n\n${content}`;
-    }
-  }
-  return undefined;
 }
 
 /**
@@ -142,13 +99,7 @@ export async function assembleExecutionContext(
     sections.push(`## Conventions\n\n${conventionsContent}`);
   }
 
-  // 4. Agent Skills (tag-skill mappings from AIConfig override spec's agent_skills)
-  const skillsContent = options.skills ?? await resolveSkills(fm, options.aiConfig);
-  if (skillsContent) {
-    sections.push(`## Agent Skills\n\n${skillsContent}`);
-  }
-
-  // 5. Scope Constraints
+  // 4. Scope Constraints
   const mustNotTouch = fm.must_not_touch ?? [];
   const scopeLines = [`Only modify files listed in relevant_files.`];
   if (mustNotTouch.length > 0) {
