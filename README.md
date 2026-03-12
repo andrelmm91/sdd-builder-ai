@@ -137,7 +137,7 @@ Install, authenticate with your own account, and that's all. Your keys, your bil
 
 ```bash
 # 1. Install the extension
-ext install builder-ai
+ext install andrelmm91.sdd-platform
 
 # 3. Configure your AI provider
 SDD: Open AI Config
@@ -148,7 +148,7 @@ SDD: Open Requirement Board
 # 5. Let AI idealize and generate specs, then execute
 ```
 
-For the full setup guide, command reference, spec format documentation, and configuration details, see **[HOW-TO.md](HOW-TO.md)**.
+For the full setup guide, command reference, spec format documentation, and configuration details, see **[HOW-TO.md](https://github.com/andrelmm91/sdd-agentic/blob/main/HOW-TO.md)**.
 
 ---
 
@@ -175,7 +175,7 @@ For the full setup guide, command reference, spec format documentation, and conf
 
 ## Feedback & Issues
 
-Report bugs and feature requests at [GitHub Issues](https://github.com/your-org/builder-ai/issues).
+Report bugs and feature requests at [GitHub Issues](https://github.com/andrelmm91/sdd-agentic/issues).
 
 ---
 

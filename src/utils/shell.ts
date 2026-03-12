@@ -66,7 +66,7 @@ export async function isCommandAvailable(command: string): Promise<boolean> {
     checker = `where ${command}`;
   } else {
     // Run through the user's login shell so PATH includes nvm, homebrew, etc.
-    const userShell = process.env.SHELL || '/bin/zsh';
+    const userShell = process.env.SHELL || '/bin/sh';
     checker = `${userShell} -l -c 'which ${command}'`;
   }
   const result = await execCommand(checker);

@@ -1,6 +1,6 @@
 {
   "name": "sdd-platform",
-  "displayName": "SDD Platform",
+  "displayName": "Builder AI",
   "description": "Spec-Driven Development for VS Code \u2014 AI-assisted structured development workflow",
   "version": "0.1.0",
   "publisher": "andrelmm91",
@@ -26,6 +26,7 @@
     "specs"
   ],
   "categories": [
+    "AI",
     "Other"
   ],
   "activationEvents": [
@@ -80,8 +81,24 @@
         "title": "SDD: Open Dashboard"
       },
       {
-        "command": "sdd.openSddKanban",
-        "title": "SDD: Open SDD Kanban"
+        "command": "sdd.openKanbanBoard",
+        "title": "SDD: Open Kanban Board"
+      },
+      {
+        "command": "sdd.addToBulk",
+        "title": "SDD: Add to Bulk Queue"
+      },
+      {
+        "command": "sdd.executeAllBulk",
+        "title": "SDD: Execute All Bulk"
+      },
+      {
+        "command": "sdd.idealizeRequirements",
+        "title": "SDD: Idealize Requirements"
+      },
+      {
+        "command": "sdd.createSddCards",
+        "title": "SDD: Create SDD Cards"
       },
       {
         "command": "sdd.openRequirementBoard",
@@ -154,7 +171,7 @@
       "activitybar": [
         {
           "id": "sdd-sidebar",
-          "title": "SDD Platform",
+          "title": "Builder AI",
           "icon": "resources/icon.svg"
         }
       ]
@@ -169,7 +186,7 @@
       ]
     },
     "configuration": {
-      "title": "SDD Platform",
+      "title": "Builder AI",
       "properties": {
         "sdd.specPrefix": {
           "type": "string",
@@ -214,7 +231,7 @@
             "title": "Initialize your project",
             "description": "Run **SDD: Initialize Project** to set up the `.sdd` folder structure with config, conventions, and skills.\n\n[Initialize Project](command:sdd.initProject)",
             "media": {
-              "image": "resources/icon.png",
+              "image": "media/logo.png",
               "altText": "Initialize project"
             },
             "completionEvents": [
@@ -226,7 +243,7 @@
             "title": "Create your first spec",
             "description": "Run **SDD: New Spec** to create a `.sdd.md` spec file with all required sections.\n\n[New Spec](command:sdd.newSpec)",
             "media": {
-              "image": "resources/icon.png",
+              "image": "media/logo.png",
               "altText": "Create a spec"
             },
             "completionEvents": [
@@ -238,7 +255,7 @@
             "title": "Understand the spec format",
             "description": "Each `.sdd.md` file has YAML frontmatter (spec_id, status, priority, budget_max_tokens, \u2026) followed by markdown sections: **Context**, **Requirements**, **Acceptance Criteria**, **Constraints**, and **Examples**.\n\nOpen the Specs panel to browse your specs.",
             "media": {
-              "image": "resources/icon.png",
+              "image": "media/logo.png",
               "altText": "Spec format"
             },
             "completionEvents": [
@@ -250,7 +267,7 @@
             "title": "Mark spec as ready",
             "description": "Edit your spec until it is complete, then right-click it in the Specs panel and run **SDD: Mark Ready** to transition it to `ready` status.\n\n[Mark Ready](command:sdd.markReady)",
             "media": {
-              "image": "resources/icon.png",
+              "image": "media/logo.png",
               "altText": "Mark spec ready"
             },
             "completionEvents": [
@@ -262,7 +279,7 @@
             "title": "Execute with AI",
             "description": "Right-click a `ready` spec and run **SDD: Execute Spec** to have Claude implement the spec within the defined token budget.\n\n[Execute Spec](command:sdd.executeSpec)",
             "media": {
-              "image": "resources/icon.png",
+              "image": "media/logo.png",
               "altText": "Execute spec"
             },
             "completionEvents": [
@@ -274,7 +291,7 @@
             "title": "Review and ship",
             "description": "Review the AI's changes in the diff view, then **Approve** to create a PR or **Request Changes** to send feedback back to the agent.\n\n[Review Spec](command:sdd.reviewSpec)",
             "media": {
-              "image": "resources/icon.png",
+              "image": "media/logo.png",
               "altText": "Review and ship"
             },
             "completionEvents": [
@@ -306,9 +323,12 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "package": "npm run build:all && vsce package",
+    "publish": "npm run build:all && vsce publish"
   },
   "devDependencies": {
+    "@vscode/vsce": "^3.0.0",
     "@sveltejs/vite-plugin-svelte": "^6.0.0",
     "@types/node": "^20.19.35",
     "@types/vscode": "^1.85.0",

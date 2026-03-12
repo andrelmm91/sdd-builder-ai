@@ -50,6 +50,10 @@ export class CliRunner implements ExecutionRunner {
     aiConfig?: Partial<AIConfig>,
     specFilePath?: string,
   ): Promise<ExecutionResult> {
+    if (os.platform() === 'win32') {
+      return { success: false, output: '', duration: 0, error: 'Execution is not yet supported on Windows. Please use macOS or Linux.' };
+    }
+
     if (this._running) {
       return { success: false, output: '', duration: 0, error: 'Already running' };
     }
