@@ -98,19 +98,35 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
   return cards;
 }
 
+async function folderExists(uri: vscode.Uri): Promise<boolean> {
+  try {
+    const stat = await vscode.workspace.fs.stat(uri);
+    return stat.type === vscode.FileType.Directory;
+  } catch {
+    return false;
+  }
+}
+
 export async function createFeatureFile(
   productFolderUri: vscode.Uri,
   formData: FeatureFormData,
 ): Promise<string> {
-  const safeName = sanitizeFeatureName(formData.name);
-  const folderUri = vscode.Uri.joinPath(productFolderUri, safeName);
-  const fileUri = vscode.Uri.joinPath(folderUri, `${safeName}.md`);
+  const baseName = sanitizeFeatureName(formData.name);
+  let uniqueName = baseName;
+  let counter = 2;
+  while (await folderExists(vscode.Uri.joinPath(productFolderUri, uniqueName))) {
+    uniqueName = `${baseName}_${counter}`;
+    counter++;
+  }
+  const folderUri = vscode.Uri.joinPath(productFolderUri, uniqueName);
+  const fileUri = vscode.Uri.joinPath(folderUri, `${uniqueName}.md`);
 
+  const suffix = uniqueName !== baseName ? ` (${counter - 1})` : '';
   const today = new Date().toISOString().slice(0, 10);
   const frontmatterData: Record<string, unknown> = {
     status: 'Feature Backlog',
     date: today,
-    title: formData.name,
+    title: `${formData.name}${suffix}`,
     requirementType: formData.requirementType,
   };
 
