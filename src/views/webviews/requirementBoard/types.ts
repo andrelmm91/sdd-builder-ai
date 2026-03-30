@@ -1,9 +1,12 @@
 export type FeatureStatus = 'Feature Backlog' | 'Idealization In Review' | 'SDD Created';
 
+export type RequirementType = 'new_feature' | 'bug_fix' | 'technical_debt';
+
 export interface FeatureData {
   status: FeatureStatus;
   date: string;
   title?: string;
+  requirementType?: RequirementType;
 }
 
 export interface FeatureCard {
@@ -13,6 +16,7 @@ export interface FeatureCard {
   filePath: string;
   folderPath: string;
   hasIdealization: boolean;
+  requirementType?: RequirementType;
 }
 
 export interface FeatureFormData {
@@ -20,4 +24,5 @@ export interface FeatureFormData {
   description: string;
   acceptanceCriteria: string;
   notes?: string;
+  requirementType: RequirementType;
 }

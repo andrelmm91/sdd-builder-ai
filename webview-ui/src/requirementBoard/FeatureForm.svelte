@@ -1,11 +1,14 @@
 <script lang="ts">
   import { postMessage } from '../lib/vscode';
 
+  export type RequirementType = 'new_feature' | 'bug_fix' | 'technical_debt';
+
   export interface FeatureFormData {
     name: string;
     description: string;
     acceptanceCriteria: string;
     notes: string;
+    requirementType: RequirementType;
   }
 
   interface Props {
@@ -19,6 +22,7 @@
   let description = $state('');
   let acceptanceCriteria = $state('');
   let notes = $state('');
+  let requirementType = $state<RequirementType>('new_feature');
   let attempted = $state(false);
 
   const nameInvalid = $derived(attempted && !name.trim());
@@ -37,12 +41,14 @@
       description: description.trim(),
       acceptanceCriteria: acceptanceCriteria.trim(),
       notes: notes.trim(),
+      requirementType,
     } satisfies FeatureFormData);
 
     name = '';
     description = '';
     acceptanceCriteria = '';
     notes = '';
+    requirementType = 'new_feature';
     attempted = false;
     onsubmit();
   }
@@ -52,20 +58,32 @@
     description = '';
     acceptanceCriteria = '';
     notes = '';
+    requirementType = 'new_feature';
     attempted = false;
     oncancel();
   }
 </script>
 
 <div class="form-container">
-  <h2 class="form-title">Add New Feature</h2>
+  <h2 class="form-title">Add New Requirement</h2>
 
   <div class="field">
-    <label for="feat-name" class="field-label">
-      Feature Name <span class="required">*</span>
+    <label for="req-type" class="field-label">
+      Type <span class="required">*</span>
+    </label>
+    <select id="req-type" class="field-select" bind:value={requirementType}>
+      <option value="new_feature">New Feature</option>
+      <option value="bug_fix">Bug Fix</option>
+      <option value="technical_debt">Technical Debt</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="req-name" class="field-label">
+      Requirement Name <span class="required">*</span>
     </label>
     <input
-      id="feat-name"
+      id="req-name"
       type="text"
       class="field-input"
       class:invalid={nameInvalid}
@@ -78,16 +96,16 @@
   </div>
 
   <div class="field">
-    <label for="feat-description" class="field-label">
+    <label for="req-description" class="field-label">
       Description <span class="required">*</span>
     </label>
     <textarea
-      id="feat-description"
+      id="req-description"
       class="field-textarea"
       class:invalid={descriptionInvalid}
       bind:value={description}
       rows={3}
-      placeholder="Describe the feature..."
+      placeholder="Describe the requirement..."
     ></textarea>
     {#if descriptionInvalid}
       <span class="error-msg">Description is required</span>
@@ -95,11 +113,11 @@
   </div>
 
   <div class="field">
-    <label for="feat-criteria" class="field-label">
+    <label for="req-criteria" class="field-label">
       Acceptance Criteria <span class="required">*</span>
     </label>
     <textarea
-      id="feat-criteria"
+      id="req-criteria"
       class="field-textarea"
       class:invalid={criteriaInvalid}
       bind:value={acceptanceCriteria}
@@ -112,9 +130,9 @@
   </div>
 
   <div class="field">
-    <label for="feat-notes" class="field-label">Notes</label>
+    <label for="req-notes" class="field-label">Notes</label>
     <textarea
-      id="feat-notes"
+      id="req-notes"
       class="field-textarea"
       bind:value={notes}
       rows={2}
@@ -129,7 +147,7 @@
       onclick={handleSubmit}
       disabled={attempted && !canSubmit}
     >
-      Add Feature
+      Add Requirement
     </button>
   </div>
 </div>
@@ -173,7 +191,8 @@
   }
 
   .field-input,
-  .field-textarea {
+  .field-textarea,
+  .field-select {
     background: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
@@ -184,8 +203,14 @@
     resize: vertical;
   }
 
+  .field-select {
+    resize: none;
+    cursor: pointer;
+  }
+
   .field-input:focus,
-  .field-textarea:focus {
+  .field-textarea:focus,
+  .field-select:focus {
     outline: none;
     border-color: var(--vscode-focusBorder);
   }

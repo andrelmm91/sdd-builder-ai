@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
 import { parseFrontmatter, serializeFrontmatter } from '../../../utils/frontmatter';
 import { IDEALIZATION_FILENAME, FEATURE_STATUSES } from '../../../utils/constants';
-import type { FeatureCard, FeatureData, FeatureFormData, FeatureStatus } from './types';
+import type { FeatureCard, FeatureData, FeatureFormData, FeatureStatus, RequirementType } from './types';
+
+const REQUIREMENT_TYPES: RequirementType[] = ['new_feature', 'bug_fix', 'technical_debt'];
 
 export function sanitizeFeatureName(name: string): string {
   return name
@@ -16,10 +18,15 @@ export function parseFeatureFile(content: string): { data: FeatureData; body: st
   const status: FeatureStatus = FEATURE_STATUSES.includes(rawStatus as FeatureStatus)
     ? (rawStatus as FeatureStatus)
     : 'Feature Backlog';
+  const rawType = result.data['requirementType'] as string;
+  const requirementType: RequirementType | undefined = REQUIREMENT_TYPES.includes(rawType as RequirementType)
+    ? (rawType as RequirementType)
+    : undefined;
   const data: FeatureData = {
     status,
     date: (result.data['date'] as string) ?? '',
     title: (result.data['title'] as string) ?? undefined,
+    requirementType,
   };
   return { data, body: result.body };
 }
@@ -47,6 +54,7 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
     let status: FeatureStatus = 'Feature Backlog';
     let displayFilePath: string = '';
     let featureTitle: string | undefined;
+    let featureRequirementType: RequirementType | undefined;
 
     try {
       const idealizationBytes = await vscode.workspace.fs.readFile(idealizationUri);
@@ -55,6 +63,7 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
       hasIdealization = true;
       status = data.status;
       featureTitle = data.title;
+      featureRequirementType = data.requirementType;
       displayFilePath = idealizationUri.fsPath;
     } catch {
       // No idealization.md — try the feature file
@@ -67,6 +76,7 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
           continue;
         }
         featureTitle = data.title;
+        featureRequirementType = data.requirementType;
         displayFilePath = featureFileUri.fsPath;
       } catch {
         console.warn(`[featureParser] Skipping folder "${entryName}": could not read feature file`);
@@ -81,6 +91,7 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
       filePath: displayFilePath,
       folderPath: folderUri.fsPath,
       hasIdealization,
+      requirementType: featureRequirementType,
     });
   }
 
@@ -100,6 +111,7 @@ export async function createFeatureFile(
     status: 'Feature Backlog',
     date: today,
     title: formData.name,
+    requirementType: formData.requirementType,
   };
 
   const bodyParts: string[] = [`## Description\n\n${formData.description}`];

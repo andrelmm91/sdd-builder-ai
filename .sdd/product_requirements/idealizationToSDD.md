@@ -20,16 +20,17 @@ Currently, features go directly from informal requirements to SDD specs. This fe
 ### Phase 1: Feature Capture (Feature Backlog)
 
 1. User clicks **"Open Requirement Board"** button in the Dashboard (next to "Open SDD Kanban").
-2. A new kanban board opens with three columns: **Feature Backlog** | **Idealization In Review** | **SDD Created**.
-3. User clicks **"Add New Feature"** → a form opens with fields:
-   - **Feature Name** (required) — used as folder name and card title
+2. A new kanban board opens with three columns: **Requirement Backlog** | **Idealization In Review** | **SDD Created**.
+3. User clicks **"Add New Requirement"** → a form opens with fields:
+   - **Type** (required) — `New Feature` | `Bug Fix` | `Technical Debt`
+   - **Requirement Name** (required) — used as folder name and card title
    - **Description** (required)
    - **Acceptance Criteria** (required)
    - **Notes** (optional)
 4. On submit, the extension creates:
-   - Folder: `.sdd/product/{feature_name}/`
-   - File: `.sdd/product/{feature_name}/{feature_name}.md`
-5. The card appears in the **Feature Backlog** column.
+   - Folder: `.sdd/product_requirements/{requirement_name}/`
+   - File: `.sdd/product_requirements/{requirement_name}/{requirement_name}.md`
+5. The card appears in the **Requirement Backlog** column with a type badge (blue = New Feature, orange = Bug Fix, purple = Tech Debt).
 
 ### Phase 2: AI Idealization (Idealization In Review)
 
@@ -65,15 +66,15 @@ Currently, features go directly from informal requirements to SDD specs. This fe
 └── ...
 ```
 
-### Feature File Format (`{feature_name}.md`)
+### Requirement File Format (`{requirement_name}.md`)
 
 ```markdown
 ---
 status: "Feature Backlog"          # | "Idealization In Review" | "SDD Created"
 date: 2026-03-09
+title: "{Requirement Name}"
+requirementType: new_feature       # | bug_fix | technical_debt
 ---
-
-# {Feature Name}
 
 ## Description
 {User-provided description}

@@ -4,6 +4,7 @@
   import FeatureForm from './FeatureForm.svelte';
 
   type FeatureStatus = 'Feature Backlog' | 'Idealization In Review' | 'SDD Created';
+  type RequirementType = 'new_feature' | 'bug_fix' | 'technical_debt';
 
   interface FeatureCard {
     name: string;
@@ -12,13 +13,20 @@
     filePath: string;
     folderPath: string;
     hasIdealization: boolean;
+    requirementType?: RequirementType;
   }
 
   const COLUMNS: { id: FeatureStatus; label: string }[] = [
-    { id: 'Feature Backlog', label: 'Feature Backlog' },
+    { id: 'Feature Backlog', label: 'Requirement Backlog' },
     { id: 'Idealization In Review', label: 'Idealization In Review' },
     { id: 'SDD Created', label: 'SDD Created' },
   ];
+
+  const REQUIREMENT_TYPE_LABELS: Record<RequirementType, string> = {
+    new_feature: 'New Feature',
+    bug_fix: 'Bug Fix',
+    technical_debt: 'Tech Debt',
+  };
 
   let features: FeatureCard[] = $state([]);
   let showFeatureForm = $state(false);
@@ -91,7 +99,7 @@
         <path d="M8 0l3 2-3 2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
-    <button class="btn-new" onclick={addNewFeature}>Add New Feature +</button>
+    <button class="btn-new" onclick={addNewFeature}>Add New Requirement +</button>
     <button class="btn-new btn-config" onclick={openAiConfig}>⚙ AI Config</button>
   </header>
 
@@ -113,7 +121,7 @@
         </div>
 
         {#if cards.length === 0}
-          <p class="empty-col">No features</p>
+          <p class="empty-col">No requirements</p>
         {:else}
           {#each cards as card (card.name)}
             <div class="feature-card">
@@ -123,6 +131,11 @@
 
               <div class="card-meta">
                 <span class="badge {statusBadgeClass(card.status)}">{card.status}</span>
+                {#if card.requirementType}
+                  <span class="badge badge-type badge-type-{card.requirementType}">
+                    {REQUIREMENT_TYPE_LABELS[card.requirementType]}
+                  </span>
+                {/if}
               </div>
 
               <div class="card-actions">
@@ -314,6 +327,11 @@
   .badge-low    { background: var(--vscode-charts-green); color: #fff; }
   .badge-medium { background: var(--vscode-charts-yellow); color: #fff; }
   .badge-high   { background: var(--vscode-charts-red); color: #fff; }
+
+  .badge-type { font-weight: 500; }
+  .badge-type-new_feature     { background: var(--vscode-charts-blue, #0078d4); color: #fff; }
+  .badge-type-bug_fix         { background: var(--vscode-charts-orange, #ca5010); color: #fff; }
+  .badge-type-technical_debt  { background: var(--vscode-charts-purple, #8764b8); color: #fff; }
 
   .card-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
 
