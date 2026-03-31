@@ -16,7 +16,6 @@ export interface SpecData {
   relevant_files: string[];
   must_not_touch: string[];
   depends_on: string[];
-  budget_max_tokens: number;
   agent_skills: string;
   created: string;
 }

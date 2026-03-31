@@ -192,8 +192,6 @@ function generatedSpecsToSpecData(specs: GeneratedSpec[]): SpecData[] {
         relevant_files: Array.isArray(data.relevant_files) ? (data.relevant_files as string[]) : [],
         must_not_touch: Array.isArray(data.must_not_touch) ? (data.must_not_touch as string[]) : [],
         depends_on: Array.isArray(data.depends_on) ? (data.depends_on as string[]) : [],
-        budget_max_tokens:
-          typeof data.budget_max_tokens === 'number' ? data.budget_max_tokens : 100_000,
         agent_skills: typeof data.agent_skills === 'string' ? data.agent_skills : '',
         created:
           typeof data.created === 'string'

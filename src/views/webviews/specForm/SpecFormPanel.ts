@@ -20,7 +20,6 @@ interface FormData {
   relevant_files: string[];
   must_not_touch: string[];
   depends_on: string[];
-  budget_max_tokens: number;
   created: string;
   context: string;
   functionalRequirements: string;
@@ -193,7 +192,6 @@ function serializeSpecDocument(f: FormData): string {
     relevant_files: f.relevant_files,
     must_not_touch: f.must_not_touch,
     depends_on: f.depends_on,
-    budget_max_tokens: f.budget_max_tokens,
     agent_skills: f.agent_skills,
     created: f.created || new Date().toISOString().slice(0, 10),
   };

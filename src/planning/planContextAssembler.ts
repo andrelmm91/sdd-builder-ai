@@ -73,7 +73,6 @@ relevant_files:
 must_not_touch:
   - src/path/to/protected.ts
 depends_on: [SDD-001, SDD-002]
-budget_max_tokens: 100000
 agent_skills: backend-dev
 created: YYYY-MM-DD
 ---
@@ -116,7 +115,6 @@ function buildInstructions(prefix: string, startingId: string): string {
 - Generate one spec per distinct, independently-deliverable unit of work.
 - Each spec must have a unique \`spec_id\`, a clear title, and all required frontmatter fields.
 - Do NOT duplicate any existing spec listed in the **Existing Specs** section.
-- Assign realistic \`budget_max_tokens\` (typically 50000–150000 depending on complexity).
 - Set \`status: draft\` on all generated specs.`;
 }
 

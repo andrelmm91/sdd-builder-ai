@@ -32,7 +32,6 @@ function buildRawSpec(spec: SpecDocument): string {
     `must_not_touch:`,
     mustNotTouch,
     `depends_on: [${dependsOn}]`,
-    `budget_max_tokens: ${fm.budget_max_tokens}`,
     `agent_skills: ${fm.agent_skills}`,
     `created: ${fm.created}`,
     '---',

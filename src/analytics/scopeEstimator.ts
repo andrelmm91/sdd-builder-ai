@@ -1,4 +1,5 @@
 import type { SpecData } from '../specs/types';
+import { getBudgetForComplexity } from '../execution/budgetEnforcer';
 
 export interface ScopeEstimate {
   totalSpecs: number;
@@ -17,7 +18,7 @@ export function estimateScope(specs: SpecData[]): ScopeEstimate {
 
   for (const spec of specs) {
     byComplexity[spec.complexity] += 1;
-    estimatedTotalTokens += spec.budget_max_tokens;
+    estimatedTotalTokens += getBudgetForComplexity(spec.complexity);
 
     for (const tag of spec.tags) {
       if (tag.startsWith('phase-')) {

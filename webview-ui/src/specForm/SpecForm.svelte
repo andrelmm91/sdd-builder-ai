@@ -13,7 +13,6 @@
     relevant_files: string[];
     must_not_touch: string[];
     depends_on: string[];
-    budget_max_tokens: number;
     created: string;
     context: string;
     functionalRequirements: string;
@@ -42,8 +41,6 @@
   let relevantFiles = $state('');
   let mustNotTouch = $state('');
   let dependsOn = $state<string[]>([]);
-  let budgetTokens = $state(100000);
-
   let context = $state('');
   let functionalReqs = $state('');
   let nonFunctionalReqs = $state('');
@@ -103,7 +100,6 @@
     relevantFiles = (f.relevant_files ?? []).join('\n');
     mustNotTouch = (f.must_not_touch ?? []).join('\n');
     dependsOn = f.depends_on ?? [];
-    budgetTokens = f.budget_max_tokens ?? 100000;
     context = f.context ?? '';
     functionalReqs = f.functionalRequirements ?? '';
     nonFunctionalReqs = f.nonFunctionalRequirements ?? '';
@@ -155,7 +151,6 @@
       relevant_files: relevantFiles.split('\n').map((l) => l.trim()).filter(Boolean),
       must_not_touch: mustNotTouch.split('\n').map((l) => l.trim()).filter(Boolean),
       depends_on: dependsOn,
-      budget_max_tokens: budgetTokens,
       created: new Date().toISOString().slice(0, 10),
       context,
       functionalRequirements: functionalReqs,
@@ -323,22 +318,6 @@
           <span class="muted">No other specs</span>
         {/if}
       </div>
-    </div>
-  </fieldset>
-
-  <!-- Budget -->
-  <fieldset class="group">
-    <legend>Budget</legend>
-    <div class="field budget-field">
-      <label for="budget">Max Tokens: <strong>{budgetTokens.toLocaleString()}</strong></label>
-      <input
-        id="budget"
-        type="range"
-        min={10000}
-        max={500000}
-        step={10000}
-        bind:value={budgetTokens}
-      />
     </div>
   </fieldset>
 
@@ -543,10 +522,6 @@
     cursor: pointer;
     color: var(--vscode-foreground);
   }
-
-  /* Budget */
-  .budget-field { gap: 8px; }
-  input[type="range"] { width: 100%; accent-color: var(--vscode-button-background); }
 
   /* Textarea auto-expand approximation */
   textarea { min-height: 60px; max-height: 300px; }

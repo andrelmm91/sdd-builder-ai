@@ -20,7 +20,6 @@ const REQUIRED_FIELDS: (keyof SpecData)[] = [
   'relevant_files',
   'must_not_touch',
   'depends_on',
-  'budget_max_tokens',
   'agent_skills',
   'created',
 ];
@@ -99,7 +98,6 @@ export function parseSpec(content: string): ParseResult<SpecDocument> {
     relevant_files: Array.isArray(raw.relevant_files) ? (raw.relevant_files as string[]) : [],
     must_not_touch: Array.isArray(raw.must_not_touch) ? (raw.must_not_touch as string[]) : [],
     depends_on: Array.isArray(raw.depends_on) ? (raw.depends_on as string[]) : [],
-    budget_max_tokens: Number(raw.budget_max_tokens),
     agent_skills: String(raw.agent_skills),
     created: String(raw.created),
   };

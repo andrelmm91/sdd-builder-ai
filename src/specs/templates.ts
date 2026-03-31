@@ -161,7 +161,6 @@ export function generateSpecFromTemplate(options: TemplateOptions): string {
     `relevant_files: []`,
     `must_not_touch: []`,
     `depends_on: []`,
-    `budget_max_tokens: 100000`,
     `agent_skills: backend-dev`,
     `created: ${resolvedCreated}`,
     '---',

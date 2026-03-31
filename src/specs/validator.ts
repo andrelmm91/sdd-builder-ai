@@ -20,10 +20,10 @@ const FRONTMATTER_SCHEMA = {
   type: 'object',
   required: [
     'spec_id', 'title', 'status', 'priority', 'complexity',
-    'tags', 'relevant_files', 'must_not_touch', 'depends_on', 'budget_max_tokens', 'agent_skills', 'created',
+    'tags', 'relevant_files', 'must_not_touch', 'depends_on', 'agent_skills', 'created',
   ],
   properties: {
-    spec_id:           { type: 'string', pattern: '^[A-Za-z0-9]+-[0-9]+$' },
+    spec_id:           { type: 'string', pattern: '^[A-Za-z0-9]+-[0-9]+(-[A-Za-z0-9]+)?$' },
     title:             { type: 'string', minLength: 1 },
     status:            { type: 'string', enum: ['draft', 'ready', 'in_progress', 'review', 'done'] },
     priority:          { type: 'string', enum: ['high', 'medium', 'low'] },
@@ -32,7 +32,6 @@ const FRONTMATTER_SCHEMA = {
     relevant_files:    { type: 'array', items: { type: 'string' }, minItems: 1 },
     must_not_touch:    { type: 'array', items: { type: 'string' } },
     depends_on:        { type: 'array', items: { type: 'string' } },
-    budget_max_tokens: { type: 'number', minimum: 1 },
     agent_skills:      { type: 'string', minLength: 1 },
     created:           { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
   },
@@ -96,14 +95,6 @@ export function validateSpec(spec: SpecDocument): ValidationResult {
     errors.push({
       field: 'relevant_files',
       message: `relevant_files has ${nonTestFiles.length} non-test files (limit is 3). Consider splitting this spec.`,
-      severity: 'warning',
-    });
-  }
-
-  if (spec.frontmatter.budget_max_tokens > 200000) {
-    errors.push({
-      field: 'budget_max_tokens',
-      message: `budget_max_tokens (${spec.frontmatter.budget_max_tokens}) exceeds the recommended limit of 200000`,
       severity: 'warning',
     });
   }

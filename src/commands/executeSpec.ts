@@ -4,7 +4,7 @@ import { parseSpec } from '../specs/parser';
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
 import { getWorkspaceRoot, writeWorkspaceFile, readWorkspaceFile } from '../utils/fileSystem';
 import { isCommandAvailable } from '../utils/shell';
-import { validateBudget } from '../execution/budgetEnforcer';
+import { getBudgetForComplexity } from '../execution/budgetEnforcer';
 import { CliRunner } from '../execution/cliRunner';
 import { captureResults } from '../execution/resultCapture';
 import { runPostValidation } from '../execution/postValidation';
@@ -71,18 +71,8 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     return false;
   }
 
-  // --- Pre-flight: budget validation ---
-  const budget = spec.frontmatter.budget_max_tokens;
-  const budgetValidation = validateBudget(budget);
-  if (!budgetValidation.valid) {
-    vscode.window.showErrorMessage(
-      `Budget validation failed for ${specId}: ${budgetValidation.warning}`
-    );
-    return false;
-  }
-  if (budgetValidation.warning) {
-    vscode.window.showWarningMessage(`${specId} budget warning: ${budgetValidation.warning}`);
-  }
+  // --- Derive budget from complexity ---
+  const budget = getBudgetForComplexity(spec.frontmatter.complexity);
 
   // --- Read AI config ---
   const aiConfig = await readAIConfig();

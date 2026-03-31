@@ -232,20 +232,4 @@ describe('createExecuteSpecCommand', () => {
     );
   });
 
-  it('shows warning notification on budget warning', async () => {
-    // budget > 200_000 triggers a warning but is still valid
-    const content = makeSpecContent('ready').replace('budget_max_tokens: 100000', 'budget_max_tokens: 250000');
-    vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(
-      Buffer.from(content) as unknown as Uint8Array
-    );
-    vi.mocked(vscode.window.withProgress).mockResolvedValue(undefined);
-
-    const item = { kind: 'spec' as const, filePath: '/ws/.specs/SDD-030.sdd.md' };
-    await command(item as never);
-
-    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
-      expect.stringContaining('budget warning')
-    );
-    expect(vscode.window.withProgress).toHaveBeenCalled();
-  });
 });

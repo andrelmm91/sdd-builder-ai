@@ -99,7 +99,11 @@ export async function runInTerminal(options: RunInTerminalOptions): Promise<void
     const logDir = path.join(cwd, EXECUTIONS_FOLDER, logName);
     fs.mkdirSync(logDir, { recursive: true });
     persistentLogPath = path.join(logDir, `exec-${ts}.log`);
-    commandToRun = `set -o pipefail; ${command} 2>&1 | tee ${sq(persistentLogPath)}`;
+    if (process.platform === 'win32') {
+      commandToRun = `${command} 2>&1 | Tee-Object -FilePath ${sq(persistentLogPath)}`;
+    } else {
+      commandToRun = `set -o pipefail; ${command} 2>&1 | tee ${sq(persistentLogPath)}`;
+    }
   }
 
   const terminal = vscode.window.createTerminal({ name: terminalName, cwd });
@@ -115,16 +119,22 @@ export async function runInTerminal(options: RunInTerminalOptions): Promise<void
   // The command and sentinel echo are joined with '; ' so only one line appears.
   // Newlines in the command are already normalised to spaces by buildCliCommand /
   // cliRunner._buildCommand, so no `quote>` continuation prompt appears.
-  terminal.sendText(`${commandToRun}; echo $? > ${sq(sentinelPath)}`);
+  // PowerShell's > operator writes UTF-16 LE; use Out-File -Encoding ascii so Node can parseInt it.
+  const sentinelEcho = process.platform === 'win32'
+    ? `$LASTEXITCODE | Out-File -FilePath ${sq(sentinelPath)} -Encoding ascii`
+    : `echo $? > ${sq(sentinelPath)}`;
+  terminal.sendText(`${commandToRun}; ${sentinelEcho}`);
 
   return new Promise<void>((resolve) => {
     let settled = false;
     let watcher: fs.FSWatcher | null = null;
+    let poller: ReturnType<typeof setInterval> | null = null;
 
     const done = async (exitCode: number | void) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      if (poller) clearInterval(poller);
       watcher?.close();
       try { fs.unlinkSync(sentinelPath); } catch { /* best-effort */ }
       if (exitCode === 0) {
@@ -137,18 +147,26 @@ export async function runInTerminal(options: RunInTerminalOptions): Promise<void
 
     const timer = setTimeout(() => void done(undefined), timeoutMs);
 
+    const readSentinel = () => {
+      try {
+        const content = fs.readFileSync(sentinelPath, 'utf8').trim();
+        const code = parseInt(content, 10);
+        void done(isNaN(code) ? 1 : code);
+      } catch {
+        void done(1);
+      }
+    };
+
     watcher = fs.watch(tmpDir, (_event, filename) => {
-      if (filename !== sentinelName || settled) return;
+      if (!filename || filename !== sentinelName || settled) return;
       // Small delay to ensure the file write is flushed before we read it
-      setTimeout(() => {
-        try {
-          const content = fs.readFileSync(sentinelPath, 'utf8').trim();
-          const code = parseInt(content, 10);
-          void done(isNaN(code) ? 1 : code);
-        } catch {
-          void done(1);
-        }
-      }, 100);
+      setTimeout(readSentinel, 100);
     });
+
+    // Polling fallback: fs.watch can miss events on Windows
+    poller = setInterval(() => {
+      if (settled) return;
+      if (fs.existsSync(sentinelPath)) setTimeout(readSentinel, 100);
+    }, 2000);
   });
 }
