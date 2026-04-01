@@ -25,7 +25,7 @@ export const STATUS_ORDER: SpecStatus[] = [
 ];
 
 export const FEATURE_STATUSES: FeatureStatus[] = [
-  'Feature Backlog',
+  'New Requirement',
   'Idealization In Review',
   'SDD Created',
 ];

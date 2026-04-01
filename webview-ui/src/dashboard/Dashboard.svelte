@@ -35,7 +35,7 @@
   let notInitialized = $state(false);
 
   const STATUS_ORDER = ['draft', 'ready', 'in_progress', 'review', 'done'];
-  const REQUIREMENT_STATUS_ORDER = ['Feature Backlog', 'Idealization In Review', 'SDD Created'];
+  const REQUIREMENT_STATUS_ORDER = ['New Requirement', 'Idealization In Review', 'SDD Created'];
 
   const byStatus = $derived(
     STATUS_ORDER.reduce<Record<string, number>>((acc, s) => {
@@ -342,7 +342,7 @@
   .status-review     { background: var(--vscode-charts-purple); }
   .status-done       { background: var(--vscode-charts-green); }
 
-  .req-status-feature-backlog        { background: var(--vscode-charts-blue); }
+  .req-status-new-requirement            { background: var(--vscode-charts-blue); }
   .req-status-idealization-in-review { background: var(--vscode-charts-orange); }
   .req-status-sdd-created            { background: var(--vscode-charts-green); }
 

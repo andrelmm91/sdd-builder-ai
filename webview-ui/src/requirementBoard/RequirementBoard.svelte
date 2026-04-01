@@ -3,7 +3,7 @@
   import { onMessage, postMessage } from '../lib/vscode';
   import FeatureForm from './FeatureForm.svelte';
 
-  type FeatureStatus = 'Feature Backlog' | 'Idealization In Review' | 'SDD Created';
+  type FeatureStatus = 'New Requirement' | 'Idealization In Review' | 'SDD Created';
   type RequirementType = 'new_feature' | 'bug_fix' | 'technical_debt';
 
   interface FeatureCard {
@@ -17,7 +17,7 @@
   }
 
   const COLUMNS: { id: FeatureStatus; label: string }[] = [
-    { id: 'Feature Backlog', label: 'Requirement Backlog' },
+    { id: 'New Requirement', label: 'New Requirement' },
     { id: 'Idealization In Review', label: 'Idealization In Review' },
     { id: 'SDD Created', label: 'SDD Created' },
   ];
@@ -84,7 +84,7 @@
   }
 
   function statusBadgeClass(status: FeatureStatus): string {
-    if (status === 'Feature Backlog') return 'badge-low';
+    if (status === 'New Requirement') return 'badge-low';
     if (status === 'Idealization In Review') return 'badge-medium';
     return 'badge-high';
   }
@@ -139,7 +139,7 @@
               </div>
 
               <div class="card-actions">
-                {#if col.id === 'Feature Backlog'}
+                {#if col.id === 'New Requirement'}
                   {#if actionInProgress === card.name}
                     <span class="processing-indicator">Processing...</span>
                   {:else}

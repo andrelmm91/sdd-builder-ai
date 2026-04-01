@@ -35,7 +35,7 @@
   }
 
   const DEFAULT_PRE_PROMPT = 'Implement {spec_file}. Update open tasks and its status to review after completion.';
-  const DEFAULT_IDEALIZE_PROMPT = 'You are acting as a Senior Tech Lead and Software Architect. Follow the skill instructions in {file_prefix}.claude/skills/idealize-requirements/SKILL.md. Analyze the feature description in {file_prefix}{feature_path} and produce a complete technical idealization. Create idealization.md in the same folder as the feature file, following the output format defined in the skill. The idealization must include: technical architecture, implementation plan with ordered phases, automated and manual acceptance criteria, technical risks with mitigations, concrete recommendations grounded in the existing codebase, and all open questions that must be resolved before implementation.';
+  const DEFAULT_IDEALIZE_PROMPT = 'You are acting as a Senior Tech Lead and Software Architect. Follow the skill instructions in {file_prefix}.sdd/skills/idealize-requirements/SKILL.md. Analyze the feature description in {file_prefix}{feature_path} and produce a complete technical idealization. Create idealization.md in the same folder as the feature file, following the output format defined in the skill. The idealization must include: technical architecture, implementation plan with ordered phases, automated and manual acceptance criteria, technical risks with mitigations, concrete recommendations grounded in the existing codebase, and all open questions that must be resolved before implementation.';
   const DEFAULT_CREATE_SDD_PROMPT = 'Create new phases and SDDs in {file_prefix}{specs_folder}/ to fulfill the requirements in {file_prefix}{idealization_path} by using skills in {file_prefix}.sdd/skills/sdd-planner/SKILL.md. Add dependency from the other SDDs if needed.';
 
   const PROVIDER_OPTIONS: { value: AIProvider; label: string }[] = [
@@ -478,6 +478,7 @@
       ></textarea>
       <p class="field-hint">Use <code>{'{feature_path}'}</code> as a placeholder for the feature file path.</p>
       <p class="field-hint">Use <code>{'{file_prefix}'}</code> as a file reference prefix — resolves to <code>@</code> for Claude and <code>#file:</code> for Copilot.</p>
+      <p class="field-hint">The default prompt uses the <strong>idealize-requirements</strong> skill at <code>.sdd/skills/idealize-requirements/SKILL.md</code> — customize that file to adjust idealization behavior for your project.</p>
     </section>
 
     <section class="form-section">

@@ -1,4 +1,4 @@
-export type FeatureStatus = 'Feature Backlog' | 'Idealization In Review' | 'SDD Created';
+export type FeatureStatus = 'New Requirement' | 'Idealization In Review' | 'SDD Created';
 
 export type RequirementType = 'new_feature' | 'bug_fix' | 'technical_debt';
 

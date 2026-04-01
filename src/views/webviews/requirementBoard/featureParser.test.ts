@@ -39,17 +39,17 @@ describe('sanitizeFeatureName', () => {
 
 describe('parseFeatureFile', () => {
   it('parses valid frontmatter', () => {
-    const content = `---\nstatus: Feature Backlog\ndate: 2026-03-09\n---\n\nSome body`;
+    const content = `---\nstatus: New Requirement\ndate: 2026-03-09\n---\n\nSome body`;
     const { data, body } = parseFeatureFile(content);
-    expect(data.status).toBe('Feature Backlog');
+    expect(data.status).toBe('New Requirement');
     expect(data.date).toBe('2026-03-09');
     expect(body).toContain('Some body');
   });
 
-  it('defaults status to "Feature Backlog" when missing', () => {
+  it('defaults status to "New Requirement" when missing', () => {
     const content = `---\ndate: 2026-01-01\n---\n`;
     const { data } = parseFeatureFile(content);
-    expect(data.status).toBe('Feature Backlog');
+    expect(data.status).toBe('New Requirement');
   });
 
   it('parses "SDD Created" status', () => {
@@ -61,30 +61,30 @@ describe('parseFeatureFile', () => {
   it('handles missing frontmatter gracefully', () => {
     const content = `Just a plain markdown body`;
     const { data, body } = parseFeatureFile(content);
-    expect(data.status).toBe('Feature Backlog');
+    expect(data.status).toBe('New Requirement');
     expect(body).toContain('Just a plain markdown body');
   });
 
   it('parses title from frontmatter', () => {
-    const content = `---\nstatus: Feature Backlog\ndate: 2026-03-09\ntitle: User Authentication\n---\n`;
+    const content = `---\nstatus: New Requirement\ndate: 2026-03-09\ntitle: User Authentication\n---\n`;
     const { data } = parseFeatureFile(content);
     expect(data.title).toBe('User Authentication');
   });
 
-  it('defaults to "Feature Backlog" when status is invalid', () => {
+  it('defaults to "New Requirement" when status is invalid', () => {
     const content = `---\nstatus: feature backlog\ndate: 2026-01-01\n---\n`;
     const { data } = parseFeatureFile(content);
-    expect(data.status).toBe('Feature Backlog');
+    expect(data.status).toBe('New Requirement');
   });
 
-  it('defaults to "Feature Backlog" when status has a typo', () => {
+  it('defaults to "New Requirement" when status has a typo', () => {
     const content = `---\nstatus: in_progress\ndate: 2026-01-01\n---\n`;
     const { data } = parseFeatureFile(content);
-    expect(data.status).toBe('Feature Backlog');
+    expect(data.status).toBe('New Requirement');
   });
 
   it('returns undefined title when not in frontmatter', () => {
-    const content = `---\nstatus: Feature Backlog\ndate: 2026-03-09\n---\n`;
+    const content = `---\nstatus: New Requirement\ndate: 2026-03-09\n---\n`;
     const { data } = parseFeatureFile(content);
     expect(data.title).toBeUndefined();
   });
@@ -130,7 +130,7 @@ describe('createFeatureFile', () => {
     const [, bytesArg] = vi.mocked(vscode.workspace.fs.writeFile).mock.calls[0];
     const written = new TextDecoder().decode(bytesArg as Uint8Array);
     expect(written).toContain('title: User Authentication (v2)');
-    expect(written).toContain('status: Feature Backlog');
+    expect(written).toContain('status: New Requirement');
   });
 });
 
@@ -173,23 +173,23 @@ describe('loadFeatureCards display rules', () => {
     expect(cards[0].name).toBe('my_feature');
   });
 
-  it('falls back to feature file when no idealization.md and status is Feature Backlog', async () => {
+  it('falls back to feature file when no idealization.md and status is New Requirement', async () => {
     (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
       vi.fn().mockResolvedValue([['my_feature', vscode.FileType.Directory]]);
 
     vi.mocked(vscode.workspace.fs.readFile)
       // idealization.md — fails
       .mockRejectedValueOnce(new Error('no file'))
-      // feature file — succeeds with Feature Backlog
-      .mockResolvedValueOnce(enc.encode('---\nstatus: Feature Backlog\ndate: 2026-03-09\n---\n'));
+      // feature file — succeeds with New Requirement
+      .mockResolvedValueOnce(enc.encode('---\nstatus: New Requirement\ndate: 2026-03-09\n---\n'));
 
     const cards = await loadFeatureCards(makeUri('/workspace/.sdd/product'));
     expect(cards).toHaveLength(1);
-    expect(cards[0].status).toBe('Feature Backlog');
+    expect(cards[0].status).toBe('New Requirement');
     expect(cards[0].hasIdealization).toBe(false);
   });
 
-  it('excludes feature card if no idealization and status is not Feature Backlog', async () => {
+  it('excludes feature card if no idealization and status is not New Requirement', async () => {
     (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
       vi.fn().mockResolvedValue([['my_feature', vscode.FileType.Directory]]);
 
@@ -208,7 +208,7 @@ describe('loadFeatureCards display rules', () => {
     vi.mocked(vscode.workspace.fs.readFile)
       .mockResolvedValueOnce(
         enc.encode(
-          '---\nstatus: Feature Backlog\ndate: 2026-03-09\ntitle: My Cool Feature\n---\n',
+          '---\nstatus: New Requirement\ndate: 2026-03-09\ntitle: My Cool Feature\n---\n',
         ),
       );
 
@@ -224,7 +224,7 @@ describe('loadFeatureCards display rules', () => {
 
     vi.mocked(vscode.workspace.fs.readFile)
       .mockResolvedValueOnce(
-        enc.encode('---\nstatus: Feature Backlog\ndate: 2026-03-09\n---\n'),
+        enc.encode('---\nstatus: New Requirement\ndate: 2026-03-09\n---\n'),
       );
 
     const cards = await loadFeatureCards(makeUri('/workspace/.sdd/product'));

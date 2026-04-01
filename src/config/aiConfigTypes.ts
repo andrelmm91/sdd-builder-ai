@@ -74,7 +74,7 @@ export interface RequirementsAIConfig {
 
 export const DEFAULT_IDEALIZE_PROMPT =
   'You are acting as a Senior Tech Lead and Software Architect. ' +
-  'Follow the skill instructions in {file_prefix}.claude/skills/idealize-requirements/SKILL.md. ' +
+  'Follow the skill instructions in {file_prefix}.sdd/skills/idealize-requirements/SKILL.md. ' +
   'Analyze the feature description in {file_prefix}{feature_path} and produce a complete technical idealization. ' +
   'Create idealization.md in the same folder as the feature file, following the output format defined in the skill. ' +
   'The idealization must include: technical architecture, implementation plan with ordered phases, ' +

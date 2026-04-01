@@ -33,12 +33,12 @@ const CONVENTIONS_TEMPLATE = `# Project Conventions
 <!-- Describe how errors should be handled and surfaced throughout the codebase. -->
 `;
 
-function loadDefaultSkillContent(): string {
-  const skillPath = path.join(__dirname, '..', 'resources', 'skills', 'sdd-planner', 'SKILL.md');
+function loadSkillContent(skillName: string, fallback: string): string {
+  const skillPath = path.join(__dirname, '..', 'resources', 'skills', skillName, 'SKILL.md');
   try {
     return fs.readFileSync(skillPath, 'utf-8');
   } catch {
-    return '# SDD Planner Skill\n\n<!-- Customize this file to adjust planner behavior for your project. -->\n';
+    return fallback;
   }
 }
 
@@ -68,7 +68,14 @@ export async function initProject(): Promise<void> {
   await writeAIConfig({ ...DEFAULT_AI_CONFIG });
   await writeRequirementsAIConfig({ ...DEFAULT_REQUIREMENTS_AI_CONFIG });
   await writeWorkspaceFile(CONVENTIONS_FILE, CONVENTIONS_TEMPLATE);
-  await writeWorkspaceFile(`${SKILLS_FOLDER}/sdd-planner/SKILL.md`, loadDefaultSkillContent());
+  await writeWorkspaceFile(
+    `${SKILLS_FOLDER}/sdd-planner/SKILL.md`,
+    loadSkillContent('sdd-planner', '# SDD Planner Skill\n\n<!-- Customize this file to adjust planner behavior for your project. -->\n')
+  );
+  await writeWorkspaceFile(
+    `${SKILLS_FOLDER}/idealize-requirements/SKILL.md`,
+    loadSkillContent('idealize-requirements', '# Idealize Requirements Skill\n\n<!-- Customize this file to adjust idealization behavior for your project. -->\n')
+  );
 
   // Run health checks in parallel
   const claudeBinary = getClaudeCliBinary();

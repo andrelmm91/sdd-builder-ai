@@ -17,7 +17,7 @@ export function parseFeatureFile(content: string): { data: FeatureData; body: st
   const rawStatus = result.data['status'] as string;
   const status: FeatureStatus = FEATURE_STATUSES.includes(rawStatus as FeatureStatus)
     ? (rawStatus as FeatureStatus)
-    : 'Feature Backlog';
+    : 'New Requirement';
   const rawType = result.data['requirementType'] as string;
   const requirementType: RequirementType | undefined = REQUIREMENT_TYPES.includes(rawType as RequirementType)
     ? (rawType as RequirementType)
@@ -51,7 +51,7 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
     const featureFileUri = vscode.Uri.joinPath(folderUri, `${entryName}.md`);
 
     let hasIdealization = false;
-    let status: FeatureStatus = 'Feature Backlog';
+    let status: FeatureStatus = 'New Requirement';
     let displayFilePath: string = '';
     let featureTitle: string | undefined;
     let featureRequirementType: RequirementType | undefined;
@@ -71,8 +71,8 @@ export async function loadFeatureCards(productFolderUri: vscode.Uri): Promise<Fe
         const featureBytes = await vscode.workspace.fs.readFile(featureFileUri);
         const featureContent = new TextDecoder().decode(featureBytes);
         const { data } = parseFeatureFile(featureContent);
-        if (data.status !== 'Feature Backlog') {
-          // Only show on board if status is "Feature Backlog" when no idealization
+        if (data.status !== 'New Requirement') {
+          // Only show on board if status is "New Requirement" when no idealization
           continue;
         }
         featureTitle = data.title;
@@ -124,7 +124,7 @@ export async function createFeatureFile(
   const suffix = uniqueName !== baseName ? ` (${counter - 1})` : '';
   const today = new Date().toISOString().slice(0, 10);
   const frontmatterData: Record<string, unknown> = {
-    status: 'Feature Backlog',
+    status: 'New Requirement',
     date: today,
     title: `${formData.name}${suffix}`,
     requirementType: formData.requirementType,
