@@ -34,6 +34,10 @@
     createSddCardsPromptTemplate: string;
   }
 
+  const DEFAULT_PRE_PROMPT = 'Implement {spec_file}. Update open tasks and its status to review after completion.';
+  const DEFAULT_IDEALIZE_PROMPT = 'You are acting as a Senior Tech Lead and Software Architect. Follow the skill instructions in {file_prefix}.claude/skills/idealize-requirements/SKILL.md. Analyze the feature description in {file_prefix}{feature_path} and produce a complete technical idealization. Create idealization.md in the same folder as the feature file, following the output format defined in the skill. The idealization must include: technical architecture, implementation plan with ordered phases, automated and manual acceptance criteria, technical risks with mitigations, concrete recommendations grounded in the existing codebase, and all open questions that must be resolved before implementation.';
+  const DEFAULT_CREATE_SDD_PROMPT = 'Create new phases and SDDs in {file_prefix}{specs_folder}/ to fulfill the requirements in {file_prefix}{idealization_path} by using skills in {file_prefix}.sdd/skills/sdd-planner/SKILL.md. Add dependency from the other SDDs if needed.';
+
   const PROVIDER_OPTIONS: { value: AIProvider; label: string }[] = [
     { value: 'claude', label: 'Claude' },
     { value: 'copilot', label: 'Copilot' },
@@ -363,7 +367,10 @@
     </section>
 
     <section class="form-section">
-      <label class="field-label" for="preprompt-textarea">Custom Pre-prompt</label>
+      <div class="label-row">
+        <label class="field-label" for="preprompt-textarea">Custom Pre-prompt</label>
+        <button class="btn-reset" onclick={() => (prePromptTemplate = DEFAULT_PRE_PROMPT)}>Reset to default</button>
+      </div>
       <textarea
         id="preprompt-textarea"
         class="form-textarea"
@@ -459,7 +466,10 @@
     {/if}
 
     <section class="form-section">
-      <label class="field-label" for="req-idealize-textarea">Idealize Prompt Template</label>
+      <div class="label-row">
+        <label class="field-label" for="req-idealize-textarea">Idealize Prompt Template</label>
+        <button class="btn-reset" onclick={() => (reqIdealizePromptTemplate = DEFAULT_IDEALIZE_PROMPT)}>Reset to default</button>
+      </div>
       <textarea
         id="req-idealize-textarea"
         class="form-textarea"
@@ -471,7 +481,10 @@
     </section>
 
     <section class="form-section">
-      <label class="field-label" for="req-create-sdd-textarea">Create SDD Cards Prompt Template</label>
+      <div class="label-row">
+        <label class="field-label" for="req-create-sdd-textarea">Create SDD Cards Prompt Template</label>
+        <button class="btn-reset" onclick={() => (reqCreateSddCardsPromptTemplate = DEFAULT_CREATE_SDD_PROMPT)}>Reset to default</button>
+      </div>
       <textarea
         id="req-create-sdd-textarea"
         class="form-textarea"
@@ -744,5 +757,29 @@
     font-size: 1em;
     color: var(--vscode-foreground);
     margin-bottom: 4px;
+  }
+
+  .label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .btn-reset {
+    background: none;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 3px;
+    color: var(--vscode-descriptionForeground);
+    cursor: pointer;
+    font-size: 0.78em;
+    font-family: inherit;
+    padding: 2px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .btn-reset:hover {
+    background: var(--vscode-list-hoverBackground);
+    color: var(--vscode-foreground);
   }
 </style>

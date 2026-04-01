@@ -19,11 +19,23 @@
     tokensOut: number;
   }
 
+  interface FeatureCard {
+    name: string;
+    title: string;
+    status: string;
+    filePath: string;
+    folderPath: string;
+    hasIdealization: boolean;
+    requirementType?: string;
+  }
+
   let specs: SpecData[] = $state([]);
   let executions: ExecutionRecord[] = $state([]);
+  let features: FeatureCard[] = $state([]);
   let notInitialized = $state(false);
 
   const STATUS_ORDER = ['draft', 'ready', 'in_progress', 'review', 'done'];
+  const REQUIREMENT_STATUS_ORDER = ['Feature Backlog', 'Idealization In Review', 'SDD Created'];
 
   const byStatus = $derived(
     STATUS_ORDER.reduce<Record<string, number>>((acc, s) => {
@@ -37,6 +49,14 @@
   const completionPct = $derived(total > 0 ? Math.round((doneCount / total) * 100) : 0);
 
   const recentActivity = $derived(executions.slice(0, 10));
+
+  const totalFeatures = $derived(features.length);
+  const byRequirementStatus = $derived(
+    REQUIREMENT_STATUS_ORDER.reduce<Record<string, number>>((acc, s) => {
+      acc[s] = features.filter((f) => f.status === s).length;
+      return acc;
+    }, {}),
+  );
 
   const phaseBreakdown = $derived.by(() => {
     const map = new Map<string, number>();
@@ -55,9 +75,11 @@
         const d = msg.data as typeof msg.data & {
           specs: SpecData[];
           executions: ExecutionRecord[];
+          features: FeatureCard[];
         };
         specs = d.specs ?? [];
         executions = d.executions ?? [];
+        features = d.features ?? [];
       } else if (msg.type === 'notInitialized') {
         notInitialized = true;
       }
@@ -102,6 +124,28 @@
       <button class="btn-init" onclick={handleInitProject}>Initialize SDD Project</button>
     </section>
   {/if}
+
+  <!-- Requirement Status Summary -->
+  <section class="card">
+    <h2>Requirement Status</h2>
+    {#if totalFeatures === 0}
+      <p class="muted">No requirements found.</p>
+    {:else}
+      <div class="status-bars">
+        {#each REQUIREMENT_STATUS_ORDER as status}
+          {@const count = byRequirementStatus[status] ?? 0}
+          {@const pct = totalFeatures > 0 ? (count / totalFeatures) * 100 : 0}
+          <div class="status-row">
+            <span class="status-label">{status}</span>
+            <div class="bar-track">
+              <div class="bar-fill req-status-{status.toLowerCase().replace(/ /g, '-')}" style="width: {pct}%"></div>
+            </div>
+            <span class="status-count">{count}</span>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </section>
 
   <!-- Spec Status Summary -->
   <section class="card">
@@ -297,6 +341,10 @@
   .status-in_progress { background: var(--vscode-charts-orange); }
   .status-review     { background: var(--vscode-charts-purple); }
   .status-done       { background: var(--vscode-charts-green); }
+
+  .req-status-feature-backlog        { background: var(--vscode-charts-blue); }
+  .req-status-idealization-in-review { background: var(--vscode-charts-orange); }
+  .req-status-sdd-created            { background: var(--vscode-charts-green); }
 
   /* Completion */
   .progress-row { display: flex; align-items: center; gap: 12px; }

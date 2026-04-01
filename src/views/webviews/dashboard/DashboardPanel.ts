@@ -2,15 +2,18 @@ import * as vscode from 'vscode';
 import { BaseWebviewPanel } from '../BaseWebviewPanel';
 import { parseSpec } from '../../../specs/parser';
 import { getExecutionHistory } from '../../../execution/resultCapture';
-import { SPECS_FOLDER, SPEC_FILE_EXTENSION, CONFIG_FILE } from '../../../utils/constants';
+import { loadFeatureCards } from '../requirementBoard/featureParser';
+import { SPECS_FOLDER, SPEC_FILE_EXTENSION, CONFIG_FILE, PRODUCT_FOLDER } from '../../../utils/constants';
 import { fileExists } from '../../../utils/fileSystem';
 import { initProject } from '../../../commands/initProject';
 import type { SpecData } from '../../../specs/types';
 import type { ExecutionRecord } from '../../../execution/types';
+import type { FeatureCard } from '../requirementBoard/types';
 
 export interface DashboardData {
   specs: SpecData[];
   executions: ExecutionRecord[];
+  features: FeatureCard[];
 }
 
 export class DashboardPanel extends BaseWebviewPanel {
@@ -71,10 +74,15 @@ export class DashboardPanel extends BaseWebviewPanel {
       this.post('notInitialized', {});
       return;
     }
-    const specs = await this.loadSpecs();
+    const root = vscode.workspace.workspaceFolders?.[0]?.uri;
+    const productFolderUri = root ? vscode.Uri.joinPath(root, PRODUCT_FOLDER) : undefined;
+    const [specs, features] = await Promise.all([
+      this.loadSpecs(),
+      productFolderUri ? loadFeatureCards(productFolderUri) : Promise.resolve([]),
+    ]);
     const executions = await this.loadAllExecutions(specs);
 
-    this.post('dashboardData', { specs, executions });
+    this.post('dashboardData', { specs, executions, features });
   }
 
   private async loadSpecs(): Promise<SpecData[]> {

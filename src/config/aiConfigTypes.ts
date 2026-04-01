@@ -73,11 +73,13 @@ export interface RequirementsAIConfig {
 }
 
 export const DEFAULT_IDEALIZE_PROMPT =
-  'Based on the following feature description, acceptance criteria and notes ' +
-  'in {file_prefix}{feature_path}, create a new markdown file ' +
-  '(named idealization.md) in the same folder with a concise idealization of this feature. ' +
-  'Make sure to include all the important information and recommendations. ' +
-  'The idealization should be clear and easy to understand for the development team.';
+  'You are acting as a Senior Tech Lead and Software Architect. ' +
+  'Follow the skill instructions in {file_prefix}.claude/skills/idealize-requirements/SKILL.md. ' +
+  'Analyze the feature description in {file_prefix}{feature_path} and produce a complete technical idealization. ' +
+  'Create idealization.md in the same folder as the feature file, following the output format defined in the skill. ' +
+  'The idealization must include: technical architecture, implementation plan with ordered phases, ' +
+  'automated and manual acceptance criteria, technical risks with mitigations, ' +
+  'concrete recommendations grounded in the existing codebase, and all open questions that must be resolved before implementation.';
 
 export const DEFAULT_CREATE_SDD_CARDS_PROMPT =
   'Create new phases and SDDs in {file_prefix}{specs_folder}/ to fulfill the requirements ' +

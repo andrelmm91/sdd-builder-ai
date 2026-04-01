@@ -11,7 +11,8 @@
       "Bash(python3:*)",
       "Bash(ls:*)",
       "Bash(git stash:*)",
-      "Bash(wc -l /Users/man7be/Documents/dev/sdd-agentic/src/**/*.ts | tail -1)"
+      "Bash(wc -l /Users/man7be/Documents/dev/sdd-agentic/src/**/*.ts | tail -1)",
+      "Bash(find:*)"
     ]
   }
 }
