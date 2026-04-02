@@ -97,6 +97,24 @@ tags: [backend, frontend, backend]
     expect(tags).toEqual(['backend', 'frontend']);
   });
 
+  it('extracts tags from block sequence format', async () => {
+    const specContent = `---
+spec_id: SDD-002
+title: Test
+tags:
+  - backend
+  - frontend
+  - backend
+---
+## Context`;
+    mockFindFiles.mockResolvedValue([
+      { fsPath: '/workspace/.specs/test.sdd.md' } as vscode.Uri,
+    ]);
+    mockReadFile.mockResolvedValue(Buffer.from(specContent) as unknown as Uint8Array);
+    const tags = await getAvailableTags();
+    expect(tags).toEqual(['backend', 'frontend']);
+  });
+
   it('returns empty array on error', async () => {
     mockFindFiles.mockRejectedValue(new Error('fail'));
     const tags = await getAvailableTags();

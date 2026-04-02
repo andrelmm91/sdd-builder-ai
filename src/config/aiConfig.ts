@@ -98,12 +98,25 @@ export async function getAvailableTags(): Promise<string[]> {
         const content = Buffer.from(bytes).toString('utf8');
         const match = content.match(/^---\n([\s\S]*?)\n---/);
         if (match) {
-          const tagMatch = match[1].match(/^tags:\s*\[([^\]]*)\]/m);
-          if (tagMatch) {
-            const tagList = tagMatch[1].split(',').map((t) => t.trim().replace(/['"]/g, ''));
+          const frontmatter = match[1];
+          // Inline format: tags: [tag1, tag2]
+          const inlineMatch = frontmatter.match(/^tags:\s*\[([^\]]*)\]/m);
+          if (inlineMatch) {
+            const tagList = inlineMatch[1].split(',').map((t) => t.trim().replace(/['"]/g, ''));
             for (const tag of tagList) {
-              if (tag) {
-                tags.add(tag);
+              if (tag) tags.add(tag);
+            }
+          } else {
+            // Block sequence format:
+            // tags:
+            //   - tag1
+            //   - tag2
+            const blockMatch = frontmatter.match(/^tags:\s*\n((?:[ \t]+-[^\n]*\n?)+)/m);
+            if (blockMatch) {
+              const items = blockMatch[1].matchAll(/[ \t]+-\s*(.+)/g);
+              for (const item of items) {
+                const tag = item[1].trim().replace(/['"]/g, '');
+                if (tag) tags.add(tag);
               }
             }
           }
