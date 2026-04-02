@@ -2,9 +2,9 @@ import * as vscode from 'vscode';
 import { parseSpec } from '../../specs/parser';
 import type { SpecData, SpecStatus } from '../../specs/types';
 import { SPEC_FILE_EXTENSION, SPECS_FOLDER, STATUS_ORDER } from '../../utils/constants';
-import { SpecGroupItem, SpecTreeItem } from './specTreeItem';
+import { DashboardButtonItem, SpecGroupItem, SpecTreeItem } from './specTreeItem';
 
-type AnyTreeItem = SpecGroupItem | SpecTreeItem;
+type AnyTreeItem = DashboardButtonItem | SpecGroupItem | SpecTreeItem;
 
 export class SpecTreeProvider
   implements vscode.TreeDataProvider<AnyTreeItem>, vscode.Disposable
@@ -42,7 +42,7 @@ export class SpecTreeProvider
   async getChildren(element?: AnyTreeItem): Promise<AnyTreeItem[]> {
     if (!element) {
       await this.loadSpecs();
-      return this.buildGroupItems();
+      return [new DashboardButtonItem(), ...this.buildGroupItems()];
     }
 
     if (element instanceof SpecGroupItem) {

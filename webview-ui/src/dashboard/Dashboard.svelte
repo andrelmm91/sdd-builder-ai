@@ -58,12 +58,16 @@
     }, {}),
   );
 
-  const phaseBreakdown = $derived.by(() => {
+  const tagMappings = $derived.by(() => {
     const map = new Map<string, number>();
     for (const spec of specs) {
-      const phaseTag = spec.tags.find((t) => t.startsWith('phase-'));
-      const label = phaseTag ?? 'untagged';
-      map.set(label, (map.get(label) ?? 0) + 1);
+      if (spec.tags.length === 0) {
+        map.set('untagged', (map.get('untagged') ?? 0) + 1);
+      } else {
+        for (const tag of spec.tags) {
+          map.set(tag, (map.get(tag) ?? 0) + 1);
+        }
+      }
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   });
@@ -180,15 +184,15 @@
     </div>
   </section>
 
-  <!-- Phase Breakdown -->
+  <!-- Tag Mappings -->
   <section class="card">
-    <h2>Phase Breakdown</h2>
-    {#if phaseBreakdown.length === 0}
-      <p class="muted">No phase tags found.</p>
+    <h2>Tag Mappings</h2>
+    {#if tagMappings.length === 0}
+      <p class="muted">No tags found.</p>
     {:else}
       <ul class="phase-list">
-        {#each phaseBreakdown as [phase, count]}
-          <li><span class="phase-tag">{phase}</span> <span class="phase-count">{count}</span></li>
+        {#each tagMappings as [tag, count]}
+          <li><span class="phase-tag">{tag}</span> <span class="phase-count">{count}</span></li>
         {/each}
       </ul>
     {/if}

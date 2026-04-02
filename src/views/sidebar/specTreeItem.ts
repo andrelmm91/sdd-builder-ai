@@ -17,6 +17,22 @@ export const STATUS_LABELS: Record<SpecStatus, string> = {
   done: 'Done',
 };
 
+export class DashboardButtonItem extends vscode.TreeItem {
+  readonly kind = 'dashboard' as const;
+  static readonly DECORATION_URI = vscode.Uri.parse('sdd-dashboard://button');
+
+  constructor() {
+    super('Open Dashboard', vscode.TreeItemCollapsibleState.None);
+    this.resourceUri = DashboardButtonItem.DECORATION_URI;
+    this.iconPath = new vscode.ThemeIcon('layout', new vscode.ThemeColor('charts.green'));
+    this.contextValue = 'sdd-dashboard-button';
+    this.command = {
+      command: 'sdd.openDashboard',
+      title: 'Open Dashboard',
+    };
+  }
+}
+
 export class SpecGroupItem extends vscode.TreeItem {
   readonly kind = 'group' as const;
 
