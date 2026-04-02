@@ -316,7 +316,7 @@
                 <button class="link-btn spec-id" onclick={() => openSpec(card.spec_id)}>
                   {card.spec_id}
                 </button>
-                <span class="badge {complexityColor(card.complexity)}" title="complexity">{card.complexity}</span>
+                <span class="badge {complexityColor(card.complexity)} has-tooltip" data-tooltip="complexity">{card.complexity}</span>
               </div>
 
               <button class="link-btn card-title" onclick={() => openSpec(card.spec_id)}>
@@ -324,12 +324,12 @@
               </button>
 
               <div class="card-meta">
-                <span class="badge {priorityColor(card.priority)}" title="priority">{card.priority}</span>
+                <span class="badge {priorityColor(card.priority)} has-tooltip" data-tooltip="priority">{card.priority}</span>
                 {#each card.tags.slice(0, 3) as tag}
-                  <span class="tag-chip" title="tag phases">{tag}</span>
+                  <span class="tag-chip has-tooltip" data-tooltip="tag phases">{tag}</span>
                 {/each}
                 {#if card.tags.length > 3}
-                  <span class="tag-chip muted" title="tag phases">+{card.tags.length - 3}</span>
+                  <span class="tag-chip muted has-tooltip" data-tooltip="tag phases">+{card.tags.length - 3}</span>
                 {/if}
               </div>
 
@@ -675,6 +675,32 @@
   .card-title { font-size: 0.9em; line-height: 1.3; word-break: break-word; }
 
   .card-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+  /* CSS tooltips (title attr is suppressed in VS Code webviews) */
+  .has-tooltip {
+    position: relative;
+  }
+  .has-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--vscode-editorHoverWidget-background, #252526);
+    color: var(--vscode-editorHoverWidget-foreground, #ccc);
+    border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 0.72em;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+  }
+  .has-tooltip:hover::after {
+    opacity: 1;
+  }
 
   .badge {
     padding: 1px 5px;
