@@ -36,6 +36,7 @@
   };
 
   let specs: SpecCard[] = $state([]);
+  let isFullPermission = $state(false);
   let filterText = $state('');
   let draggedId = $state<string | null>(null);
   let errorMap = $state<Map<string, string>>(new Map());
@@ -69,8 +70,9 @@
     postMessage('requestBulkState', {});
     onMessage((msg) => {
       if (msg.type === 'specList') {
-        const d = msg.data as { specs: SpecCard[] };
+        const d = msg.data as { specs: SpecCard[]; isFullPermission: boolean };
         specs = d.specs ?? [];
+        isFullPermission = d.isFullPermission ?? false;
       } else if (msg.type === 'moveError') {
         const d = msg.data as { specId: string; message: string };
         showError(d.specId, d.message);
@@ -235,7 +237,13 @@
             <div class="bulk-frame-header">
               <span class="bulk-frame-title">Bulk Queue ({bulkState.items.length})</span>
               <div class="bulk-frame-actions">
-                <button class="btn-action btn-execute-all" onclick={executeAll}>Execute All</button>
+                <button
+                  class="btn-action btn-execute-all"
+                  class:btn-execute-all-disabled={!isFullPermission}
+                  onclick={isFullPermission ? executeAll : undefined}
+                  title={isFullPermission ? undefined : 'Requires Full Permission mode in AI Config'}
+                  disabled={!isFullPermission}
+                >Execute All</button>
                 <button class="btn-action btn-clear" onclick={clearBulk}>Clear</button>
               </div>
             </div>
@@ -308,7 +316,7 @@
                 <button class="link-btn spec-id" onclick={() => openSpec(card.spec_id)}>
                   {card.spec_id}
                 </button>
-                <span class="badge {complexityColor(card.complexity)}">{card.complexity}</span>
+                <span class="badge {complexityColor(card.complexity)}" title="complexity">{card.complexity}</span>
               </div>
 
               <button class="link-btn card-title" onclick={() => openSpec(card.spec_id)}>
@@ -316,12 +324,12 @@
               </button>
 
               <div class="card-meta">
-                <span class="badge {priorityColor(card.priority)}">{card.priority}</span>
+                <span class="badge {priorityColor(card.priority)}" title="priority">{card.priority}</span>
                 {#each card.tags.slice(0, 3) as tag}
-                  <span class="tag-chip">{tag}</span>
+                  <span class="tag-chip" title="tag phases">{tag}</span>
                 {/each}
                 {#if card.tags.length > 3}
-                  <span class="tag-chip muted">+{card.tags.length - 3}</span>
+                  <span class="tag-chip muted" title="tag phases">+{card.tags.length - 3}</span>
                 {/if}
               </div>
 
@@ -712,6 +720,13 @@
   .btn-changes:hover { background: var(--vscode-charts-orange); opacity: 0.85; }
   .btn-execute-all { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
   .btn-execute-all:hover { background: var(--vscode-button-hoverBackground); }
+  .btn-execute-all-disabled,
+  .btn-execute-all-disabled:hover {
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-disabledForeground, #888);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
   .btn-add-bulk {
     background: color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 15%, transparent);
     color: var(--vscode-charts-blue, #4aa0ff);

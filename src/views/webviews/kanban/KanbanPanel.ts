@@ -9,6 +9,7 @@ import { executeSingleSpec, requireFullPermissionForBulk } from '../../../comman
 import { getLatestExecution } from '../../../execution/resultCapture';
 import { applyRequestChanges } from '../../../commands/reviewCommands';
 import type { SpecData, SpecStatus } from '../../../specs/types';
+import { readAIConfig } from '../../../config/aiConfig';
 
 interface CardActionMessage {
   action: 'markReady' | 'execute' | 'approve' | 'requestChanges';
@@ -140,8 +141,13 @@ export class KanbanPanel extends BaseWebviewPanel {
   }
 
   private async sendSpecs(): Promise<void> {
-    const specs = await this.loadSpecs();
-    this.post('specList', { specs });
+    const [specs, aiConfig] = await Promise.all([this.loadSpecs(), readAIConfig()]);
+    const isFullPermission = aiConfig
+      ? aiConfig.provider === 'copilot'
+        ? aiConfig.permissionMode === 'yolo'
+        : aiConfig.permissionMode === 'dangerously-skip-permissions'
+      : false;
+    this.post('specList', { specs, isFullPermission });
   }
 
   private async loadSpecs(): Promise<Array<SpecData & { changedFiles?: string[]; automatedCriteria?: string; manualCriteria?: string }>> {
