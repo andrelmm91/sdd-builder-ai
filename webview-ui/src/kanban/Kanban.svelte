@@ -304,6 +304,7 @@
             <div
               class="spec-card"
               class:dragging={draggedId === card.spec_id}
+              role="listitem"
               draggable={true}
               ondragstart={(e) => onDragStart(e, card.spec_id)}
               ondragend={onDragEnd}
