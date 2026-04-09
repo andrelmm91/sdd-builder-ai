@@ -61,7 +61,7 @@ A five-column board where each spec moves from idea to shipped code.
 | **Ready** | Spec is validated and queued for execution. |
 | **In Progress** | AI is executing — a terminal opens with real-time output. |
 | **Review** | Execution complete. Review the diff and approve or request changes. |
-| **Done** | Spec is merged into the codebase with full audit trail. |
+| **Done** | Spec is completed with full audit trail. Commit and PR can be enabled into the prompt in the configuration. |
 
 Drag and drop cards between columns. Every transition is validated — no skipping stages.
 
