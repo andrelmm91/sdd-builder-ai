@@ -1,154 +1,198 @@
-# Builder AI — Take Control of AI-Powered Development
+# SDD Builder AI — Govern AI Coding with Spec-Driven Development
 
-**Stop hoping your AI gets it right. Start knowing it will.**
+**Stop losing control of AI-generated code. Ship with confidence.**
 
-Every developer using AI coding tools has felt it: you ask for a "simple feature," and the agent rewrites half your codebase, hallucinates imports that don't exist, overflows its context window mid-task, and leaves you with a diff so large it's faster to redo from scratch. You lose hours reviewing changes you didn't ask for. You lose trust.
-
-**Builder AI fixes this.**
+SDD Builder AI is a VS Code extension that brings **Spec-Driven Development** to your AI coding workflow. It sits between your ideas and your AI agent — breaking requirements into small, scoped, reviewable specs that keep every execution focused, traceable, and under your control.
 
 ---
 
-## The Problem with AI Coding Today
+## The Problem
 
-| Pain point | What happens |
-|---|---|
-| **Scope explosion** | You ask for one feature, the agent touches 15 files |
-| **Context overflow** | Large codebases exceed the context window — the agent forgets critical code halfway through |
-| **Hallucinations** | The agent invents APIs, imports, and patterns that don't exist in your project |
-| **Unreviable diffs** | Massive changes with no structure — impossible to review with confidence |
-| **No traceability** | No record of what was requested, what was built, or why |
+Every developer using AI coding tools has hit this wall:
 
-You're not bad at prompting. The tooling is missing a layer of governance between your intent and the AI's execution.
+- Ask for one feature → the agent rewrites 15 files
+- Large codebase → context overflow → the agent forgets critical code halfway through
+- Agent invents APIs, imports, and patterns that don't exist
+- Massive diffs you can't reasonably review
+- No record of what was asked, what was built, or why
+
+You're not bad at prompting. **The tooling is missing a governance layer.**
 
 ---
 
-## How Builder AI Solves It
+## The Solution
 
-Builder AI brings **Spec-Driven Development (SDD)** — a visual, kanban-style workflow inspired by SDD principles that breaks AI development into small, scoped, reviewable units of work.
+SDD Builder AI introduces a structured workflow between your ideas and the AI:
 
 ```
-Feature Ideas → AI Idealizes Requirements → SDD Spec Cards → Execute with AI → Review Diff → Ship
+Feature Ideas → AI Idealizes Requirements → AI Creates Spec Cards → Execute with AI → Review Diff → Ship
 ```
 
-Every task the AI executes is governed by a **spec file** — a small contract that tells the agent exactly:
+Every AI execution is governed by a **spec file** — a small contract that tells the agent exactly:
+
 - What to build (and nothing else)
-- Which files to read for context (no guessing, no overflow)
+- Which files to read for context (no guessing, no context overflow)
 - Which files are off-limits (no accidental rewrites)
-- What "done" looks like (acceptance criteria the AI must meet)
+- What "done" looks like (acceptance criteria the AI must verify)
 - A token budget ceiling (no runaway executions)
 
-The result: **small, focused diffs you can actually review in minutes, not hours.**
+The result: **small, focused diffs you can review in minutes, not hours.**
 
 ---
 
-## Built for Builders
+## Key Features
 
-### Combining the role Project Managers & Tech Leads
+### Requirement Board
+Capture raw ideas and turn them into structured development plans with AI.
 
-**Plan visually, execute with confidence.**
+- Add feature ideas with a name, description, and acceptance criteria
+- **AI Idealization** — the AI acts as a software architect, producing a concise requirements document from your idea
+- **AI Spec Generation** — one click decomposes the idealization into dependency-ordered SDD spec cards ready for development
 
-- Add feature ideas to the **Requirement Board** — a three-column kanban where ideas flow from backlog through AI-assisted idealization to structured SDD specs
-- AI decomposes your requirements into dependency-ordered spec cards automatically — foundation first, features next, integration last
-- Track progress on the **Kanban Board** — five columns from Draft to Done, drag cards to transition, see completion percentages on the **Dashboard**
-- Every spec, execution, and review can be version-controlled in Git — full audit trail of what was built, when, by which agent, and at what cost
-
-You don't need to write code. You write requirements. The AI builds. You ship with confidence.
-
-**AI that respects your architecture.**
-
-- Each spec scopes the AI to **3 files max** (excluding tests) — no more surprise rewrites across your codebase
-- `relevant_files` gives the agent exactly the context it needs — no context window overflow, no hallucinated imports
-- `must_not_touch` protects sensitive files — auth, config, database schemas stay safe
-- `conventions.md` injects your project's coding standards into every execution — naming conventions, patterns, preferred libraries
-- **Split-view review**: spec on the left, multi-file diff on the right, execution summary at the bottom — review with full context of what was asked vs. what was built
-- Request changes with feedback that gets injected directly into the next execution — the AI learns from your review
-
-You stay in control. The AI stays in scope.
+![Requirement Board](./pictures/requirement board.png)
 
 ---
 
-## The Kanban Workflow
+### SDD Kanban Board
+A five-column board where each spec moves from idea to shipped code.
 
-### Stage 1: Requirements
-
-| Column | What happens |
+| Status | What happens |
 |---|---|
-| **Feature Backlog** | Add raw feature ideas — name, description, acceptance criteria |
-| **Idealization In Review** | AI generates a structured requirements document from your idea. You review the feature to be implemented. |
-| **SDD Created** | AI decomposes the idealization into individual, dependency-ordered spec cards |
+| **Draft** | AI-generated specs land here. Review and refine scope before executing. |
+| **Ready** | Spec is validated and queued for execution. |
+| **In Progress** | AI is executing — a terminal opens with real-time output. |
+| **Review** | Execution complete. Review the diff and approve or request changes. |
+| **Done** | Spec is merged into the codebase with full audit trail. |
 
-### Stage 2: Development
+Drag and drop cards between columns. Every transition is validated — no skipping stages.
 
-| Column | What happens |
-|---|---|
-| **Draft** | Specs generated by AI are initially placed in Draft stage. You edit scope, adjust criteria, refine them |
-| **Ready** | Validated spec ready to execute. You can execute them individually or queued as a bulky* execution. |
-| **In Progress** | AI is executing — Terminal is created and prompt to the AI CLI. You can watch real-time output in the terminal |
-| **Review** | Spec is finished and implemented. You can approve or request changes. |
-| **Done** | Spec is implemented into the codebase. |
+![SDD Kanban Board](./pictures/SDD kanban board.png)
 
-*Bulk-select multiple Ready specs and execute them sequentially with real-time progress tracking — loading spinners, checkmarks, and failure indicators for each card.
+---
+
+### Bulk Execution
+Select multiple **Ready** specs and execute them sequentially in one action.
+
+- Real-time progress tracking per card — spinner, checkmark, or failure indicator
+- Stops automatically on failure so you can review before continuing
+- Only available in full-permission AI modes to prevent mid-execution interruptions
+
+![Bulk Execution](./pictures/SDD kanban board Bulk execution.png)
+
+---
+
+### Dashboard
+High-level view of your project's development health at a glance.
+
+- Spec counts by status (Draft, Ready, In Progress, Review, Done)
+- Completion percentage across all specs
+- SDD tags overview and recent activity feed
+- All execution logs saved in `.sdd/execution/` for full audit after development
+
+![Dashboard](./pictures/SDD AI Builder Dashboard.png)
+
+---
+
+### Request Changes Flow
+When a spec needs rework, your feedback is injected directly into the next execution.
+
+- Review diff in split-view (spec on left, changes on right)
+- Approve to mark Done, or write feedback to request changes
+- Feedback is appended to the spec's context section and status resets to Ready
+- The AI receives your exact feedback in the next run — no context is lost
+
+---
+
+### Scoped Execution — AI That Respects Your Architecture
+
+Each spec enforces hard boundaries:
+
+- **3 files max** to create or edit (excluding tests) — no surprise rewrites
+- **`relevant_files`** gives the agent exactly the context it needs — zero context overflow
+- **`must_not_touch`** protects sensitive files — auth, config, database schemas stay safe
+- **`conventions.md`** injects your project's coding standards into every execution
+- **Skills per spec tag** — tag specs with `python`, `react`, `database`, etc., and configure skill files that are injected into the execution prompt automatically
+
+---
+
+### AI Configuration
+Separate configuration for requirements AI and execution AI.
+
+- Choose your AI provider: **Claude CLI** or **GitHub Copilot CLI**
+- Set permission modes per provider
+- Configure model per provider
+- Tag-to-skill mappings with custom skill files
+- Configurable `git commit` and `git pull-request` commands injected into post-execution context
+
+---
+
+### Project Initialization
+
+![Initialize Project](./pictures/initiate a project.png)
+
+Run **SDD: Initialize Project** to scaffold the standard `.sdd/` folder structure:
+
+```
+.sdd/
+  product_requirements/   # Feature requirements and idealizations
+  execution/              # Execution logs and audit records
+  skills/                 # Agent skill files (.md) per technology tag
+  ai-config.json          # AI provider and execution configuration
+  config.json             # Project settings
+  conventions.md          # Your coding standards (optional but recommended)
+.specs/                   # All .sdd.md spec files
+```
 
 ---
 
 ## Why Specs Beat Prompts
 
-| | Freeform prompting | Spec-Driven Development |
+| | Freeform Prompting | Spec-Driven Development |
 |---|---|---|
-| **Progress** | Feature size is not measured and progress is not tangible | Limit context execution for the best software increment per spec |
-| **Scope** | Unbounded — AI decides what to touch | Explicit — 3 files max, relevant files listed |
+| **Scope** | Unbounded — AI decides what to touch | Explicit — 3 files max, list of relevant files |
 | **Context** | Entire codebase or none | Precisely scoped — only what the agent needs |
 | **Review** | Massive, unstructured diff | Small, focused diff with acceptance criteria |
+| **Progress** | Not measurable | Tracked per spec — percentages, counts |
 | **Reproducibility** | Same prompt, different results | Same spec, consistent execution |
 | **Traceability** | Lost in chat history | Version-controlled in Git with full audit trail |
-| **Budget** | Unlimited — no guardrails | Token ceiling per spec |
-| **Feedback loop** | Start over from scratch | Feedback injected into next execution |
+| **Budget** | Unlimited | Token ceiling per spec |
+| **Feedback** | Start over from scratch | Feedback injected directly into the next run |
 
 ---
 
-## Bring Your Own AI
+## Bring Your Own AI (BYOK)
 
-Builder AI is **BYOK (Bring Your Own Key)**. It doesn't manage API keys or AI subscriptions — it orchestrates the AI CLI tools you already use:
+SDD Builder AI does **not** manage API keys or subscriptions. It orchestrates the AI CLI tools you already use:
 
-- **Claude CLI** — Anthropic's command-line agent
-- **GitHub Copilot CLI** — GitHub's AI assistant
+- **Claude CLI** — Anthropic's command-line agent (`claude`)
+- **GitHub Copilot CLI** — GitHub's AI assistant (`gh copilot`)
 
-Install, authenticate with your own account, and that's all. Your keys, your billing, your choice of model are managed by you. The extension assembles context and delegates — it never touches your credentials.
-
----
-
-## What You Get
-
-- **Requirement Board** — Three-column kanban for feature idealization with AI
-- **Kanban Board** — Five-column spec lifecycle with drag-and-drop transitions
-- **Bulk Execution** — Queue and run multiple specs sequentially with progress tracking
-- **AI Config** — Separate configuration for requirements AI and execution AI, with customizable prompt templates
-- **Choose skills per spec tags** - Tag specs with required skills (e.g. "python", "react", "database") and configure them. The execution will inject the SKILL.md into the prompt context whenever the spec is executed.
-- **Dashboard** — Spec counts, completion tracking, scope estimation
-- **Prompt-Execution Git** — Configurable commit and PR commands injected into the agent's context
-- **Convention Injection** — Your coding standards applied to every AI execution
-- **File Protection** — `must_not_touch` prevents the AI from modifying critical files
-- **Token Budgets** — Per-spec token ceilings prevent runaway executions
-- **Full Audit Trail** — Every spec, execution, and review lives in Git history
+Install and authenticate with your own account. Your keys, your billing, your model choice — the extension assembles context and delegates execution. It never touches your credentials.
 
 ---
 
-## Get Started in 5 Minutes
+## Requirements
 
-```bash
-# 1. Install the extension
-ext install andrelmm91.sdd-platform
+- **VS Code** 1.85 or later
+- **AI CLI (BYOK)** — one of the following, installed and authenticated:
+  - [Claude CLI](https://docs.anthropic.com/en/docs/claude-code) (`npm install -g @anthropic-ai/claude-code`)
+  - [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli) (`gh extension install github/gh-copilot`)
+- **Git** configured in the workspace
+- **gh CLI** (optional, for PR automation) — [cli.github.com](https://cli.github.com)
 
-# 3. Configure your AI provider
-SDD: Open AI Config
+---
 
-# 4. Add a feature idea to the Requirement Board
-SDD: Open Requirement Board
+## Getting Started
 
-# 5. Let AI idealize and generate specs, then execute
-```
-
-For the full setup guide, command reference, spec format documentation, and configuration details, see **[HOW-TO.md](https://github.com/andrelmm91/sdd-agentic/blob/main/HOW-TO.md)**.
+1. Install the extension from the VS Code Marketplace
+2. Open a project folder in VS Code
+3. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and run **SDD: Initialize Project**
+4. Click the SDD icon in the Activity Bar to open the sidebar
+5. Click **Open Dashboard** to see the SDD Builder AI dashboard
+6. Go to the **Requirement Board** and add your first feature idea
+7. Click **Idealize** to let the AI structure your requirement
+8. Click **Create SDD Cards** to generate spec files
+9. Open the **Kanban Board**, move a spec to Ready, and execute
 
 ---
 
@@ -157,19 +201,10 @@ For the full setup guide, command reference, spec format documentation, and conf
 | Layer | Technology |
 |---|---|
 | Extension | TypeScript + VS Code Extension API |
-| Webview UI | Svelte + Vite |
+| Webview UI | Svelte 5 + Vite |
 | Spec format | YAML frontmatter + Markdown |
-| AI execution | Claude CLI / Copilot CLI |
+| AI execution | Claude CLI / GitHub Copilot CLI |
 | Version control | Git CLI + gh CLI |
-
----
-
-## Requirements
-
-- VS Code 1.85+
-- **AI CLI (BYOK)**: [Claude CLI](https://docs.anthropic.com/en/docs/claude-cli) or [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), installed and authenticated
-- Git configured in the workspace
-- [gh CLI](https://cli.github.com/) (optional, for PR automation)
 
 ---
 
@@ -179,4 +214,4 @@ Report bugs and feature requests at [GitHub Issues](https://github.com/andrelmm9
 
 ---
 
-**Builder AI** — An SDD-inspired platform to govern AI coding. Ship with confidence.
+**SDD Builder AI** — Structure your AI. Ship with confidence.
