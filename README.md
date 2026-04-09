@@ -34,7 +34,6 @@ Every AI execution is governed by a **spec file** — a small contract that tell
 - Which files to read for context (no guessing, no context overflow)
 - Which files are off-limits (no accidental rewrites)
 - What "done" looks like (acceptance criteria the AI must verify)
-- A token budget ceiling (no runaway executions)
 
 The result: **small, focused diffs you can review in minutes, not hours.**
 
