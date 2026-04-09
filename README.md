@@ -154,7 +154,6 @@ Run **SDD: Initialize Project** to scaffold the standard `.sdd/` folder structur
 | **Progress** | Not measurable | Tracked per spec — percentages, counts |
 | **Reproducibility** | Same prompt, different results | Same spec, consistent execution |
 | **Traceability** | Lost in chat history | Version-controlled in Git with full audit trail |
-| **Budget** | Unlimited | Token ceiling per spec |
 | **Feedback** | Start over from scratch | Feedback injected directly into the next run |
 
 ---
