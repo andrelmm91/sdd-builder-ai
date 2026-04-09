@@ -57,7 +57,7 @@ A five-column board where each spec moves from idea to shipped code.
 
 | Status | What happens |
 |---|---|
-| **Draft** | AI-generated specs land here. Review and refine scope before executing. |
+| **Draft** | AI-generated specs land here. Review and refine scope before executing. New specs can also be created manually. |
 | **Ready** | Spec is validated and queued for execution. |
 | **In Progress** | AI is executing — a terminal opens with real-time output. |
 | **Review** | Execution complete. Review the diff and approve or request changes. |
