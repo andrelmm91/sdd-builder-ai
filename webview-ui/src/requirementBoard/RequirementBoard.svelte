@@ -156,6 +156,12 @@
                     {:else}
                       <span class="processing-indicator">Processing...</span>
                     {/if}
+                    <button
+                      class="btn-action btn-cancel"
+                      onclick={() => postMessage('cancelRequirementsAction', {})}
+                    >
+                      Cancel ✗
+                    </button>
                   {:else}
                     <button
                       class="btn-action"
@@ -177,6 +183,12 @@
                     {:else}
                       <span class="processing-indicator">Processing...</span>
                     {/if}
+                    <button
+                      class="btn-action btn-cancel"
+                      onclick={() => postMessage('cancelRequirementsAction', {})}
+                    >
+                      Cancel ✗
+                    </button>
                   {:else}
                     <button
                       class="btn-action btn-primary"
@@ -377,6 +389,8 @@
   .btn-primary:hover { background: var(--vscode-button-hoverBackground); }
   .btn-complete { background: var(--vscode-charts-green); color: #fff; }
   .btn-complete:hover { background: var(--vscode-charts-green); opacity: 0.85; }
+  .btn-cancel { background: var(--vscode-charts-red); color: #fff; }
+  .btn-cancel:hover { background: var(--vscode-charts-red); opacity: 0.85; }
 
   .btn-action:disabled {
     opacity: 0.5;

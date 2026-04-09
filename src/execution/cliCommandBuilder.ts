@@ -36,11 +36,12 @@ export function buildCliCommand(options: CliCommandOptions): string {
   }
 
   // Claude provider (default)
-  // Always use --print for non-plan modes so Claude runs non-interactively and exits on completion.
-  // Plan mode is interactive and must not use --print (they are incompatible).
+  // Only dangerously-skip-permissions uses --print (one-shot, non-interactive).
+  // Default and plan modes are interactive REPL — adding --print would put Claude into
+  // one-shot mode without a way to approve tool use, causing it to hang or fail silently.
   const parts = [cliBinary];
-  const isPlanMode = aiConfig?.permissionMode === 'plan';
-  if (!isPlanMode) {
+  const isAutoMode = aiConfig?.permissionMode === 'dangerously-skip-permissions';
+  if (isAutoMode) {
     parts.push('--print');
   }
   if (maxTokens !== undefined) {
@@ -49,7 +50,7 @@ export function buildCliCommand(options: CliCommandOptions): string {
   if (aiConfig?.model) parts.push('--model', aiConfig.model);
   const effort = (aiConfig as AIConfig | undefined)?.effort ?? (aiConfig as RequirementsAIConfig | undefined)?.effort;
   if (effort) parts.push('--effort', effort as ClaudeEffort);
-  if (aiConfig?.permissionMode === 'dangerously-skip-permissions') {
+  if (isAutoMode) {
     parts.push('--dangerously-skip-permissions');
   }
   // plan mode: no extra flag — Claude's default interactive mode asks for tool approval

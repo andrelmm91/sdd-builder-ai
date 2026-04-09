@@ -52,11 +52,7 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
   const command = buildCliCommand({ cliBinary, aiConfig: reqConfig, prompt });
   const interactive = isInteractiveMode(reqConfig);
 
-  // For interactive modes (Claude default/plan/REPL, Copilot ask), show a persistent
-  // notification with a "Complete & Close Terminal" button — exactly as the kanban
-  // workflow does via executeSpec.ts. Clicking it closes the terminal which resolves
-  // the runInTerminal promise via the onDidCloseTerminal listener.
-  let terminalRef: vscode.Terminal | undefined;
+  let cancelled = false;
   const executionPromise = runInTerminal({
     command,
     terminalName: `SDD: Idealize ${featureName}`,
@@ -64,8 +60,11 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
     timeoutMs: IDEALIZATION_TIMEOUT_MS,
     logName: featureName,
     interactive,
-    onTerminalReady: (t) => { terminalRef = t; setActiveRequirementsTerminal(t); },
+    onTerminalReady: (t) => {
+      setActiveRequirementsTerminal(t, () => { cancelled = true; });
+    },
     onSuccess: async () => {
+      if (cancelled) return;
       try {
         await postValidate(root, featureName, folderPath);
         vscode.window.showInformationMessage(`SDD: Idealization complete for "${featureName}".`);
@@ -75,22 +74,12 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
       }
     },
     onFailure: (exitCode) => {
+      if (cancelled) return;
       vscode.window.showErrorMessage(
         `SDD: Idealization failed — AI CLI exited with code ${exitCode ?? 'unknown'}`,
       );
     },
   });
-
-  if (interactive) {
-    vscode.window.showInformationMessage(
-      `SDD: Idealizing "${featureName}" — AI is running interactively. Click when done.`,
-      'Complete & Close Terminal',
-    ).then((selection) => {
-      if (selection === 'Complete & Close Terminal') {
-        terminalRef?.dispose();
-      }
-    });
-  }
 
   await executionPromise;
   setActiveRequirementsTerminal(null);

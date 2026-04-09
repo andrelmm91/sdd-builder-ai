@@ -51,7 +51,7 @@ export async function createSddCards(featureName: string, folderPath: string): P
   const command = buildCliCommand({ cliBinary, aiConfig: reqConfig, prompt });
   const interactive = isInteractiveMode(reqConfig);
 
-  let terminalRef: vscode.Terminal | undefined;
+  let cancelled = false;
   const executionPromise = runInTerminal({
     command,
     terminalName: `SDD: Create Cards ${featureName}`,
@@ -59,8 +59,11 @@ export async function createSddCards(featureName: string, folderPath: string): P
     timeoutMs: SDD_CARDS_TIMEOUT_MS,
     logName: featureName,
     interactive,
-    onTerminalReady: (t) => { terminalRef = t; setActiveRequirementsTerminal(t); },
+    onTerminalReady: (t) => {
+      setActiveRequirementsTerminal(t, () => { cancelled = true; });
+    },
     onSuccess: async () => {
+      if (cancelled) return;
       const specsAfter = await listSpecFiles(root);
       const newSpecs = specsAfter.filter((f) => !specsBefore.includes(f));
 
@@ -83,22 +86,12 @@ export async function createSddCards(featureName: string, folderPath: string): P
       );
     },
     onFailure: () => {
+      if (cancelled) return;
       vscode.window.showErrorMessage(
         `SDD: SDD card creation failed — AI CLI exited with an error. Check the terminal output.`,
       );
     },
   });
-
-  if (interactive) {
-    vscode.window.showInformationMessage(
-      `SDD: Creating SDD cards for "${featureName}" — AI is running interactively. Click when done.`,
-      'Complete & Close Terminal',
-    ).then((selection) => {
-      if (selection === 'Complete & Close Terminal') {
-        terminalRef?.dispose();
-      }
-    });
-  }
 
   await executionPromise;
   setActiveRequirementsTerminal(null);

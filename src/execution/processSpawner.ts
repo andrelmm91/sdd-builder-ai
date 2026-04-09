@@ -121,9 +121,9 @@ export async function runInTerminal(options: RunInTerminalOptions): Promise<void
 
   // Delay sendText to avoid double-echo: if text is sent before the shell finishes
   // initialising, the PTY echoes it once (pre-prompt) and then the shell echoes it
-  // again after the prompt appears. Waiting ~150 ms lets the shell render its first
-  // prompt before we send the command, so only one echo is visible.
-  await new Promise<void>((r) => setTimeout(r, 150));
+  // again after the prompt appears. Waiting 1000 ms lets the shell render its first
+  // prompt before we send the command, matching the delay used by CliRunner.
+  await new Promise<void>((r) => setTimeout(r, 1000));
 
   // Send as a single line — exactly as if the user pasted it into the terminal.
   // The command and sentinel echo are joined with '; ' so only one line appears.

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { BaseWebviewPanel } from '../BaseWebviewPanel';
 import { loadFeatureCards, createFeatureFile } from './featureParser';
 import { readRequirementsAIConfig } from '../../../config/aiConfig';
-import { completeCurrentRequirementsExecution } from '../../../execution/requirementsRunner';
+import { completeCurrentRequirementsExecution, cancelCurrentRequirementsExecution } from '../../../execution/requirementsRunner';
 import { PRODUCT_FOLDER } from '../../../utils/constants';
 import type { FeatureCard, FeatureFormData } from './types';
 import type { RequirementsAIConfig } from '../../../config/aiConfigTypes';
@@ -55,6 +55,9 @@ export class RequirementBoardPanel extends BaseWebviewPanel {
       }
       case 'completeRequirementsAction':
         completeCurrentRequirementsExecution();
+        break;
+      case 'cancelRequirementsAction':
+        cancelCurrentRequirementsExecution();
         break;
       case 'openAiConfig':
         await vscode.commands.executeCommand('sdd.openAiConfig');
