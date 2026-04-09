@@ -198,7 +198,7 @@ Install and authenticate with your own account. Your keys, your billing, your mo
 
 | Layer | Technology |
 |---|---|
-| Extension | TypeScript + VS Code Extension API |
+| Extension | TypeScript |
 | Webview UI | Svelte 5 + Vite |
 | Spec format | YAML frontmatter + Markdown |
 | AI execution | Claude CLI / GitHub Copilot CLI |
