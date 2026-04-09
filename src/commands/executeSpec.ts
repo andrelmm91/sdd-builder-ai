@@ -309,8 +309,18 @@ export function createExecuteSpecCommand(refresh: () => void) {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Programmatically completes an in-progress interactive spec execution (closes the terminal). */
+export function completeInteractiveSpec(): void {
+  _runner.completeInteractive();
+}
+
+/** Cancels the currently running spec execution. */
+export function cancelCurrentSpec(): void {
+  _runner.abort();
+}
+
 /** Returns true for modes where the AI runs in an interactive REPL (not one-shot). */
-function isInteractiveMode(aiConfig: Awaited<ReturnType<typeof readAIConfig>>): boolean {
+export function isInteractiveMode(aiConfig: Awaited<ReturnType<typeof readAIConfig>>): boolean {
   if (!aiConfig) return true; // default to interactive if config is absent
   if (aiConfig.provider === 'copilot') {
     return aiConfig.permissionMode !== 'yolo';

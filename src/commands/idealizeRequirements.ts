@@ -10,6 +10,7 @@ import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureP
 import { isCommandAvailable } from '../utils/shell';
 import { buildCliCommand } from '../execution/cliCommandBuilder';
 import { runInTerminal } from '../execution/processSpawner';
+import { setActiveRequirementsTerminal } from '../execution/requirementsRunner';
 
 /**
  * Returns true when the requirements AI config uses an interactive execution mode —
@@ -63,7 +64,7 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
     timeoutMs: IDEALIZATION_TIMEOUT_MS,
     logName: featureName,
     interactive,
-    onTerminalReady: (t) => { terminalRef = t; },
+    onTerminalReady: (t) => { terminalRef = t; setActiveRequirementsTerminal(t); },
     onSuccess: async () => {
       try {
         await postValidate(root, featureName, folderPath);
@@ -92,6 +93,7 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
   }
 
   await executionPromise;
+  setActiveRequirementsTerminal(null);
 }
 
 

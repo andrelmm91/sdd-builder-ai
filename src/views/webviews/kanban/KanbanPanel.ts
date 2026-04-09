@@ -5,7 +5,13 @@ import { canTransition } from '../../../specs/lifecycle';
 import { serializeFrontmatter, parseFrontmatter } from '../../../utils/frontmatter';
 import { SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../../../utils/constants';
 import { BulkExecutionManager } from '../../../execution/bulkExecution';
-import { executeSingleSpec, requireFullPermissionForBulk } from '../../../commands/executeSpec';
+import {
+  executeSingleSpec,
+  requireFullPermissionForBulk,
+  completeInteractiveSpec,
+  cancelCurrentSpec,
+  isInteractiveMode,
+} from '../../../commands/executeSpec';
 import { getLatestExecution } from '../../../execution/resultCapture';
 import { applyRequestChanges } from '../../../commands/reviewCommands';
 import type { SpecData, SpecStatus } from '../../../specs/types';
@@ -114,6 +120,12 @@ export class KanbanPanel extends BaseWebviewPanel {
         }
         break;
       }
+      case 'completeInteractiveSpec':
+        completeInteractiveSpec();
+        break;
+      case 'cancelSpec':
+        cancelCurrentSpec();
+        break;
     }
   }
 
@@ -214,13 +226,32 @@ export class KanbanPanel extends BaseWebviewPanel {
   }
 
   private async handleCardAction(msg: CardActionMessage): Promise<void> {
-    const command = ACTION_COMMAND_MAP[msg.action];
-    if (!command) return;
     const filePath = this.specFilePaths.get(msg.specId);
     if (!filePath) {
       this.post('moveError', { specId: msg.specId, message: `Spec file not found for ${msg.specId}` });
       return;
     }
+
+    // Single-spec execute: track interactive state so the card shows
+    // "Complete ✓" / "Cancel ✕" buttons — same control as the notification toast.
+    if (msg.action === 'execute') {
+      const aiConfig = await readAIConfig();
+      const interactive = isInteractiveMode(aiConfig);
+      if (interactive) {
+        this.post('interactiveExecution', { specId: msg.specId });
+      }
+      try {
+        await vscode.commands.executeCommand(ACTION_COMMAND_MAP['execute'], filePath);
+      } finally {
+        if (interactive) {
+          this.post('interactiveExecution', { specId: null });
+        }
+      }
+      return;
+    }
+
+    const command = ACTION_COMMAND_MAP[msg.action];
+    if (!command) return;
     await vscode.commands.executeCommand(command, filePath);
   }
 

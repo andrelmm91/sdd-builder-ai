@@ -1,8 +1,17 @@
 import * as vscode from 'vscode';
 import { BaseWebviewPanel } from '../BaseWebviewPanel';
 import { loadFeatureCards, createFeatureFile } from './featureParser';
+import { readRequirementsAIConfig } from '../../../config/aiConfig';
+import { completeCurrentRequirementsExecution } from '../../../execution/requirementsRunner';
 import { PRODUCT_FOLDER } from '../../../utils/constants';
 import type { FeatureCard, FeatureFormData } from './types';
+import type { RequirementsAIConfig } from '../../../config/aiConfigTypes';
+
+function isInteractiveMode(config: RequirementsAIConfig | null | undefined): boolean {
+  if (!config) return true;
+  if (config.provider === 'copilot') return config.permissionMode !== 'yolo';
+  return config.permissionMode !== 'dangerously-skip-permissions';
+}
 
 export class RequirementBoardPanel extends BaseWebviewPanel {
   private static instance: RequirementBoardPanel | undefined;
@@ -29,18 +38,24 @@ export class RequirementBoardPanel extends BaseWebviewPanel {
         break;
       case 'idealizeRequirements': {
         const { featureName, folderPath } = message.data as { featureName: string; folderPath: string };
+        const reqConfig = await readRequirementsAIConfig();
+        this.post('actionState', { interactive: isInteractiveMode(reqConfig) });
         await vscode.commands.executeCommand('sdd.idealizeRequirements', featureName, folderPath);
-        // Always refresh after execution so actionInProgress clears even when no files changed
-        // (e.g. AI failure, authentication error, user closed terminal early).
+        // Always refresh after execution so actionInProgress clears even when no files changed.
         await this.sendFeatureCards();
         break;
       }
       case 'createSddCards': {
         const { featureName, folderPath } = message.data as { featureName: string; folderPath: string };
+        const reqConfig = await readRequirementsAIConfig();
+        this.post('actionState', { interactive: isInteractiveMode(reqConfig) });
         await vscode.commands.executeCommand('sdd.createSddCards', featureName, folderPath);
         await this.sendFeatureCards();
         break;
       }
+      case 'completeRequirementsAction':
+        completeCurrentRequirementsExecution();
+        break;
       case 'openAiConfig':
         await vscode.commands.executeCommand('sdd.openAiConfig');
         break;

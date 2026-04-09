@@ -10,6 +10,7 @@ import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureP
 import { isCommandAvailable } from '../utils/shell';
 import { buildCliCommand } from '../execution/cliCommandBuilder';
 import { runInTerminal } from '../execution/processSpawner';
+import { setActiveRequirementsTerminal } from '../execution/requirementsRunner';
 
 function isInteractiveMode(config: RequirementsAIConfig | null | undefined): boolean {
   if (!config) return true;
@@ -58,7 +59,7 @@ export async function createSddCards(featureName: string, folderPath: string): P
     timeoutMs: SDD_CARDS_TIMEOUT_MS,
     logName: featureName,
     interactive,
-    onTerminalReady: (t) => { terminalRef = t; },
+    onTerminalReady: (t) => { terminalRef = t; setActiveRequirementsTerminal(t); },
     onSuccess: async () => {
       const specsAfter = await listSpecFiles(root);
       const newSpecs = specsAfter.filter((f) => !specsBefore.includes(f));
@@ -100,6 +101,7 @@ export async function createSddCards(featureName: string, folderPath: string): P
   }
 
   await executionPromise;
+  setActiveRequirementsTerminal(null);
 }
 
 

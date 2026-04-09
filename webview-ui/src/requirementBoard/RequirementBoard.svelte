@@ -32,6 +32,8 @@
   let showFeatureForm = $state(false);
   let loading = $state(true);
   let actionInProgress: string | null = $state(null);
+  /** True when the active requirement execution is running in interactive AI mode. */
+  let isInteractive = $state(false);
 
   const featuresByStatus = $derived(
     Object.fromEntries(
@@ -47,6 +49,9 @@
         features = d.features ?? [];
         loading = false;
         actionInProgress = null;
+        isInteractive = false;
+      } else if (msg.type === 'actionState') {
+        isInteractive = (msg.data as { interactive: boolean }).interactive;
       }
     });
   });
@@ -141,7 +146,16 @@
               <div class="card-actions">
                 {#if col.id === 'New Requirement'}
                   {#if actionInProgress === card.name}
-                    <span class="processing-indicator">Processing...</span>
+                    {#if isInteractive}
+                      <button
+                        class="btn-action btn-complete"
+                        onclick={() => postMessage('completeRequirementsAction', {})}
+                      >
+                        Complete ✓
+                      </button>
+                    {:else}
+                      <span class="processing-indicator">Processing...</span>
+                    {/if}
                   {:else}
                     <button
                       class="btn-action"
@@ -153,7 +167,16 @@
                   {/if}
                 {:else if col.id === 'Idealization In Review'}
                   {#if actionInProgress === card.name}
-                    <span class="processing-indicator">Processing...</span>
+                    {#if isInteractive}
+                      <button
+                        class="btn-action btn-complete"
+                        onclick={() => postMessage('completeRequirementsAction', {})}
+                      >
+                        Complete ✓
+                      </button>
+                    {:else}
+                      <span class="processing-indicator">Processing...</span>
+                    {/if}
                   {:else}
                     <button
                       class="btn-action btn-primary"
@@ -352,6 +375,8 @@
     color: var(--vscode-button-foreground);
   }
   .btn-primary:hover { background: var(--vscode-button-hoverBackground); }
+  .btn-complete { background: var(--vscode-charts-green); color: #fff; }
+  .btn-complete:hover { background: var(--vscode-charts-green); opacity: 0.85; }
 
   .btn-action:disabled {
     opacity: 0.5;

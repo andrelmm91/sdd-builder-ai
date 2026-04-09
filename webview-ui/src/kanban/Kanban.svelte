@@ -43,6 +43,8 @@
   let bulkState = $state<BulkExecutionState>({ items: [], isRunning: false, currentIndex: -1 });
   let modalSpec = $state<SpecCard | null>(null);
   let feedbackText = $state('');
+  /** The spec currently executing interactively (single-spec, not bulk). */
+  let interactiveSpecId = $state<string | null>(null);
 
   const filtered = $derived(
     filterText.trim() === ''
@@ -78,6 +80,8 @@
         showError(d.specId, d.message);
       } else if (msg.type === 'bulkState') {
         bulkState = msg.data as BulkExecutionState;
+      } else if (msg.type === 'interactiveExecution') {
+        interactiveSpecId = (msg.data as { specId: string | null }).specId;
       }
     });
   });
@@ -349,6 +353,19 @@
                   </button>
                   <button class="btn-action btn-add-bulk" onclick={() => addToBulk(card.spec_id)}>
                     + Bulk
+                  </button>
+                {:else if card.status === 'in_progress' && interactiveSpecId === card.spec_id}
+                  <button
+                    class="btn-action btn-complete"
+                    onclick={() => postMessage('completeInteractiveSpec', { specId: card.spec_id })}
+                  >
+                    Complete ✓
+                  </button>
+                  <button
+                    class="btn-action btn-cancel-exec"
+                    onclick={() => postMessage('cancelSpec', { specId: card.spec_id })}
+                  >
+                    Cancel ✕
                   </button>
                 {:else if card.status === 'review'}
                   <button class="btn-action btn-approve" onclick={() => cardAction('approve', card.spec_id)}>
@@ -768,6 +785,10 @@
     border: 1px solid var(--vscode-panel-border);
   }
   .btn-clear:hover { background: var(--vscode-button-secondaryHoverBackground); }
+  .btn-complete { background: var(--vscode-charts-green); color: #fff; }
+  .btn-complete:hover { background: var(--vscode-charts-green); opacity: 0.85; }
+  .btn-cancel-exec { background: var(--vscode-charts-red); color: #fff; }
+  .btn-cancel-exec:hover { background: var(--vscode-charts-red); opacity: 0.85; }
 
   /* Modal */
   .modal-backdrop {
