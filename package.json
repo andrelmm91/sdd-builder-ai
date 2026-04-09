@@ -1,6 +1,6 @@
 {
   "name": "sdd-platform",
-  "displayName": "Builder AI",
+  "displayName": "SDD Builder AI",
   "description": "Spec-Driven Development for VS Code \u2014 AI-assisted structured development workflow",
   "version": "0.1.0",
   "publisher": "andrelmm91",
@@ -171,7 +171,7 @@
       "activitybar": [
         {
           "id": "sdd-sidebar",
-          "title": "Builder AI",
+          "title": "SDD Builder AI",
           "icon": "resources/icon.svg"
         }
       ]
@@ -186,7 +186,7 @@
       ]
     },
     "configuration": {
-      "title": "Builder AI",
+      "title": "SDD Builder AI",
       "properties": {
         "sdd.specPrefix": {
           "type": "string",

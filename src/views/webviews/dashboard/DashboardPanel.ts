@@ -19,6 +19,7 @@ export interface DashboardData {
 export class DashboardPanel extends BaseWebviewPanel {
   private static instance: DashboardPanel | undefined;
   private watcher: vscode.FileSystemWatcher | undefined;
+  private reqWatcher: vscode.FileSystemWatcher | undefined;
 
   static createOrShow(extensionUri: vscode.Uri): void {
     if (DashboardPanel.instance) {
@@ -29,7 +30,7 @@ export class DashboardPanel extends BaseWebviewPanel {
   }
 
   private constructor(extensionUri: vscode.Uri) {
-    super(extensionUri, 'sddDashboard', 'Builder AI Dashboard', vscode.ViewColumn.One);
+    super(extensionUri, 'sddDashboard', 'SDD Builder AI Dashboard', vscode.ViewColumn.One);
     this.setupWatcher();
     void this.sendData();
   }
@@ -55,17 +56,24 @@ export class DashboardPanel extends BaseWebviewPanel {
   override dispose(): void {
     DashboardPanel.instance = undefined;
     this.watcher?.dispose();
+    this.reqWatcher?.dispose();
     super.dispose();
   }
 
   private setupWatcher(): void {
     const root = vscode.workspace.workspaceFolders?.[0]?.uri;
     if (!root) return;
-    const pattern = new vscode.RelativePattern(root, `${SPECS_FOLDER}/**/*${SPEC_FILE_EXTENSION}`);
-    this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
+    const specPattern = new vscode.RelativePattern(root, `${SPECS_FOLDER}/**/*${SPEC_FILE_EXTENSION}`);
+    this.watcher = vscode.workspace.createFileSystemWatcher(specPattern);
     this.watcher.onDidCreate(() => void this.sendData());
     this.watcher.onDidChange(() => void this.sendData());
     this.watcher.onDidDelete(() => void this.sendData());
+
+    const reqPattern = new vscode.RelativePattern(root, `${PRODUCT_FOLDER}/**/*.md`);
+    this.reqWatcher = vscode.workspace.createFileSystemWatcher(reqPattern);
+    this.reqWatcher.onDidCreate(() => void this.sendData());
+    this.reqWatcher.onDidChange(() => void this.sendData());
+    this.reqWatcher.onDidDelete(() => void this.sendData());
   }
 
   private async sendData(): Promise<void> {

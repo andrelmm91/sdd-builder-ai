@@ -30,11 +30,15 @@ export class RequirementBoardPanel extends BaseWebviewPanel {
       case 'idealizeRequirements': {
         const { featureName, folderPath } = message.data as { featureName: string; folderPath: string };
         await vscode.commands.executeCommand('sdd.idealizeRequirements', featureName, folderPath);
+        // Always refresh after execution so actionInProgress clears even when no files changed
+        // (e.g. AI failure, authentication error, user closed terminal early).
+        await this.sendFeatureCards();
         break;
       }
       case 'createSddCards': {
         const { featureName, folderPath } = message.data as { featureName: string; folderPath: string };
         await vscode.commands.executeCommand('sdd.createSddCards', featureName, folderPath);
+        await this.sendFeatureCards();
         break;
       }
       case 'openAiConfig':

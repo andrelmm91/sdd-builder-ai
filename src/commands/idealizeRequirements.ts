@@ -4,11 +4,23 @@ import { getWorkspaceRoot } from '../utils/fileSystem';
 import { getClaudeCliBinary } from '../config/extensionConfig';
 import { readRequirementsAIConfig } from '../config/aiConfig';
 import { DEFAULT_REQUIREMENTS_AI_CONFIG } from '../config/aiConfigTypes';
+import type { RequirementsAIConfig } from '../config/aiConfigTypes';
 import { IDEALIZATION_FILENAME, PRODUCT_FOLDER } from '../utils/constants';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { isCommandAvailable } from '../utils/shell';
 import { buildCliCommand } from '../execution/cliCommandBuilder';
 import { runInTerminal } from '../execution/processSpawner';
+
+/**
+ * Returns true when the requirements AI config uses an interactive execution mode —
+ * i.e. Claude plan mode, Claude default (REPL), or Copilot non-yolo (ask mode).
+ * Mirrors the isInteractiveMode logic used in executeSpec.ts for the kanban workflow.
+ */
+function isInteractiveMode(config: RequirementsAIConfig | null | undefined): boolean {
+  if (!config) return true;
+  if (config.provider === 'copilot') return config.permissionMode !== 'yolo';
+  return config.permissionMode !== 'dangerously-skip-permissions';
+}
 
 const IDEALIZATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -37,13 +49,21 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
   }
 
   const command = buildCliCommand({ cliBinary, aiConfig: reqConfig, prompt });
+  const interactive = isInteractiveMode(reqConfig);
 
-  await runInTerminal({
+  // For interactive modes (Claude default/plan/REPL, Copilot ask), show a persistent
+  // notification with a "Complete & Close Terminal" button — exactly as the kanban
+  // workflow does via executeSpec.ts. Clicking it closes the terminal which resolves
+  // the runInTerminal promise via the onDidCloseTerminal listener.
+  let terminalRef: vscode.Terminal | undefined;
+  const executionPromise = runInTerminal({
     command,
     terminalName: `SDD: Idealize ${featureName}`,
     cwd: root,
     timeoutMs: IDEALIZATION_TIMEOUT_MS,
     logName: featureName,
+    interactive,
+    onTerminalReady: (t) => { terminalRef = t; },
     onSuccess: async () => {
       try {
         await postValidate(root, featureName, folderPath);
@@ -59,6 +79,19 @@ export async function idealizeRequirements(featureName: string, folderPath: stri
       );
     },
   });
+
+  if (interactive) {
+    vscode.window.showInformationMessage(
+      `SDD: Idealizing "${featureName}" — AI is running interactively. Click when done.`,
+      'Complete & Close Terminal',
+    ).then((selection) => {
+      if (selection === 'Complete & Close Terminal') {
+        terminalRef?.dispose();
+      }
+    });
+  }
+
+  await executionPromise;
 }
 
 

@@ -4,11 +4,18 @@ import { getWorkspaceRoot } from '../utils/fileSystem';
 import { getClaudeCliBinary } from '../config/extensionConfig';
 import { readRequirementsAIConfig } from '../config/aiConfig';
 import { DEFAULT_REQUIREMENTS_AI_CONFIG } from '../config/aiConfigTypes';
+import type { RequirementsAIConfig } from '../config/aiConfigTypes';
 import { SPECS_FOLDER, SPEC_FILE_EXTENSION, IDEALIZATION_FILENAME, PRODUCT_FOLDER } from '../utils/constants';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { isCommandAvailable } from '../utils/shell';
 import { buildCliCommand } from '../execution/cliCommandBuilder';
 import { runInTerminal } from '../execution/processSpawner';
+
+function isInteractiveMode(config: RequirementsAIConfig | null | undefined): boolean {
+  if (!config) return true;
+  if (config.provider === 'copilot') return config.permissionMode !== 'yolo';
+  return config.permissionMode !== 'dangerously-skip-permissions';
+}
 
 const SDD_CARDS_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -41,13 +48,17 @@ export async function createSddCards(featureName: string, folderPath: string): P
   const specsBefore = await listSpecFiles(root);
 
   const command = buildCliCommand({ cliBinary, aiConfig: reqConfig, prompt });
+  const interactive = isInteractiveMode(reqConfig);
 
-  await runInTerminal({
+  let terminalRef: vscode.Terminal | undefined;
+  const executionPromise = runInTerminal({
     command,
     terminalName: `SDD: Create Cards ${featureName}`,
     cwd: root,
     timeoutMs: SDD_CARDS_TIMEOUT_MS,
     logName: featureName,
+    interactive,
+    onTerminalReady: (t) => { terminalRef = t; },
     onSuccess: async () => {
       const specsAfter = await listSpecFiles(root);
       const newSpecs = specsAfter.filter((f) => !specsBefore.includes(f));
@@ -76,6 +87,19 @@ export async function createSddCards(featureName: string, folderPath: string): P
       );
     },
   });
+
+  if (interactive) {
+    vscode.window.showInformationMessage(
+      `SDD: Creating SDD cards for "${featureName}" — AI is running interactively. Click when done.`,
+      'Complete & Close Terminal',
+    ).then((selection) => {
+      if (selection === 'Complete & Close Terminal') {
+        terminalRef?.dispose();
+      }
+    });
+  }
+
+  await executionPromise;
 }
 
 

@@ -17,6 +17,15 @@ export interface RunInTerminalOptions {
   timeoutMs: number;
   /** When set, stdout+stderr are captured via tee into .sdd/executions/<logName>/exec-<ts>.log */
   logName?: string;
+  /**
+   * When true, the execution is interactive (e.g. Claude plan/REPL mode).
+   * Terminal close is treated as a successful completion signal (the user manually
+   * closes the terminal when done, matching the "Complete & Close Terminal" kanban pattern).
+   * When false or absent, terminal close without a sentinel file is treated as failure.
+   */
+  interactive?: boolean;
+  /** Called immediately after the VS Code terminal is created, before the command is sent. */
+  onTerminalReady?: (terminal: vscode.Terminal) => void;
   onSuccess?: () => Promise<void>;
   onFailure?: (exitCode: number | void) => void;
 }
@@ -83,7 +92,7 @@ function sq(str: string): string {
  * Completion is detected via a sentinel file so onSuccess/onFailure callbacks still fire.
  */
 export async function runInTerminal(options: RunInTerminalOptions): Promise<void> {
-  const { command, terminalName, cwd, timeoutMs, logName, onSuccess, onFailure } = options;
+  const { command, terminalName, cwd, timeoutMs, logName, interactive, onTerminalReady, onSuccess, onFailure } = options;
 
   // Use the real tmpdir path (macOS: /tmp → /private/tmp symlink)
   const tmpDir = (() => { try { return fs.realpathSync(os.tmpdir()); } catch { return os.tmpdir(); } })();
@@ -108,6 +117,7 @@ export async function runInTerminal(options: RunInTerminalOptions): Promise<void
 
   const terminal = vscode.window.createTerminal({ name: terminalName, cwd });
   terminal.show();
+  onTerminalReady?.(terminal);
 
   // Delay sendText to avoid double-echo: if text is sent before the shell finishes
   // initialising, the PTY echoes it once (pre-prompt) and then the shell echoes it
@@ -129,6 +139,7 @@ export async function runInTerminal(options: RunInTerminalOptions): Promise<void
     let settled = false;
     let watcher: fs.FSWatcher | null = null;
     let poller: ReturnType<typeof setInterval> | null = null;
+    let terminalCloseDisposable: vscode.Disposable | null = null;
 
     const done = async (exitCode: number | void) => {
       if (settled) return;
@@ -136,6 +147,7 @@ export async function runInTerminal(options: RunInTerminalOptions): Promise<void
       clearTimeout(timer);
       if (poller) clearInterval(poller);
       watcher?.close();
+      terminalCloseDisposable?.dispose();
       try { fs.unlinkSync(sentinelPath); } catch { /* best-effort */ }
       if (exitCode === 0) {
         await onSuccess?.();
@@ -168,5 +180,23 @@ export async function runInTerminal(options: RunInTerminalOptions): Promise<void
       if (settled) return;
       if (fs.existsSync(sentinelPath)) setTimeout(readSentinel, 100);
     }, 2000);
+
+    // Terminal close listener — mirrors CliRunner._waitForTerminalClose() in the kanban workflow.
+    // When the terminal closes (user closes it or process exits and VS Code cleans it up):
+    //  - If the sentinel was already written (non-interactive completion), readSentinel picks it up.
+    //  - If no sentinel and interactive=true, treat close as a successful "done" signal (the user
+    //    intentionally closed the terminal after the AI finished its interactive session).
+    //  - If no sentinel and interactive=false, treat close as failure (unexpected early termination).
+    terminalCloseDisposable = vscode.window.onDidCloseTerminal((closed) => {
+      if (closed !== terminal || settled) return;
+      setTimeout(() => {
+        if (settled) return;
+        if (fs.existsSync(sentinelPath)) {
+          readSentinel();
+        } else {
+          void done(interactive ? 0 : undefined);
+        }
+      }, 200);
+    });
   });
 }
