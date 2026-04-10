@@ -37,7 +37,14 @@ Every AI execution is governed by a **spec file** — a small contract that tell
 
 The result: **small, focused diffs you can review in minutes, not hours.**
 
----
+## Bring Your Own AI (BYOK)
+
+SDD Builder AI does **not** manage API keys or subscriptions. It orchestrates the AI CLI tools you already use:
+
+- **Claude CLI** — Anthropic's command-line agent (`claude`)
+- **GitHub Copilot CLI** — GitHub's AI assistant (`gh copilot`)
+
+Install and authenticate with your own account. Your keys, your billing, your model choice — the extension assembles context and delegates execution. It never touches your credentials.
 
 ## Key Features
 
@@ -57,6 +64,18 @@ Run **SDD: Initialize Project** to scaffold the standard `.sdd/` folder structur
   conventions.md          # Your coding standards (optional but recommended)
 .specs/                   # All .sdd.md spec files
 ```
+
+---
+
+### Overview dashboard
+High-level view of your project's development health at a glance.
+
+- Spec counts by status (Draft, Ready, In Progress, Review, Done)
+- Completion percentage across all specs
+- SDD tags overview and recent activity feed
+- All execution logs saved in `.sdd/execution/` for full audit after development
+
+![Dashboard](./docs/pictures/SDD_AI_Builder_Dashboard.png)
 
 ---
 
@@ -99,18 +118,6 @@ Select multiple **Ready** specs and execute them sequentially in one action.
 
 ---
 
-### Dashboard
-High-level view of your project's development health at a glance.
-
-- Spec counts by status (Draft, Ready, In Progress, Review, Done)
-- Completion percentage across all specs
-- SDD tags overview and recent activity feed
-- All execution logs saved in `.sdd/execution/` for full audit after development
-
-![Dashboard](./docs/pictures/SDD_AI_Builder_Dashboard.png)
-
----
-
 ### Request Changes Flow
 When a spec needs rework, your feedback is injected directly into the next execution.
 
@@ -138,9 +145,13 @@ Separate configuration for requirements AI and execution AI.
 
 - Choose your AI provider: **Claude CLI** or **GitHub Copilot CLI**
 - Set permission modes per provider
-- Configure model per provider
-- Tag-to-skill mappings with custom skill files
-- Configurable `git commit` and `git pull-request` commands injected into post-execution context
+  - Full permission: a terminal is created and the AI CLI executes all commands. The watch sentinel monitors when the AI finishes and update the SDD card for review.
+  - Plan mode: a terminal opens and the AI CLI executes in plan mode. The user should press the complete button to move it to review phase. 
+- Tag-to-skill mappings with custom skill files. The skills are injected into the prompt when a spec with the corresponding tag is executed, giving you precise control over the agent's capabilities per task.
+- Prompt templates for idealization, spec generation, and execution phases — customize the instructions and context you give the AI at each step.
+- Configurable `git commit` and `git pull-request` commands into the prompt context.
+
+![AI Configuration](./docs/pictures/AI_config.png)
 
 ---
 
@@ -155,17 +166,6 @@ Separate configuration for requirements AI and execution AI.
 | **Reproducibility** | Same prompt, different results | Same spec, consistent execution |
 | **Traceability** | Lost in chat history | Version-controlled in Git with full audit trail |
 | **Feedback** | Start over from scratch | Feedback injected directly into the next run |
-
----
-
-## Bring Your Own AI (BYOK)
-
-SDD Builder AI does **not** manage API keys or subscriptions. It orchestrates the AI CLI tools you already use:
-
-- **Claude CLI** — Anthropic's command-line agent (`claude`)
-- **GitHub Copilot CLI** — GitHub's AI assistant (`gh copilot`)
-
-Install and authenticate with your own account. Your keys, your billing, your model choice — the extension assembles context and delegates execution. It never touches your credentials.
 
 ---
 
