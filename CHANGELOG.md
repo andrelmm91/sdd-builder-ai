@@ -29,6 +29,8 @@ All notable changes to the SDD Platform extension will be documented in this fil
 
 ### Changed
 
-- N/A (initial stable release)
+## [1.0.1] - 2026-04-10
+
+- **Fixing README.md pictures** — Fixing broken image links in the README.md file by replacing local paths with absolute URLs to ensure they render correctly on GitHub and other platforms.
 
 ---

@@ -50,7 +50,7 @@ Install and authenticate with your own account. Your keys, your billing, your mo
 
 ### Project Initialization
 
-![Initialize Project](./docs/pictures/initiate_project.png)
+![Initialize Project](https://github.com/user-attachments/assets/f89a774c-7df7-421f-8e52-50b3cc4ca824)
 
 Run **SDD: Initialize Project** to scaffold the standard `.sdd/` folder structure:
 
@@ -75,7 +75,7 @@ High-level view of your project's development health at a glance.
 - SDD tags overview and recent activity feed
 - All execution logs saved in `.sdd/execution/` for full audit after development
 
-![Dashboard](./docs/pictures/SDD_AI_Builder_Dashboard.png)
+![Dashboard](https://github.com/user-attachments/assets/4fc326fa-c668-408b-895d-2f66bdf62a02)
 
 ---
 
@@ -86,7 +86,7 @@ Capture raw ideas and turn them into structured development plans with AI.
 - **AI Idealization** — the AI acts as a software architect, producing a concise requirements document from your idea
 - **AI Spec Generation** — one click decomposes the idealization into dependency-ordered SDD spec cards ready for development
 
-![Requirement Board](./docs/pictures/requirement_board.png)
+![Requirement Board](https://github.com/user-attachments/assets/1b5f836a-b487-4ec7-b91b-8bc632fc28da)
 
 ---
 
@@ -103,7 +103,9 @@ A five-column board where each spec moves from idea to shipped code.
 
 Drag and drop cards between columns. Every transition is validated — no skipping stages.
 
-![SDD Kanban Board](./docs/pictures/SDD_kanban_board.png)
+![SDD Kanban Board](https://github.com/user-attachments/assets/918b706c-361f-4944-a046-9578273d91bb)
+
+![SDD execution](https://github.com/user-attachments/assets/bdd1ef83-239f-465e-857a-5f9332b867b9)
 
 ---
 
@@ -114,7 +116,7 @@ Select multiple **Ready** specs and execute them sequentially in one action.
 - Stops automatically on failure so you can review before continuing
 - Only available in full-permission AI modes to prevent mid-execution interruptions
 
-![Bulk Execution](./docs/pictures/SDD_kanban_board_Bulk_execution.png)
+![Bulk Execution](https://github.com/user-attachments/assets/cf51bbce-51b5-4f3a-a21a-410db20e4214)
 
 ---
 
@@ -151,7 +153,7 @@ Separate configuration for requirements AI and execution AI.
 - Prompt templates for idealization, spec generation, and execution phases — customize the instructions and context you give the AI at each step.
 - Configurable `git commit` and `git pull-request` commands into the prompt context.
 
-![AI Configuration](./docs/pictures/AI_config.png)
+![AI Configuration](https://github.com/user-attachments/assets/e3a1555a-887f-4e19-902e-3da4cdcd929c)
 
 ---
 

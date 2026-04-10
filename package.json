@@ -2,8 +2,8 @@
   "name": "sdd-platform",
   "displayName": "SDD Builder AI",
   "description": "Spec-Driven Development for VS Code — AI-assisted structured development workflow",
-  "version": "1.0.0",
-  "publisher": "andrelmm91",
+  "version": "1.0.1",
+  "publisher": "CoeusAI",
   "license": "MIT",
   "repository": {
     "type": "git",

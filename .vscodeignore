@@ -32,3 +32,9 @@ test-*.mjs
 
 ## Internal development docs (not for end users)
 HOW-TO.md
+
+# development AI
+.sdd/
+.specs/
+.claude/
+.copilot/

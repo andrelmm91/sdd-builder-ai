@@ -28,3 +28,8 @@ Thumbs.db
 *.swp
 *.swo
 
+# development AI
+.sdd/
+.specs/
+.claude/
+.copilot/
