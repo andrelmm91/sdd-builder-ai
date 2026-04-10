@@ -29,3 +29,6 @@ node_modules/
 out/
 run-sdd.sh
 test-*.mjs
+
+## Internal development docs (not for end users)
+HOW-TO.md
