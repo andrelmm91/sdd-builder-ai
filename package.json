@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/andrelmm91/sdd-agentic"
+    "url": "https://github.com/andrelmm91/sdd-builder-ai"
   },
   "engines": {
     "vscode": "^1.85.0"
