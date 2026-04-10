@@ -33,7 +33,7 @@ Test context.
 - None
 `;
 
-const DRAFT_SPEC = READY_SPEC.replace('status: ready', 'status: draft');
+const _DRAFT_SPEC = READY_SPEC.replace('status: ready', 'status: draft');
 
 function makeFileContent(specId: string, status: string): Uint8Array {
   const content = READY_SPEC

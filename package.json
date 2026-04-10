@@ -1,7 +1,7 @@
 {
   "name": "sdd-platform",
   "displayName": "SDD Builder AI",
-  "description": "Spec-Driven Development for VS Code \u2014 AI-assisted structured development workflow",
+  "description": "Spec-Driven Development for VS Code — AI-assisted structured development workflow",
   "version": "1.0.0",
   "publisher": "andrelmm91",
   "license": "MIT",
@@ -191,7 +191,7 @@
         "sdd.specPrefix": {
           "type": "string",
           "default": "SDD",
-          "description": "Prefix used for spec IDs (e.g. SDD \u2192 SDD-001)"
+          "description": "Prefix used for spec IDs (e.g. SDD → SDD-001)"
         },
         "sdd.conventionsPath": {
           "type": "string",
@@ -253,7 +253,7 @@
           {
             "id": "specFormat",
             "title": "Understand the spec format",
-            "description": "Each `.sdd.md` file has YAML frontmatter (spec_id, status, priority, budget_max_tokens, \u2026) followed by markdown sections: **Context**, **Requirements**, **Acceptance Criteria**, **Constraints**, and **Examples**.\n\nOpen the Specs panel to browse your specs.",
+            "description": "Each `.sdd.md` file has YAML frontmatter (spec_id, status, priority, budget_max_tokens, …) followed by markdown sections: **Context**, **Requirements**, **Acceptance Criteria**, **Constraints**, and **Examples**.\n\nOpen the Specs panel to browse your specs.",
             "media": {
               "image": "media/logo.png",
               "altText": "Spec format"
@@ -328,11 +328,14 @@
     "publish": "npm run build:all && vsce publish"
   },
   "devDependencies": {
-    "@vscode/vsce": "^3.0.0",
     "@sveltejs/vite-plugin-svelte": "^6.0.0",
     "@types/node": "^20.19.35",
     "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@vscode/vsce": "^3.0.0",
     "esbuild": "^0.20.0",
+    "eslint": "^8.57.1",
     "svelte": "^5.0.0",
     "typescript": "^5.9.3",
     "vite": "^7.0.0",

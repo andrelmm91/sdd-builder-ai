@@ -127,7 +127,7 @@ const FOLDER_PATH = '/workspace/.sdd/product/MyFeature';
 
 /** Creates a mock ChildProcess that emits 'close' asynchronously via setTimeout(0). */
 function makeChildProcessMock(exitCode = 0): cp.ChildProcess {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
   const NodeEventEmitter = require('events').EventEmitter;
   const child = new NodeEventEmitter() as unknown as cp.ChildProcess;
   (child as unknown as Record<string, unknown>).stdout = new NodeEventEmitter();

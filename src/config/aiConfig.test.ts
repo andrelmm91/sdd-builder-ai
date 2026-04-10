@@ -16,7 +16,7 @@ const mockWriteWorkspaceFile = vi.mocked(writeWorkspaceFile);
 const mockGetWorkspaceRoot = vi.mocked(getWorkspaceRoot);
 const mockFindFiles = vi.mocked(vscode.workspace.findFiles);
 const mockReadFile = vi.mocked(vscode.workspace.fs.readFile);
-const mockReadDirectory = vi.mocked(vscode.workspace.fs.readDirectory);
+const _mockReadDirectory = vi.mocked(vscode.workspace.fs.readDirectory);
 
 beforeEach(() => {
   vi.clearAllMocks();
