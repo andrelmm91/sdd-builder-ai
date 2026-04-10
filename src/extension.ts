@@ -17,7 +17,6 @@ import {
   createRequestChangesCommand,
   createRejectSpecCommand,
 } from "./commands/reviewCommands";
-import { DashboardButtonItem } from "./views/sidebar/specTreeItem";
 import { SpecTreeProvider } from "./views/sidebar/specTreeProvider";
 import { SpecCompletionProvider } from "./specs/completionProvider";
 import { StatusBarManager } from "./views/statusBar";
@@ -36,10 +35,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.window.registerFileDecorationProvider({
-      provideFileDecoration(uri) {
+      provideFileDecoration(uri): vscode.FileDecoration | undefined {
         if (uri.scheme === 'sdd-dashboard') {
           return { color: new vscode.ThemeColor('charts.green') };
         }
+        return undefined;
       },
     }),
     vscode.window.registerTreeDataProvider("sdd.specsTree", specTreeProvider),
