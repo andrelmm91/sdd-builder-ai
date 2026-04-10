@@ -41,6 +41,25 @@ The result: **small, focused diffs you can review in minutes, not hours.**
 
 ## Key Features
 
+### Project Initialization
+
+![Initialize Project](./docs/pictures/initiate_project.png)
+
+Run **SDD: Initialize Project** to scaffold the standard `.sdd/` folder structure:
+
+```
+.sdd/
+  product_requirements/   # Feature requirements and idealizations
+  execution/              # Execution logs and audit records
+  skills/                 # Agent skill files (.md) per technology tag
+  ai-config.json          # AI provider and execution configuration
+  config.json             # Project settings
+  conventions.md          # Your coding standards (optional but recommended)
+.specs/                   # All .sdd.md spec files
+```
+
+---
+
 ### Requirement Board
 Capture raw ideas and turn them into structured development plans with AI.
 
@@ -48,7 +67,7 @@ Capture raw ideas and turn them into structured development plans with AI.
 - **AI Idealization** — the AI acts as a software architect, producing a concise requirements document from your idea
 - **AI Spec Generation** — one click decomposes the idealization into dependency-ordered SDD spec cards ready for development
 
-![Requirement Board](./pictures/requirement board.png)
+![Requirement Board](.docs/pictures/requirement_board.png)
 
 ---
 
@@ -65,7 +84,7 @@ A five-column board where each spec moves from idea to shipped code.
 
 Drag and drop cards between columns. Every transition is validated — no skipping stages.
 
-![SDD Kanban Board](./pictures/SDD kanban board.png)
+![SDD Kanban Board](./docs/pictures/SDD_kanban_board.png)
 
 ---
 
@@ -76,7 +95,7 @@ Select multiple **Ready** specs and execute them sequentially in one action.
 - Stops automatically on failure so you can review before continuing
 - Only available in full-permission AI modes to prevent mid-execution interruptions
 
-![Bulk Execution](./pictures/SDD kanban board Bulk execution.png)
+![Bulk Execution](./docs/pictures/SDD_kanban_board_Bulk_execution.png)
 
 ---
 
@@ -88,7 +107,7 @@ High-level view of your project's development health at a glance.
 - SDD tags overview and recent activity feed
 - All execution logs saved in `.sdd/execution/` for full audit after development
 
-![Dashboard](./pictures/SDD AI Builder Dashboard.png)
+![Dashboard](./docs/pictures/SDD_AI_Builder_Dashboard.png)
 
 ---
 
@@ -122,25 +141,6 @@ Separate configuration for requirements AI and execution AI.
 - Configure model per provider
 - Tag-to-skill mappings with custom skill files
 - Configurable `git commit` and `git pull-request` commands injected into post-execution context
-
----
-
-### Project Initialization
-
-![Initialize Project](./pictures/initiate a project.png)
-
-Run **SDD: Initialize Project** to scaffold the standard `.sdd/` folder structure:
-
-```
-.sdd/
-  product_requirements/   # Feature requirements and idealizations
-  execution/              # Execution logs and audit records
-  skills/                 # Agent skill files (.md) per technology tag
-  ai-config.json          # AI provider and execution configuration
-  config.json             # Project settings
-  conventions.md          # Your coding standards (optional but recommended)
-.specs/                   # All .sdd.md spec files
-```
 
 ---
 
