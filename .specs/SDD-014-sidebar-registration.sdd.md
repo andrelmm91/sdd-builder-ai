@@ -12,7 +12,6 @@ must_not_touch:
   - src/specs/parser.ts
   - src/specs/validator.ts
 depends_on: [SDD-013]
-budget_max_tokens: 50000
 agent_skills: frontend-dev
 created: 2026-03-05
 ---

@@ -42,6 +42,7 @@ describe('aiConfigTypes', () => {
       provider: 'claude',
       permissionMode: 'default',
       model: 'sonnet',
+      effort: 'medium',
       tagSkillMappings: [],
       prePromptTemplate: DEFAULT_PRE_PROMPT,
       commitCommand: 'git add -A && git commit -m "{spec_id}: {title}"',

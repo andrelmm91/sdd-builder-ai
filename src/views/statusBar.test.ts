@@ -61,7 +61,6 @@ const makeSpec = (overrides: Partial<SpecData> & { spec_id: string; status: Spec
   relevant_files: [],
   must_not_touch: [],
   depends_on: [],
-  budget_max_tokens: 10000,
   agent_skills: 'frontend-dev',
   created: '2026-01-01',
   ...overrides,
@@ -77,7 +76,6 @@ tags: []
 relevant_files: []
 must_not_touch: []
 depends_on: []
-budget_max_tokens: ${spec.budget_max_tokens}
 agent_skills: ${spec.agent_skills}
 created: ${spec.created}
 ---
@@ -136,7 +134,7 @@ describe('StatusBarManager', () => {
 
   it('displays "0 ready, 0 running" when no specs exist', async () => {
     await manager.updateCounts();
-    expect(mockVscode._mockStatusBarItem.text).toBe('SDD: 0 ready, 0 running');
+    expect(mockVscode._mockStatusBarItem.text).toBe('SDD: 0 ready, 0 running, 0 done');
   });
 
   it('counts ready specs correctly', async () => {
@@ -146,7 +144,7 @@ describe('StatusBarManager', () => {
       makeSpec({ spec_id: 'SDD-003', status: 'draft' }),
     ]);
     await manager.updateCounts();
-    expect(mockVscode._mockStatusBarItem.text).toBe('SDD: 2 ready, 0 running');
+    expect(mockVscode._mockStatusBarItem.text).toBe('SDD: 2 ready, 0 running, 0 done');
   });
 
   it('counts in_progress specs as running', async () => {
@@ -156,7 +154,7 @@ describe('StatusBarManager', () => {
       makeSpec({ spec_id: 'SDD-003', status: 'ready' }),
     ]);
     await manager.updateCounts();
-    expect(mockVscode._mockStatusBarItem.text).toBe('SDD: 1 ready, 2 running');
+    expect(mockVscode._mockStatusBarItem.text).toBe('SDD: 1 ready, 2 running, 0 done');
   });
 
   it('does not count done/draft/review specs', async () => {
@@ -166,7 +164,7 @@ describe('StatusBarManager', () => {
       makeSpec({ spec_id: 'SDD-003', status: 'review' }),
     ]);
     await manager.updateCounts();
-    expect(mockVscode._mockStatusBarItem.text).toBe('SDD: 0 ready, 0 running');
+    expect(mockVscode._mockStatusBarItem.text).toBe('SDD: 0 ready, 0 running, 1 done');
   });
 
   it('registers file watcher for spec files', () => {
@@ -203,7 +201,7 @@ describe('StatusBarManager', () => {
     const origFolders = vscode.workspace.workspaceFolders;
     Object.defineProperty(vscode.workspace, 'workspaceFolders', { value: undefined, configurable: true });
     await manager.updateCounts();
-    expect(mockVscode._mockStatusBarItem.text).toBe('SDD: 0 ready, 0 running');
+    expect(mockVscode._mockStatusBarItem.text).toBe('SDD: 0 ready, 0 running, 0 done');
     Object.defineProperty(vscode.workspace, 'workspaceFolders', { value: origFolders, configurable: true });
   });
 });

@@ -12,7 +12,6 @@ must_not_touch:
   - src/extension.ts
   - src/views/webviews/aiConfig/AiConfigPanel.ts
 depends_on: [SDD-056]
-budget_max_tokens: 100000
 agent_skills: frontend-dev
 created: 2026-03-08
 ---

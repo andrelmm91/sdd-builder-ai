@@ -12,7 +12,6 @@ relevant_files:
 must_not_touch:
   - src/execution/cliRunner.ts
 depends_on: [SDD-024, SDD-028]
-budget_max_tokens: 100000
 agent_skills: frontend-dev
 created: 2026-03-05
 ---

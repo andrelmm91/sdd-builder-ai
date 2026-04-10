@@ -13,7 +13,6 @@ must_not_touch:
   - src/execution/cliRunner.ts
   - src/execution/resultCapture.ts
 depends_on: [SDD-011, SDD-024]
-budget_max_tokens: 50000
 agent_skills: backend-dev
 created: 2026-03-05
 ---

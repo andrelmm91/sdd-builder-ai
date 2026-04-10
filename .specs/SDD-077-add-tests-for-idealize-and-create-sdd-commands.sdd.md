@@ -14,7 +14,6 @@ must_not_touch:
   - src/commands/idealizeRequirements.ts
   - src/commands/createSddCards.ts
 depends_on: [SDD-072, SDD-073]
-budget_max_tokens: 150000
 agent_skills: backend-dev
 created: 2026-03-09
 ---

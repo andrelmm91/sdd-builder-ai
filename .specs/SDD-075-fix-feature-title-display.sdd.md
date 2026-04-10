@@ -12,7 +12,6 @@ relevant_files:
 must_not_touch:
   - src/views/webviews/requirementBoard/RequirementBoardPanel.ts
 depends_on: [SDD-064]
-budget_max_tokens: 80000
 agent_skills: fullstack-dev
 created: 2026-03-09
 ---

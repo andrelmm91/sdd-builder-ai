@@ -11,7 +11,6 @@ relevant_files:
   - src/extension.ts
 must_not_touch: []
 depends_on: [SDD-052, SDD-053]
-budget_max_tokens: 100000
 agent_skills: backend-dev
 created: 2026-03-08
 ---

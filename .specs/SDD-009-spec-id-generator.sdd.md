@@ -12,7 +12,6 @@ relevant_files:
 must_not_touch:
   - src/specs/parser.ts
 depends_on: [SDD-002]
-budget_max_tokens: 50000
 agent_skills: backend-dev
 created: 2026-03-05
 ---

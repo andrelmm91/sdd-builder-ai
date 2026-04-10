@@ -12,7 +12,6 @@ must_not_touch:
   - src/execution/cliRunner.ts
   - src/views/webviews/kanban/KanbanPanel.ts
 depends_on: []
-budget_max_tokens: 80000
 agent_skills: backend-dev
 created: 2026-03-10
 ---

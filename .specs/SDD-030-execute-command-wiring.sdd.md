@@ -12,7 +12,6 @@ relevant_files:
 must_not_touch:
   - src/planning/planner.ts
 depends_on: [SDD-024, SDD-025, SDD-026, SDD-027, SDD-028, SDD-029]
-budget_max_tokens: 100000
 agent_skills: frontend-dev
 created: 2026-03-05
 ---

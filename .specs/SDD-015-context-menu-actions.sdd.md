@@ -13,7 +13,6 @@ must_not_touch:
   - src/views/sidebar/specTreeProvider.ts
   - src/specs/parser.ts
 depends_on: [SDD-007, SDD-014]
-budget_max_tokens: 100000
 agent_skills: frontend-dev
 created: 2026-03-05
 ---

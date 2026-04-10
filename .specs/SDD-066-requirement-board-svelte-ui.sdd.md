@@ -13,7 +13,6 @@ must_not_touch:
   - webview-ui/src/kanban/Kanban.svelte
   - webview-ui/src/dashboard/Dashboard.svelte
 depends_on: [SDD-063]
-budget_max_tokens: 150000
 agent_skills: frontend-dev
 created: 2026-03-09
 ---

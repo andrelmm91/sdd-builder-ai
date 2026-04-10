@@ -13,7 +13,6 @@ must_not_touch:
   - src/specs/parser.ts
   - src/specs/validator.ts
 depends_on: []
-budget_max_tokens: 80000
 agent_skills: fullstack-dev
 created: 2026-03-10
 ---

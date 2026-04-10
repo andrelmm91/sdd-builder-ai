@@ -14,7 +14,6 @@ must_not_touch:
   - src/execution/cliRunner.ts
   - src/commands/executeSpec.ts
 depends_on: [SDD-078]
-budget_max_tokens: 180000
 agent_skills: fullstack-dev
 created: 2026-03-10
 ---

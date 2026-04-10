@@ -14,7 +14,6 @@ must_not_touch:
   - src/views/webviews/kanban/KanbanPanel.ts
   - src/views/webviews/dashboard/DashboardPanel.ts
 depends_on: [SDD-063, SDD-064]
-budget_max_tokens: 150000
 agent_skills: backend-dev
 created: 2026-03-09
 ---

@@ -12,7 +12,6 @@ must_not_touch:
   - src/views/webviews/BaseWebviewPanel.ts
   - webview-ui/src/requirementBoard/FeatureForm.svelte
 depends_on: [SDD-071]
-budget_max_tokens: 100000
 agent_skills: fullstack-dev
 created: 2026-03-09
 ---

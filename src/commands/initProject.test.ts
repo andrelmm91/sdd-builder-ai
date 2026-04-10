@@ -26,6 +26,7 @@ vi.mock('../utils/fileSystem', () => ({
   fileExists: vi.fn(),
   writeWorkspaceFile: vi.fn(),
   createWorkspaceDirectory: vi.fn(),
+  readWorkspaceFile: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../config/projectConfig', () => ({
@@ -119,7 +120,7 @@ describe('initProject', () => {
 
     await initProject();
 
-    expect(fileSystem.createWorkspaceDirectory).toHaveBeenCalledTimes(5);
+    expect(fileSystem.createWorkspaceDirectory).toHaveBeenCalledTimes(6);
     expect(projectConfig.writeProjectConfig).toHaveBeenCalled();
   });
 

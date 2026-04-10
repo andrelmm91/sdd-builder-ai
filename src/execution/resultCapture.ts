@@ -1,4 +1,5 @@
-import { writeWorkspaceFile, readWorkspaceFile, listFiles } from '../utils/fileSystem';
+import { writeWorkspaceFile, readWorkspaceFile, listFiles, getWorkspaceRoot } from '../utils/fileSystem';
+import { execCommand, isCommandAvailable } from '../utils/shell';
 import { EXECUTIONS_FOLDER, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
 import { parseFrontmatter } from '../utils/frontmatter';
 import type { ExecutionRecord, ExecutionResult } from './types';
@@ -19,6 +20,26 @@ export async function captureResults(
 ): Promise<CaptureResult> {
   const mustNotTouch = await loadMustNotTouch(specId);
   const changedFiles: string[] = [];
+
+  const root = getWorkspaceRoot();
+  if (!root) {
+    console.warn('[SDD] Skipping git diff: no workspace root available');
+  } else {
+    const gitAvailable = await isCommandAvailable('git');
+    if (!gitAvailable) {
+      console.warn('[SDD] Skipping git diff: git is not available');
+    } else {
+      const diffResult = await execCommand('git diff --name-status', { cwd: root });
+      if (diffResult.success && diffResult.stdout.trim()) {
+        for (const line of diffResult.stdout.trim().split('\n')) {
+          const parts = line.split('\t');
+          if (parts.length >= 2) {
+            changedFiles.push(`${parts[0]} ${parts.slice(1).join('\t')}`);
+          }
+        }
+      }
+    }
+  }
 
   // Detect scope violations
   const scopeViolation =

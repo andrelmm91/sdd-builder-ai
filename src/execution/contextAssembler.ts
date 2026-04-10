@@ -7,6 +7,7 @@ const MAX_CONTEXT_BYTES = 100 * 1024;
 
 export type ContextOptions = {
   conventions?: string;
+  skills?: string;
   feedback?: string;
   previousOutput?: string;
   aiConfig?: AIConfig;
@@ -96,6 +97,11 @@ export async function assembleExecutionContext(
     options.conventions ?? (await readWorkspaceFile(CONVENTIONS_FILE));
   if (conventionsContent) {
     sections.push(`## Conventions\n\n${conventionsContent}`);
+  }
+
+  // 3.5. Agent Skills
+  if (options.skills) {
+    sections.push(`## Agent Skills\n\n${options.skills}`);
   }
 
   // 4. Scope Constraints

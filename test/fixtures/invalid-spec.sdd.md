@@ -8,7 +8,6 @@ tags: []
 relevant_files: []
 must_not_touch: []
 depends_on: []
-budget_max_tokens: -100
 agent_skills: ""
 created: not-a-date
 ---

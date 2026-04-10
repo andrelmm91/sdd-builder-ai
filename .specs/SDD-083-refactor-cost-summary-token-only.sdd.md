@@ -14,7 +14,6 @@ must_not_touch:
   - src/execution/types.ts
   - src/views/webviews/dashboard/DashboardPanel.ts
 depends_on: []
-budget_max_tokens: 120000
 agent_skills: fullstack-dev
 created: 2026-03-10
 ---

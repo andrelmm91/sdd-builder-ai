@@ -12,7 +12,6 @@ relevant_files:
 must_not_touch:
   - src/execution/runner.ts
 depends_on: [SDD-019, SDD-020, SDD-021]
-budget_max_tokens: 150000
 agent_skills: backend-dev
 created: 2026-03-05
 ---

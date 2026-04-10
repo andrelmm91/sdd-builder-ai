@@ -12,7 +12,6 @@ relevant_files:
 must_not_touch:
   - webview-ui/src/specForm/SpecForm.svelte
 depends_on: [SDD-066]
-budget_max_tokens: 100000
 agent_skills: frontend-dev
 created: 2026-03-09
 ---

@@ -5,44 +5,47 @@ vi.mock('../utils/fileSystem', () => ({
   readWorkspaceFile: vi.fn(),
   writeWorkspaceFile: vi.fn(),
   getWorkspaceRoot: vi.fn(() => '/workspace'),
+  listFiles: vi.fn(),
 }));
 
 import { readAIConfig, writeAIConfig, getAvailableTags, getAvailableSkills } from './aiConfig';
-import { readWorkspaceFile, writeWorkspaceFile, getWorkspaceRoot } from '../utils/fileSystem';
+import { readWorkspaceFile, writeWorkspaceFile, getWorkspaceRoot, listFiles } from '../utils/fileSystem';
 import { DEFAULT_AI_CONFIG } from './aiConfigTypes';
 
 const mockReadWorkspaceFile = vi.mocked(readWorkspaceFile);
 const mockWriteWorkspaceFile = vi.mocked(writeWorkspaceFile);
 const mockGetWorkspaceRoot = vi.mocked(getWorkspaceRoot);
+const mockListFiles = vi.mocked(listFiles);
 const mockFindFiles = vi.mocked(vscode.workspace.findFiles);
 const mockReadFile = vi.mocked(vscode.workspace.fs.readFile);
-const _mockReadDirectory = vi.mocked(vscode.workspace.fs.readDirectory);
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetWorkspaceRoot.mockReturnValue('/workspace');
+  mockReadWorkspaceFile.mockResolvedValue(undefined);
+  mockListFiles.mockResolvedValue([]);
 });
 
 describe('readAIConfig', () => {
-  it('returns defaults when file does not exist', async () => {
+  it('returns undefined when file does not exist', async () => {
     mockReadWorkspaceFile.mockResolvedValue(undefined);
     const config = await readAIConfig();
-    expect(config).toEqual({ ...DEFAULT_AI_CONFIG, tagSkillMappings: [] });
+    expect(config).toBeUndefined();
   });
 
-  it('returns defaults when file contains invalid JSON', async () => {
+  it('returns undefined when file contains invalid JSON', async () => {
     mockReadWorkspaceFile.mockResolvedValue('not json{');
     const config = await readAIConfig();
-    expect(config).toEqual({ ...DEFAULT_AI_CONFIG, tagSkillMappings: [] });
+    expect(config).toBeUndefined();
   });
 
   it('merges partial config with defaults', async () => {
-    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ provider: 'copilot', model: 'gpt-4o' }));
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ ai: { provider: 'copilot', model: 'gpt-4o' } }));
     const config = await readAIConfig();
-    expect(config.provider).toBe('copilot');
-    expect(config.model).toBe('gpt-4o');
-    expect(config.permissionMode).toBe('default');
-    expect(config.prePromptTemplate).toBe(DEFAULT_AI_CONFIG.prePromptTemplate);
+    expect(config!.provider).toBe('copilot');
+    expect(config!.model).toBe('gpt-4o');
+    expect(config!.permissionMode).toBe('default');
+    expect(config!.prePromptTemplate).toBe(DEFAULT_AI_CONFIG.prePromptTemplate);
   });
 
   it('reads complete config from file', async () => {
@@ -50,6 +53,7 @@ describe('readAIConfig', () => {
       provider: 'copilot' as const,
       permissionMode: 'yolo' as const,
       model: 'gpt-4o',
+      effort: 'medium' as const,
       tagSkillMappings: [{ tag: 'backend', skill: 'backend-dev' }],
       prePromptTemplate: 'custom prompt',
       commitCommand: 'git add -A && git commit -m "{spec_id}: {title}"',
@@ -57,7 +61,7 @@ describe('readAIConfig', () => {
       prCommand: 'gh pr create --title "feat: {title} ({spec_id})" --body "Implements {spec_id}"',
       prCommandEnabled: false,
     };
-    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify(fullConfig));
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ ai: fullConfig }));
     const config = await readAIConfig();
     expect(config).toEqual(fullConfig);
   });
@@ -66,11 +70,12 @@ describe('readAIConfig', () => {
 describe('writeAIConfig', () => {
   it('writes formatted JSON to the config file', async () => {
     mockWriteWorkspaceFile.mockResolvedValue(undefined);
+    mockReadWorkspaceFile.mockResolvedValue(undefined);
     const config = { ...DEFAULT_AI_CONFIG, tagSkillMappings: [] };
     await writeAIConfig(config);
     expect(mockWriteWorkspaceFile).toHaveBeenCalledWith(
-      '.sdd/ai-config.json',
-      JSON.stringify(config, null, 2),
+      '.sdd/config.json',
+      JSON.stringify({ ai: config }, null, 2),
     );
   });
 });
@@ -123,23 +128,23 @@ tags:
 });
 
 describe('getAvailableSkills', () => {
-  it('returns empty array when no workspace', async () => {
-    mockGetWorkspaceRoot.mockReturnValue(undefined);
+  it('returns empty array when no skill files exist', async () => {
+    mockListFiles.mockResolvedValue([]);
     const skills = await getAvailableSkills();
     expect(skills).toEqual([]);
   });
 
   it('returns skill names from .claude/skills directory', async () => {
-    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory = vi.fn().mockResolvedValue([
-      ['backend-dev.md', 1],
-      ['frontend-dev.md', 1],
+    mockListFiles.mockResolvedValue([
+      '.claude/skills/backend-dev.md',
+      '.claude/skills/frontend-dev.md',
     ]);
     const skills = await getAvailableSkills();
     expect(skills).toEqual(['backend-dev', 'frontend-dev']);
   });
 
   it('returns empty array on error', async () => {
-    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory = vi.fn().mockRejectedValue(new Error('no dir'));
+    mockListFiles.mockRejectedValue(new Error('no dir'));
     const skills = await getAvailableSkills();
     expect(skills).toEqual([]);
   });

@@ -14,7 +14,6 @@ relevant_files:
   - .gitignore
 must_not_touch: []
 depends_on: []
-budget_max_tokens: 100000
 agent_skills: infra
 created: 2026-03-05
 ---

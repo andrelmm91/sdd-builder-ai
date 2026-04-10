@@ -335,9 +335,9 @@ export class CliRunner implements ExecutionRunner {
       }
 
       // Default (ask) mode: interactive, analogous to Claude's ask/plan mode.
-      // Use -p to pass the prompt (gh copilot requires -p; positional args are not accepted).
+      // Pass the prompt as a positional argument (not -p which is for batch/non-interactive).
       // Without --yolo the agent will pause for permission on each tool use.
-      parts.push('-p', sq(prompt));
+      parts.push(sq(prompt));
       return { command: parts.join(' '), interactive: true };
     }
 

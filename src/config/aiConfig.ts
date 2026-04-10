@@ -133,5 +133,9 @@ export async function getAvailableTags(): Promise<string[]> {
 }
 
 export async function getAvailableSkills(): Promise<string[]> {
-  return listAvailableSkills();
+  try {
+    return await listAvailableSkills();
+  } catch {
+    return [];
+  }
 }

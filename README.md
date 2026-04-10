@@ -2,7 +2,7 @@
 
 **v1.0.0** | **Stop losing control of AI-generated code. Ship with confidence.**
 
-SDD Builder AI is a VS Code extension that brings **Spec-Driven Development** to your AI coding workflow. It sits between your ideas and your AI agent — breaking requirements into small, scoped, reviewable specs that keep every execution focused, traceable, and under your control.
+SDD Builder AI is a VS Code extension that brings **Spec-Driven Development** to your AI coding workflow. It sits between your ideas and your AI agent: creates specification documentation and breaks them into small, scoped, reviewable specs that keep every execution focused, traceable, and under your control.
 
 ---
 
@@ -22,10 +22,10 @@ You're not bad at prompting. **The tooling is missing a governance layer.**
 
 ## The Solution
 
-SDD Builder AI introduces a structured workflow between your ideas and the AI:
+SDD Builder AI introduces a structured workflow between your ideas and the AI. The objective is to break down development into small, focused specs that the AI can execute with precision and that you can review with confidence.
 
 ```
-Feature Ideas → AI Idealizes Requirements → AI Creates Spec Cards → Execute with AI → Review Diff → Ship
+Requirements/Ideas → AI engineers Requirements → AI Creates Spec Cards → Execute with AI → Review Diff → Ship
 ```
 
 Every AI execution is governed by a **spec file** — a small contract that tells the agent exactly:
@@ -97,7 +97,7 @@ A five-column board where each spec moves from idea to shipped code.
 |---|---|
 | **Draft** | AI-generated specs land here. Review and refine scope before executing. New specs can also be created manually. |
 | **Ready** | Spec is validated and queued for execution. |
-| **In Progress** | AI is executing — a terminal opens with real-time output. |
+| **In Progress** | AI is executing — the AI CLI is open in the terminal with real-time output. |
 | **Review** | Execution complete. Review the diff and approve or request changes. |
 | **Done** | Spec is completed with full audit trail. Commit and PR can be enabled into the prompt in the configuration. |
 

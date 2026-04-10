@@ -32,7 +32,6 @@ tags: [feature]
 relevant_files: [src/foo.ts]
 must_not_touch: []
 depends_on: []
-budget_max_tokens: 100000
 agent_skills: backend-dev
 created: 2026-03-05
 ---
@@ -94,7 +93,6 @@ tags: [feature]
 relevant_files: [src/foo.ts]
 must_not_touch: []
 depends_on: []
-budget_max_tokens: 100000
 agent_skills: backend-dev
 created: 2026-03-05
 ---

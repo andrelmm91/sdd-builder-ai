@@ -22,6 +22,10 @@ vi.mock('vscode', () => {
   }
 
   class ThemeIcon {
+    constructor(public id: string, public color?: unknown) {}
+  }
+
+  class ThemeColor {
     constructor(public id: string) {}
   }
 
@@ -31,6 +35,7 @@ vi.mock('vscode', () => {
 
   const Uri = {
     file: (p: string) => ({ fsPath: p, toString: () => `file://${p}` }),
+    parse: (s: string) => ({ scheme: s.split('://')[0], toString: () => s }),
   };
 
   const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 };
@@ -55,6 +60,7 @@ vi.mock('vscode', () => {
     EventEmitter,
     TreeItem,
     ThemeIcon,
+    ThemeColor,
     RelativePattern,
     Uri,
     TreeItemCollapsibleState,
@@ -64,7 +70,7 @@ vi.mock('vscode', () => {
 
 import * as vscode from 'vscode';
 import { SpecTreeProvider } from './specTreeProvider';
-import { SpecGroupItem, SpecTreeItem } from './specTreeItem';
+import { DashboardButtonItem, SpecGroupItem, SpecTreeItem } from './specTreeItem';
 import type { SpecData } from '../../specs/types';
 
 const makeSpec = (overrides: Partial<SpecData> & { spec_id: string; status: SpecData['status'] }): SpecData => ({
@@ -75,7 +81,6 @@ const makeSpec = (overrides: Partial<SpecData> & { spec_id: string; status: Spec
   relevant_files: [],
   must_not_touch: [],
   depends_on: [],
-  budget_max_tokens: 10000,
   agent_skills: 'frontend-dev',
   created: '2026-01-01',
   ...overrides,
@@ -91,7 +96,6 @@ tags: [${spec.tags.join(', ')}]
 relevant_files: []
 must_not_touch: []
 depends_on: [${spec.depends_on.join(', ')}]
-budget_max_tokens: ${spec.budget_max_tokens}
 agent_skills: ${spec.agent_skills}
 created: ${spec.created}
 ---
@@ -127,7 +131,8 @@ describe('SpecTreeProvider', () => {
   describe('getChildren (root level)', () => {
     it('returns empty array when no specs exist', async () => {
       const children = await provider.getChildren();
-      expect(children).toHaveLength(0);
+      expect(children).toHaveLength(1);
+      expect(children[0]).toBeInstanceOf(DashboardButtonItem);
     });
 
     it('returns only status groups that have specs', async () => {
@@ -137,11 +142,12 @@ describe('SpecTreeProvider', () => {
       ]);
 
       const children = await provider.getChildren();
-      expect(children).toHaveLength(2);
-      expect(children[0]).toBeInstanceOf(SpecGroupItem);
+      expect(children).toHaveLength(3);
+      expect(children[0]).toBeInstanceOf(DashboardButtonItem);
       expect(children[1]).toBeInstanceOf(SpecGroupItem);
+      expect(children[2]).toBeInstanceOf(SpecGroupItem);
 
-      const groups = children as SpecGroupItem[];
+      const groups = children.slice(1) as SpecGroupItem[];
       expect(groups[0].status).toBe('draft');
       expect(groups[1].status).toBe('done');
     });
@@ -154,7 +160,7 @@ describe('SpecTreeProvider', () => {
       ]);
 
       const children = await provider.getChildren();
-      const groups = children as SpecGroupItem[];
+      const groups = children.filter((c) => c instanceof SpecGroupItem) as SpecGroupItem[];
 
       expect(groups[0].status).toBe('draft');
       expect(groups[0].label).toBe('Draft');
@@ -172,7 +178,9 @@ describe('SpecTreeProvider', () => {
       ]);
 
       const children = await provider.getChildren();
-      const statuses = (children as SpecGroupItem[]).map((g) => g.status);
+      const statuses = children
+        .filter((c) => c instanceof SpecGroupItem)
+        .map((g) => (g as SpecGroupItem).status);
       expect(statuses).toEqual(['draft', 'in_progress', 'done']);
     });
   });

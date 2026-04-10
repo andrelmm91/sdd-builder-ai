@@ -12,7 +12,6 @@ relevant_files:
 must_not_touch:
   - src/views/webviews/dashboard/DashboardPanel.ts
 depends_on: [SDD-038, SDD-007, SDD-031]
-budget_max_tokens: 150000
 agent_skills: frontend-dev
 created: 2026-03-05
 ---

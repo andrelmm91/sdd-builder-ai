@@ -4,7 +4,7 @@ vi.mock('vscode', () => ({
   window: {
     showErrorMessage: vi.fn(),
     showWarningMessage: vi.fn(),
-    showInformationMessage: vi.fn(),
+    showInformationMessage: vi.fn().mockResolvedValue(undefined),
     withProgress: vi.fn(),
     activeTextEditor: undefined,
   },
@@ -47,6 +47,10 @@ vi.mock('../execution/skillsLoader', () => ({
   loadSkills: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../config/aiConfig', () => ({
+  readAIConfig: vi.fn().mockResolvedValue({ permissionMode: 'dangerously-skip-permissions', provider: 'claude' }),
+}));
+
 vi.mock('../execution/contextAssembler', () => ({
   assembleExecutionContext: vi.fn().mockResolvedValue('assembled context'),
 }));
@@ -85,7 +89,6 @@ relevant_files:
   - src/extension.ts
 must_not_touch: []
 depends_on: []
-budget_max_tokens: 100000
 agent_skills: frontend-dev
 created: 2026-03-05
 ---

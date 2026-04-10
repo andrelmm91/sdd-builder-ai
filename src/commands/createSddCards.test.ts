@@ -4,19 +4,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Module mocks — must be hoisted before imports
 // ---------------------------------------------------------------------------
 
-const mockProgressToken = {
-  isCancellationRequested: false,
-  onCancellationRequested: vi.fn(() => ({ dispose: vi.fn() })),
-};
-
 vi.mock('vscode', () => {
   return {
     window: {
       showInformationMessage: vi.fn(),
       showErrorMessage: vi.fn(),
-      withProgress: vi.fn(async (_opts: unknown, task: (p: unknown, t: typeof mockProgressToken) => Promise<void>) => {
-        await task({ report: vi.fn() }, mockProgressToken);
-      }),
+      createTerminal: vi.fn(() => ({ show: vi.fn(), dispose: vi.fn(), sendText: vi.fn() })),
     },
     workspace: {
       fs: {
@@ -27,7 +20,6 @@ vi.mock('vscode', () => {
         createDirectory: vi.fn(),
       },
     },
-    ProgressLocation: { Notification: 15 },
     FileType: { File: 1, Directory: 2 },
     Uri: {
       file: (p: string) => ({ fsPath: p, toString: () => p }),
@@ -49,6 +41,7 @@ vi.mock('../config/extensionConfig', () => ({
 
 vi.mock('../config/aiConfig', () => ({
   readAIConfig: vi.fn().mockResolvedValue({}),
+  readRequirementsAIConfig: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('../utils/shell', () => ({
@@ -56,11 +49,23 @@ vi.mock('../utils/shell', () => ({
 }));
 
 vi.mock('../execution/cliCommandBuilder', () => ({
-  buildCliCommand: vi.fn().mockReturnValue('claude --print'),
+  buildCliCommand: vi.fn().mockReturnValue('claude --print some-prompt'),
 }));
 
+// runInTerminal mock: calls onSuccess by default; configure via mockRunInTerminalMode
+let mockRunInTerminalMode: 'success' | 'failure' = 'success';
 vi.mock('../execution/processSpawner', () => ({
-  spawnWithCancellation: vi.fn().mockResolvedValue({ success: true }),
+  runInTerminal: vi.fn(async (opts: { onSuccess?: () => Promise<void>; onFailure?: (code: number) => void }) => {
+    if (mockRunInTerminalMode === 'success') {
+      await opts.onSuccess?.();
+    } else {
+      opts.onFailure?.(1);
+    }
+  }),
+}));
+
+vi.mock('../execution/requirementsRunner', () => ({
+  setActiveRequirementsTerminal: vi.fn(),
 }));
 
 vi.mock('../views/webviews/requirementBoard/featureParser', () => ({
@@ -74,7 +79,8 @@ vi.mock('../views/webviews/requirementBoard/featureParser', () => ({
 import * as vscode from 'vscode';
 import { getWorkspaceRoot } from '../utils/fileSystem';
 import { isCommandAvailable } from '../utils/shell';
-import { spawnWithCancellation } from '../execution/processSpawner';
+import { runInTerminal } from '../execution/processSpawner';
+import { buildCliCommand } from '../execution/cliCommandBuilder';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { createSddCards } from './createSddCards';
 import { SPECS_FOLDER, IDEALIZATION_FILENAME, PRODUCT_FOLDER } from '../utils/constants';
@@ -85,7 +91,7 @@ import { SPECS_FOLDER, IDEALIZATION_FILENAME, PRODUCT_FOLDER } from '../utils/co
 
 const mockGetWorkspaceRoot = vi.mocked(getWorkspaceRoot);
 const mockIsCommandAvailable = vi.mocked(isCommandAvailable);
-const mockSpawnWithCancellation = vi.mocked(spawnWithCancellation);
+const mockRunInTerminal = vi.mocked(runInTerminal);
 const mockShowErrorMessage = vi.mocked(vscode.window.showErrorMessage);
 const mockShowInformationMessage = vi.mocked(vscode.window.showInformationMessage);
 const mockUpdateFeatureStatus = vi.mocked(updateFeatureStatus);
@@ -117,19 +123,13 @@ function setupNewSpecFiles(before: string[], after: string[]) {
 describe('createSddCards', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRunInTerminalMode = 'success';
     mockGetWorkspaceRoot.mockReturnValue('/workspace');
     mockIsCommandAvailable.mockResolvedValue(true);
-    mockSpawnWithCancellation.mockResolvedValue({ success: true });
     mockFs.createDirectory.mockResolvedValue(undefined);
     mockFs.writeFile.mockResolvedValue(undefined);
     mockFs.delete.mockResolvedValue(undefined);
     mockUpdateFeatureStatus.mockResolvedValue(undefined);
-    mockProgressToken.isCancellationRequested = false;
-    vi.mocked(vscode.window.withProgress).mockImplementation(
-      async (_opts: unknown, task: (p: unknown, t: typeof mockProgressToken) => Promise<void>) => {
-        await task({ report: vi.fn() }, mockProgressToken);
-      }
-    );
   });
 
   // --- No workspace ---
@@ -143,25 +143,18 @@ describe('createSddCards', () => {
     expect(mockIsCommandAvailable).not.toHaveBeenCalled();
   });
 
-  // --- buildCreateSddCardsPrompt ---
+  // --- builds prompt ---
 
   it('builds prompt referencing idealization.md path and SDD Planner skill', async () => {
     setupNewSpecFiles([], ['SDD-099-new-feature.sdd.md']);
 
     await createSddCards(FEATURE_NAME, FOLDER_PATH);
 
-    const writeCalls = mockFs.writeFile.mock.calls;
-    const promptCall = writeCalls.find((c) => {
-      const uri = c[0] as { fsPath: string };
-      return uri.fsPath.includes('create-sdd-cards-');
-    });
-    expect(promptCall).toBeDefined();
-    const promptContent = new TextDecoder().decode(promptCall![1] as Uint8Array);
-    expect(promptContent).toContain(
-      `@${PRODUCT_FOLDER}/${FEATURE_NAME}/${IDEALIZATION_FILENAME}`,
-    );
-    expect(promptContent).toContain('sdd-planner');
-    expect(promptContent).toContain(`@${SPECS_FOLDER}/`);
+    expect(buildCliCommand).toHaveBeenCalled();
+    const callArgs = vi.mocked(buildCliCommand).mock.calls[0][0];
+    expect(callArgs.prompt).toContain(`@${PRODUCT_FOLDER}/${FEATURE_NAME}/${IDEALIZATION_FILENAME}`);
+    expect(callArgs.prompt).toContain('sdd-planner');
+    expect(callArgs.prompt).toContain(`@${SPECS_FOLDER}/`);
   });
 
   // --- CLI not available ---
@@ -173,38 +166,45 @@ describe('createSddCards', () => {
     await createSddCards(FEATURE_NAME, FOLDER_PATH);
 
     expect(mockShowErrorMessage).toHaveBeenCalledWith(expect.stringContaining('AI CLI not found'));
-    expect(mockSpawnWithCancellation).not.toHaveBeenCalled();
+    expect(mockRunInTerminal).not.toHaveBeenCalled();
   });
 
   // --- CLI process fails ---
 
   it('shows error when CLI process fails', async () => {
+    mockRunInTerminalMode = 'failure';
     mockFs.readDirectory.mockResolvedValue([]);
-    mockSpawnWithCancellation.mockResolvedValue({ success: false, error: 'exit code 1' });
 
     await createSddCards(FEATURE_NAME, FOLDER_PATH);
 
     expect(mockShowErrorMessage).toHaveBeenCalledWith(
       expect.stringContaining('SDD card creation failed'),
     );
-    expect(mockShowErrorMessage).toHaveBeenCalledWith(expect.stringContaining('exit code 1'));
   });
 
   // --- Cancellation ---
 
   it('resolves without error when cancelled before CLI runs', async () => {
+    // Simulate cancellation: mock runInTerminal to invoke the onTerminalReady and set cancelled=true,
+    // then call onSuccess — the cancelled flag should suppress all messages.
+    mockRunInTerminal.mockImplementationOnce(async (opts) => {
+      // Capture and immediately invoke the cancel callback
+      const mockTerminal = { show: vi.fn(), dispose: vi.fn(), sendText: vi.fn() };
+      let cancelFn: (() => void) | undefined;
+      const { setActiveRequirementsTerminal } = await import('../execution/requirementsRunner');
+      vi.mocked(setActiveRequirementsTerminal).mockImplementationOnce((_t, cb) => {
+        cancelFn = cb as (() => void) | undefined;
+      });
+      opts.onTerminalReady?.(mockTerminal as never);
+      cancelFn?.();
+      await opts.onSuccess?.();
+    });
+
     mockFs.readDirectory.mockResolvedValue([]);
-    vi.mocked(vscode.window.withProgress).mockImplementationOnce(
-      async (_opts: unknown, task: (p: unknown, t: typeof mockProgressToken) => Promise<void>) => {
-        const cancelledToken = { ...mockProgressToken, isCancellationRequested: true };
-        await task({ report: vi.fn() }, cancelledToken);
-      }
-    );
 
     await createSddCards(FEATURE_NAME, FOLDER_PATH);
 
     expect(mockShowErrorMessage).not.toHaveBeenCalled();
-    expect(mockSpawnWithCancellation).not.toHaveBeenCalled();
   });
 
   // --- Spec file detection ---
@@ -301,3 +301,4 @@ describe('createSddCards', () => {
     );
   });
 });
+

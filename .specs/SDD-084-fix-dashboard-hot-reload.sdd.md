@@ -12,7 +12,6 @@ must_not_touch:
   - webview-ui/src/dashboard/Dashboard.svelte
   - webview-ui/src/kanban/Kanban.svelte
 depends_on: []
-budget_max_tokens: 60000
 agent_skills: backend-dev
 created: 2026-03-10
 ---

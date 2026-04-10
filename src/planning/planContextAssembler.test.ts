@@ -74,7 +74,6 @@ tags: [feature]
 relevant_files: []
 must_not_touch: []
 depends_on: []
-budget_max_tokens: 100000
 agent_skills: backend-dev
 created: 2026-01-01
 ---
@@ -131,7 +130,6 @@ Some context.
     const result = await assemblePlanContext(makeRequest());
     expect(result).toContain('## Spec Format Reference');
     expect(result).toContain('spec_id');
-    expect(result).toContain('budget_max_tokens');
   });
 
   it('includes an Instructions section with the correct prefix and starting ID', async () => {
@@ -161,7 +159,6 @@ tags: []
 relevant_files: []
 must_not_touch: []
 depends_on: []
-budget_max_tokens: 100000
 agent_skills: backend-dev
 created: 2026-01-01
 ---

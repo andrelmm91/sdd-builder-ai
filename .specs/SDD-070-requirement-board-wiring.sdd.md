@@ -12,7 +12,6 @@ relevant_files:
 must_not_touch:
   - src/views/webviews/kanban/KanbanPanel.ts
 depends_on: [SDD-065, SDD-066, SDD-067, SDD-068, SDD-069]
-budget_max_tokens: 100000
 agent_skills: backend-dev
 created: 2026-03-09
 ---

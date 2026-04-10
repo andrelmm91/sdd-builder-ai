@@ -12,7 +12,6 @@ relevant_files:
 must_not_touch:
   - src/extension.ts
 depends_on: [SDD-001, SDD-038]
-budget_max_tokens: 50000
 agent_skills: infra
 created: 2026-03-05
 ---

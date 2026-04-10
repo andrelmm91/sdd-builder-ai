@@ -13,7 +13,6 @@ relevant_files:
 must_not_touch:
   - src/views/webviews/requirementBoard/types.ts
 depends_on: [SDD-072]
-budget_max_tokens: 80000
 agent_skills: backend-dev
 created: 2026-03-09
 ---

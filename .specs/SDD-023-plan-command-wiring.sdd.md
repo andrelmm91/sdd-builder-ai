@@ -13,7 +13,6 @@ must_not_touch:
   - src/planning/planContextAssembler.ts
   - src/planning/specBatchWriter.ts
 depends_on: [SDD-022, SDD-014]
-budget_max_tokens: 100000
 agent_skills: frontend-dev
 created: 2026-03-05
 ---

@@ -12,7 +12,6 @@ function makeSpec(overrides: Partial<SpecData> & { spec_id: string }): SpecData 
     relevant_files: [],
     must_not_touch: [],
     depends_on: [],
-    budget_max_tokens: 100000,
     agent_skills: 'backend-dev',
     created: '2026-01-01',
     ...overrides,
@@ -46,11 +45,11 @@ describe('estimateScope', () => {
     expect(estimate.totalSpecs).toBe(4);
   });
 
-  it('sums budget_max_tokens across all specs', () => {
+  it('sums estimated tokens derived from spec complexity', () => {
     const specs = [
-      makeSpec({ spec_id: 'SDD-001', budget_max_tokens: 50000 }),
-      makeSpec({ spec_id: 'SDD-002', budget_max_tokens: 100000 }),
-      makeSpec({ spec_id: 'SDD-003', budget_max_tokens: 150000 }),
+      makeSpec({ spec_id: 'SDD-001', complexity: 'low' }),    // 50000
+      makeSpec({ spec_id: 'SDD-002', complexity: 'medium' }), // 100000
+      makeSpec({ spec_id: 'SDD-003', complexity: 'high' }),   // 150000
     ];
 
     const estimate = estimateScope(specs);
@@ -102,7 +101,7 @@ describe('estimateScope', () => {
 describe('formatScopeEstimate', () => {
   it('returns a non-empty string with key fields', () => {
     const specs = [
-      makeSpec({ spec_id: 'SDD-001', complexity: 'high', tags: ['phase-1'], budget_max_tokens: 100000 }),
+      makeSpec({ spec_id: 'SDD-001', complexity: 'high', tags: ['phase-1'] }),
     ];
     const estimate = estimateScope(specs);
     const formatted = formatScopeEstimate(estimate);

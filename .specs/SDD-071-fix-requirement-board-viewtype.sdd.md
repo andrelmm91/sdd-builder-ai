@@ -11,7 +11,6 @@ relevant_files:
 must_not_touch:
   - src/views/webviews/BaseWebviewPanel.ts
 depends_on: [SDD-065]
-budget_max_tokens: 50000
 agent_skills: backend-dev
 created: 2026-03-09
 ---

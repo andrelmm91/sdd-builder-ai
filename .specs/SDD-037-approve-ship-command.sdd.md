@@ -12,7 +12,6 @@ relevant_files:
 must_not_touch:
   - src/review/reviewManager.ts
 depends_on: [SDD-034, SDD-035, SDD-036]
-budget_max_tokens: 100000
 agent_skills: frontend-dev
 created: 2026-03-05
 ---

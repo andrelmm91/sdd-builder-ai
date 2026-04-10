@@ -13,7 +13,6 @@ must_not_touch:
   - src/extension.ts
   - src/commands/executeSpec.ts
 depends_on: [SDD-059, SDD-061]
-budget_max_tokens: 100000
 agent_skills: frontend-dev
 created: 2026-03-08
 ---

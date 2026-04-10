@@ -11,7 +11,6 @@ must_not_touch:
   - src/views/webviews/kanban/KanbanPanel.ts
   - webview-ui/src/kanban/Kanban.svelte
 depends_on: []
-budget_max_tokens: 60000
 agent_skills: backend-dev
 created: 2026-03-10
 ---

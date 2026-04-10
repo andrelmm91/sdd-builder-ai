@@ -13,7 +13,6 @@ tags: []
 relevant_files: []
 must_not_touch: []
 depends_on: []
-budget_max_tokens: 50000
 agent_skills: backend-dev
 created: 2026-01-01
 ---
@@ -258,9 +257,11 @@ describe('BulkExecutionManager', () => {
 
       expect(executeFn).toHaveBeenCalledTimes(2); // SDD-001 and SDD-002 only
       const queue = BulkExecutionManager.getInstance().getQueue();
-      expect(queue.items[0].status).toBe('completed');
-      expect(queue.items[1].status).toBe('failed');
-      expect(queue.items[2].status).toBe('queued'); // never reached
+      // SDD-001 (completed) is removed after execution; SDD-002 (failed) and SDD-003 (queued) remain
+      expect(queue.items[0].specId).toBe('SDD-002');
+      expect(queue.items[0].status).toBe('failed');
+      expect(queue.items[1].specId).toBe('SDD-003');
+      expect(queue.items[1].status).toBe('queued'); // never reached
     });
 
     it('marks item failed when executeFn throws', async () => {

@@ -13,7 +13,6 @@ must_not_touch:
   - src/commands/executeSpec.ts
   - src/views/webviews/requirementBoard/RequirementBoardPanel.ts
 depends_on: [SDD-068, SDD-069]
-budget_max_tokens: 150000
 agent_skills: backend-dev
 created: 2026-03-09
 ---

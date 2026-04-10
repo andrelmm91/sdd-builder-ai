@@ -135,7 +135,6 @@ export function createMockSpec(overrides: Partial<SpecData> = {}): SpecData {
     relevant_files: ['src/foo.ts'],
     must_not_touch: [],
     depends_on: [],
-    budget_max_tokens: 50000,
     agent_skills: 'backend-dev',
     created: '2026-01-01',
     ...overrides,
