@@ -67,7 +67,7 @@ Capture raw ideas and turn them into structured development plans with AI.
 - **AI Idealization** — the AI acts as a software architect, producing a concise requirements document from your idea
 - **AI Spec Generation** — one click decomposes the idealization into dependency-ordered SDD spec cards ready for development
 
-![Requirement Board](.docs/pictures/requirement_board.png)
+![Requirement Board](./docs/pictures/requirement_board.png)
 
 ---
 
