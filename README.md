@@ -1,6 +1,6 @@
 # SDD Builder AI — Govern AI Coding with Spec-Driven Development
 
-**v1.0.0** | **Stop losing control of AI-generated code. Ship with confidence.**
+**v1.0.1** | **Stop losing control of AI-generated code. Ship with confidence.**
 
 SDD Builder AI is a VS Code extension that brings **Spec-Driven Development** to your AI coding workflow. It sits between your ideas and your AI agent: creates specification documentation and breaks them into small, scoped, reviewable specs that keep every execution focused, traceable, and under your control.
 

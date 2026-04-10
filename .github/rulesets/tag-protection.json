@@ -1,0 +1,29 @@
+{
+  "name": "tag-protection",
+  "target": "tag",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["~ALL"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "tag_name_pattern",
+      "parameters": {
+        "name": "Semver tag format",
+        "negate": false,
+        "operator": "regex",
+        "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+(-(alpha|beta|rc)\\.[0-9]+)?$"
+      }
+    }
+  ],
+  "bypass_actors": []
+}
