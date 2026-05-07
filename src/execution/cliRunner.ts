@@ -66,6 +66,7 @@ export class CliRunner implements ExecutionRunner {
     const ts = Date.now();
     const sentinel = path.join(os.tmpdir(), `sdd-${specId}-${ts}.sentinel`);
     const logFile = path.join(os.tmpdir(), `sdd-${specId}-${ts}.log`);
+    const scriptPath = path.join(os.tmpdir(), `sdd-${specId}-${ts}-cmd.sh`);
 
     try {
       // Pre-flight: ensure claude CLI is available
@@ -93,26 +94,27 @@ export class CliRunner implements ExecutionRunner {
         ? command
         : `{ ${command}; echo $? > ${sq(sentinel)}; } 2>&1 | tee ${sq(logFile)}`;
 
+      // Write the command to a temp script and launch bash with it as its first
+      // argument. This bypasses zsh's ZLE init phase which discards sendText input
+      // on WSL2 / macOS (commands appear on screen but never execute, or exit 130).
+      let scriptContent = `#!/bin/bash\n${wrappedCommand}\n`;
+      if (terminalInput !== undefined) {
+        // Embed the prompt as stdin via a here-string so it reaches the CLI process
+        // without any sendText timing dependency.
+        scriptContent = `#!/bin/bash\n${wrappedCommand} <<< ${sq(terminalInput)}\n`;
+      }
+      scriptContent += `exec "\${SHELL:-bash}"\n`;
+      await fs.writeFile(scriptPath, scriptContent, { mode: 0o700 });
+
       // Create a REAL VS Code terminal so Claude sees a genuine PTY.
       const terminal = vscode.window.createTerminal({
         name: `SDD: ${specId}`,
         cwd: root,
+        shellPath: '/bin/bash',
+        shellArgs: ['-l', scriptPath],
       });
       this._terminal = terminal;
       terminal.show();
-
-      // Wait for shell to initialize before sending any text.
-      // Without this delay, sendText fires before the PTY is ready and the
-      // command text gets consumed by the shell incorrectly.
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      terminal.sendText(wrappedCommand);
-
-      // For providers that need the prompt delivered as separate terminal input,
-      // wait for the CLI process to start before sending the prompt.
-      if (terminalInput !== undefined) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        terminal.sendText(terminalInput);
-      }
 
       if (interactive) {
         // Interactive modes: the caller is responsible for showing any
@@ -160,6 +162,7 @@ export class CliRunner implements ExecutionRunner {
       this._terminal = null;
       await fs.unlink(sentinel).catch(() => {});
       await fs.unlink(logFile).catch(() => {});
+      await fs.unlink(scriptPath).catch(() => {});
     }
   }
 
@@ -325,7 +328,7 @@ export class CliRunner implements ExecutionRunner {
 
     if (provider === 'copilot') {
       const parts = ['gh', 'copilot'];
-      if (aiConfig?.model) parts.push('--model', aiConfig.model);
+      // Note: gh copilot does not support a --model flag; model selection is not available here.
 
       if (aiConfig?.permissionMode === 'yolo') {
         // Yolo mode: pass prompt via -p flag for non-interactive batch execution.

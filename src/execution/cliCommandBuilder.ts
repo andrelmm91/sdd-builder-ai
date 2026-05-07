@@ -29,7 +29,7 @@ export function buildCliCommand(options: CliCommandOptions): string {
 
   if (provider === 'copilot') {
     const parts = ['gh', 'copilot'];
-    if (aiConfig?.model) parts.push('--model', aiConfig.model);
+    // Note: gh copilot does not support a --model flag; model selection is not available here.
     if (aiConfig?.permissionMode === 'yolo') parts.push('--yolo');
     parts.push('-p', sq(normalizedPrompt));
     return parts.join(' ');
