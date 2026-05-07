@@ -115,25 +115,36 @@ export async function runInTerminal(options: RunInTerminalOptions): Promise<void
     }
   }
 
-  const terminal = vscode.window.createTerminal({ name: terminalName, cwd });
-  terminal.show();
-  onTerminalReady?.(terminal);
-
-  // Delay sendText to avoid double-echo: if text is sent before the shell finishes
-  // initialising, the PTY echoes it once (pre-prompt) and then the shell echoes it
-  // again after the prompt appears. Waiting 1000 ms lets the shell render its first
-  // prompt before we send the command, matching the delay used by CliRunner.
-  await new Promise<void>((r) => setTimeout(r, 1000));
-
-  // Send as a single line — exactly as if the user pasted it into the terminal.
-  // The command and sentinel echo are joined with '; ' so only one line appears.
-  // Newlines in the command are already normalised to spaces by buildCliCommand /
-  // cliRunner._buildCommand, so no `quote>` continuation prompt appears.
   // PowerShell's > operator writes UTF-16 LE; use Out-File -Encoding ascii so Node can parseInt it.
   const sentinelEcho = process.platform === 'win32'
     ? `$LASTEXITCODE | Out-File -FilePath ${sq(sentinelPath)} -Encoding ascii`
     : `echo $? > ${sq(sentinelPath)}`;
-  terminal.sendText(`${commandToRun}; ${sentinelEcho}`);
+
+  // On POSIX, write a temp script and launch bash with it as its first argument.
+  // This bypasses the user's shell init phase entirely (zsh's ZLE resets the PTY
+  // during startup on WSL2 / macOS and silently discards sendText input, causing
+  // commands to appear on screen but never execute, or exit with code 130/SIGINT).
+  let scriptPath: string | null = null;
+  let terminal: vscode.Terminal;
+  if (process.platform !== 'win32') {
+    scriptPath = path.join(tmpDir, `sdd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.sh`);
+    fs.writeFileSync(scriptPath, `#!/bin/bash\n${commandToRun}; ${sentinelEcho}\nexec "\${SHELL:-bash}"\n`, { mode: 0o700 });
+    terminal = vscode.window.createTerminal({
+      name: terminalName,
+      cwd,
+      shellPath: '/bin/bash',
+      shellArgs: ['-l', scriptPath],
+    });
+  } else {
+    terminal = vscode.window.createTerminal({ name: terminalName, cwd });
+  }
+  terminal.show();
+  onTerminalReady?.(terminal);
+  if (process.platform === 'win32') {
+    // Keep the original sendText approach on Windows (no WSL2 PTY race).
+    await new Promise<void>((r) => setTimeout(r, 1000));
+    terminal.sendText(`${commandToRun}; ${sentinelEcho}`);
+  }
 
   return new Promise<void>((resolve) => {
     let settled = false;
@@ -149,6 +160,7 @@ export async function runInTerminal(options: RunInTerminalOptions): Promise<void
       watcher?.close();
       terminalCloseDisposable?.dispose();
       try { fs.unlinkSync(sentinelPath); } catch { /* best-effort */ }
+      try { if (scriptPath) fs.unlinkSync(scriptPath); } catch { /* best-effort */ }
       if (exitCode === 0) {
         await onSuccess?.();
       } else {
