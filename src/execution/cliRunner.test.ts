@@ -47,10 +47,11 @@ vi.mock('./skillsLoader', () => ({
   getSkillsPath: vi.fn().mockResolvedValue(null),
 }));
 
-const { mockAccess, mockReadFile, mockUnlink } = vi.hoisted(() => ({
+const { mockAccess, mockReadFile, mockUnlink, mockWriteFile } = vi.hoisted(() => ({
   mockAccess: vi.fn().mockRejectedValue(new Error('ENOENT')),
   mockReadFile: vi.fn().mockResolvedValue('0'),
   mockUnlink: vi.fn().mockResolvedValue(undefined),
+  mockWriteFile: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('fs/promises', async (importOriginal) => {
@@ -60,6 +61,7 @@ vi.mock('fs/promises', async (importOriginal) => {
     access: mockAccess,
     readFile: mockReadFile,
     unlink: mockUnlink,
+    writeFile: mockWriteFile,
   };
 });
 
@@ -228,27 +230,28 @@ describe('CliRunner.execute — terminal commands', () => {
       permissionMode: 'dangerously-skip-permissions',
     });
 
-    // Advance past the 1s shell init delay
-    await vi.advanceTimersByTimeAsync(1000);
-    // Advance past sentinel polling
+    // Advance past sentinel polling (no shell-init delay in the new bash-script approach)
     await vi.advanceTimersByTimeAsync(500);
 
     const result = await promise;
 
     expect(result.success).toBe(true);
-    // The command sent to terminal should include -p and --dangerously-skip-permissions
-    const sentCommand = mockSendText.mock.calls[0][0] as string;
-    expect(sentCommand).toContain('-p');
-    expect(sentCommand).toContain('--dangerously-skip-permissions');
+    // Terminal must be launched via bash script, not sendText
+    expect(mockCreateTerminal).toHaveBeenCalledWith(expect.objectContaining({
+      shellPath: '/bin/bash',
+    }));
+    // The script written to disk should include -p and --dangerously-skip-permissions
+    const scriptContent = mockWriteFile.mock.calls[0][1] as string;
+    expect(scriptContent).toContain('-p');
+    expect(scriptContent).toContain('--dangerously-skip-permissions');
     // Non-interactive: wrapped with group + tee for output capture
-    expect(sentCommand).toContain('echo $?');
-    expect(sentCommand).toContain('tee');
+    expect(scriptContent).toContain('echo $?');
+    expect(scriptContent).toContain('tee');
   });
 
   it('Claude default mode: interactive, no sentinel, no info message from runner', async () => {
     // For interactive mode, simulate terminal close
     mockOnDidCloseTerminal.mockImplementation((cb: (t: unknown) => void) => {
-      // Store callback, we'll trigger it after delays
       setTimeout(() => cb(mockTerminal), 2000);
       return { dispose: vi.fn() };
     });
@@ -259,9 +262,7 @@ describe('CliRunner.execute — terminal commands', () => {
       permissionMode: 'default',
     });
 
-    // Advance past the 1s shell init delay
-    await vi.advanceTimersByTimeAsync(1000);
-    // Advance past the terminal close simulation
+    // Advance past the terminal close simulation (no shell-init delay in the new bash-script approach)
     await vi.advanceTimersByTimeAsync(2000);
     // Advance past abort poll interval
     await vi.advanceTimersByTimeAsync(500);
@@ -269,10 +270,14 @@ describe('CliRunner.execute — terminal commands', () => {
     const result = await promise;
 
     expect(result.success).toBe(true);
-    // Command should NOT include sentinel or tee (interactive mode)
-    const sentCommand = mockSendText.mock.calls[0][0] as string;
-    expect(sentCommand).not.toContain('echo $?');
-    expect(sentCommand).not.toContain('tee');
+    // Terminal must be launched via bash script, not sendText
+    expect(mockCreateTerminal).toHaveBeenCalledWith(expect.objectContaining({
+      shellPath: '/bin/bash',
+    }));
+    // Script content should NOT include sentinel or tee (interactive mode)
+    const scriptContent = mockWriteFile.mock.calls[0][1] as string;
+    expect(scriptContent).not.toContain('echo $?');
+    expect(scriptContent).not.toContain('tee');
     // Runner no longer shows a notification — that's executeSpec.ts's responsibility
     expect(mockShowInformationMessage).not.toHaveBeenCalled();
   });
@@ -290,25 +295,27 @@ describe('CliRunner.execute — terminal commands', () => {
       permissionMode: 'default',
     });
 
-    // Advance past the 1s shell init delay (command sent)
-    await vi.advanceTimersByTimeAsync(1000);
-    // Single sendText call — no separate terminalInput
-    expect(mockSendText).toHaveBeenCalledTimes(1);
-    const sentCommand = mockSendText.mock.calls[0][0] as string;
-    expect(sentCommand).toContain('gh copilot');
-    // Prompt is passed as a positional arg — NOT via -p (which would be batch/non-interactive)
-    expect(sentCommand).not.toContain(' -p ');
-    // Should NOT use --yolo (ask mode keeps permission prompts)
-    expect(sentCommand).not.toContain('--yolo');
-    // Should NOT include sentinel or tee (interactive mode)
-    expect(sentCommand).not.toContain('echo $?');
-
-    // Advance past terminal close simulation and abort poll
+    // Advance past terminal close simulation and abort poll (no shell-init delay)
     await vi.advanceTimersByTimeAsync(2000);
     await vi.advanceTimersByTimeAsync(500);
 
     const result = await promise;
     expect(result.success).toBe(true);
+
+    // Terminal must be launched via bash script, not sendText
+    expect(mockCreateTerminal).toHaveBeenCalledWith(expect.objectContaining({
+      shellPath: '/bin/bash',
+    }));
+    // Script content should use gh copilot
+    const scriptContent = mockWriteFile.mock.calls[0][1] as string;
+    expect(scriptContent).toContain('gh copilot');
+    // Prompt is passed as a positional arg — NOT via -p (which would be batch/non-interactive)
+    expect(scriptContent).not.toContain(' -p ');
+    // Should NOT use --yolo (ask mode keeps permission prompts)
+    expect(scriptContent).not.toContain('--yolo');
+    // Should NOT include sentinel or tee (interactive mode)
+    expect(scriptContent).not.toContain('echo $?');
+
     // Runner no longer shows a notification — that's executeSpec.ts's responsibility
     expect(mockShowInformationMessage).not.toHaveBeenCalled();
   });
