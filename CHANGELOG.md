@@ -2,9 +2,17 @@
 
 All notable changes to the SDD Platform extension will be documented in this file.
 
-## [1.0.0] - 2026-04-10
+## [1.1.0] - 2026-05-08
 
-### Added
+- **Terminal Command Race Condition** — Replaced `sendText`-based command delivery with a temp bash script launched as the terminal's `shellPath`. This eliminates a zsh PTY initialization race on macOS/WSL2 where commands appeared on screen but silently failed (exit 130/SIGINT) because zsh's ZLE startup consumed the input before the shell was ready.
+- **Removed unsupported `--model` flag for `gh copilot`** — The GitHub Copilot CLI does not accept a `--model` flag; removed the flag from command construction to prevent invocation errors.
+- **Windows compatibility preserved** — The bash-script approach is POSIX-only; Windows targets retain the original `sendText` path with its 1-second delay.
+
+## [1.0.1] - 2026-04-10
+
+- **Fixing README.md pictures** — Fixing broken image links in the README.md file by replacing local paths with absolute URLs to ensure they render correctly on GitHub and other platforms.
+
+## [1.0.0] - 2026-04-10
 
 - **Project Initialization** — `SDD: Initialize Project` command scaffolds the `.sdd/` and `.specs/` folder structure with config, conventions, and skill files
 - **SDD Spec Format** — YAML frontmatter + Markdown spec files (`.sdd.md`) with `spec_id`, `status`, `priority`, `complexity`, `relevant_files`, `must_not_touch`, `depends_on`, `budget_max_tokens`, and `agent_skills` fields
@@ -26,11 +34,5 @@ All notable changes to the SDD Platform extension will be documented in this fil
 - **Planning Agent Integration** — `sdd.createSddCards` command invokes the SDD Planner skill to decompose an idealization document into `.sdd.md` spec files in `.specs/`; post-validates creation and updates feature statuses to `SDD Created`
 - **Progress Notifications** — Cancellable progress toasts during AI spec generation and bulk execution
 - **Getting Started Walkthrough** — Built-in VS Code walkthrough for first-time onboarding
-
-### Changed
-
-## [1.0.1] - 2026-04-10
-
-- **Fixing README.md pictures** — Fixing broken image links in the README.md file by replacing local paths with absolute URLs to ensure they render correctly on GitHub and other platforms.
 
 ---
