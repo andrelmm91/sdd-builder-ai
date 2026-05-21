@@ -86,29 +86,17 @@ export class CliRunner implements ExecutionRunner {
 
       const { command, terminalInput, interactive } = await this._buildCommand(spec, config, aiConfig, specFilePath);
 
-      // Both platforms write a temp script and launch the shell with it directly.
-      // This eliminates sendText timing races on both POSIX (zsh ZLE) and Windows.
       // Interactive commands stay in REPL — the user signals completion by closing
       // the terminal ("Complete & Close Terminal" button in the Kanban UI).
       let terminal: vscode.Terminal;
 
       if (process.platform === 'win32') {
-        // Windows: PowerShell script — mirrors the POSIX bash approach exactly.
-        // Non-interactive wraps with Tee-Object (output capture) + Out-File (sentinel).
-        let scriptContent: string;
-        if (interactive) {
-          scriptContent = `${command}\n`;
-        } else {
-          scriptContent = `${command} 2>&1 | Tee-Object -FilePath ${psq(logFile)}\n`;
-          scriptContent += `$LASTEXITCODE | Out-File -FilePath ${psq(sentinel)} -Encoding ascii\n`;
-        }
-        scriptPath = path.join(os.tmpdir(), `sdd-${specId}-${ts}-cmd.ps1`);
-        await fs.writeFile(scriptPath, scriptContent);
+        // Windows: plain terminal (no shellPath override) so Claude's PTY detection
+        // works correctly. The zsh ZLE init race that required a bash script on POSIX
+        // does not exist for PowerShell, so sendText after a brief startup delay is safe.
         terminal = vscode.window.createTerminal({
           name: `SDD: ${specId}`,
           cwd: root,
-          shellPath: 'powershell.exe',
-          shellArgs: ['-NoExit', '-ExecutionPolicy', 'Bypass', '-Command', `& ${psq(scriptPath)}`],
         });
       } else {
         // POSIX: bash script to bypass the zsh ZLE init race (discards sendText on
@@ -135,6 +123,19 @@ export class CliRunner implements ExecutionRunner {
 
       this._terminal = terminal;
       terminal.show();
+
+      if (process.platform === 'win32') {
+        // Brief pause for PowerShell prompt to become ready before sending input.
+        await new Promise<void>((r) => setTimeout(r, 500));
+        if (interactive) {
+          terminal.sendText(command);
+        } else {
+          terminal.sendText(
+            `${command} 2>&1 | Tee-Object -FilePath ${psq(logFile)}; ` +
+            `$LASTEXITCODE | Out-File -FilePath ${psq(sentinel)} -Encoding ascii`,
+          );
+        }
+      }
 
       if (interactive) {
         // Interactive modes: the caller is responsible for showing any

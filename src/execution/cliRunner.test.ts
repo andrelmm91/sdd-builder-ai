@@ -350,7 +350,7 @@ describe('CliRunner.execute — terminal commands (Windows)', () => {
     vi.useRealTimers();
   });
 
-  it('Claude dangerously-skip-permissions: PS1 script with Tee-Object and Out-File sentinel', async () => {
+  it('Claude dangerously-skip-permissions: plain terminal + sendText with Tee-Object and sentinel', async () => {
     mockAccess.mockResolvedValue(undefined);
     mockReadFile.mockResolvedValue('0');
 
@@ -360,32 +360,32 @@ describe('CliRunner.execute — terminal commands (Windows)', () => {
       permissionMode: 'dangerously-skip-permissions',
     });
 
-    // No 1-second delay — PS1 script approach is race-free like POSIX
+    // Advance past the 500ms Windows startup delay, then one poll cycle
+    await vi.advanceTimersByTimeAsync(500);
     await vi.advanceTimersByTimeAsync(500);
     const result = await promise;
 
     expect(result.success).toBe(true);
-    // Terminal launched via PS1 script — sendText never used for dispatch
-    expect(mockSendText).not.toHaveBeenCalled();
+    // Plain terminal — no shellPath/shellArgs override
     expect(mockCreateTerminal).toHaveBeenCalledWith(expect.objectContaining({
-      shellPath: 'powershell.exe',
-      shellArgs: expect.arrayContaining(['-NoExit', '-ExecutionPolicy', 'Bypass', '-Command']),
+      name: expect.stringContaining('SDD'),
     }));
-    // Script has .ps1 extension
-    const scriptPath = mockWriteFile.mock.calls[0][0] as string;
-    expect(scriptPath).toMatch(/\.ps1$/);
-    // Script content uses PowerShell syntax — no bash idioms
-    const scriptContent = mockWriteFile.mock.calls[0][1] as string;
-    expect(scriptContent).toContain('-p');
-    expect(scriptContent).toContain('--dangerously-skip-permissions');
-    expect(scriptContent).toContain('Tee-Object');
-    expect(scriptContent).toContain('$LASTEXITCODE');
-    expect(scriptContent).toContain('Out-File');
-    expect(scriptContent).not.toContain('#!/bin/bash');
-    expect(scriptContent).not.toContain('echo $?');
+    expect(mockCreateTerminal).toHaveBeenCalledWith(
+      expect.not.objectContaining({ shellPath: expect.anything() }),
+    );
+    // Command sent via sendText with PowerShell Tee-Object + sentinel
+    expect(mockSendText).toHaveBeenCalledOnce();
+    const sent = mockSendText.mock.calls[0][0] as string;
+    expect(sent).toContain('-p');
+    expect(sent).toContain('--dangerously-skip-permissions');
+    expect(sent).toContain('Tee-Object');
+    expect(sent).toContain('$LASTEXITCODE');
+    expect(sent).toContain('Out-File');
+    expect(sent).not.toContain('echo $?');
+    expect(sent).not.toContain('#!/bin/bash');
   });
 
-  it('Claude default mode: interactive PS1 script, no sentinel wrapping', async () => {
+  it('Claude default mode: plain terminal + sendText, interactive (no sentinel)', async () => {
     mockOnDidCloseTerminal.mockImplementation((cb: (t: unknown) => void) => {
       setTimeout(() => cb(mockTerminal), 2000);
       return { dispose: vi.fn() };
@@ -397,27 +397,27 @@ describe('CliRunner.execute — terminal commands (Windows)', () => {
       permissionMode: 'default',
     });
 
-    await vi.advanceTimersByTimeAsync(2000); // terminal close fires
-    await vi.advanceTimersByTimeAsync(500);  // abort poll
+    await vi.advanceTimersByTimeAsync(500);  // Windows startup delay → sendText fired
+    await vi.advanceTimersByTimeAsync(2000); // terminal close event fires
+    await vi.advanceTimersByTimeAsync(500);  // abort poll interval
     const result = await promise;
 
     expect(result.success).toBe(true);
-    expect(mockSendText).not.toHaveBeenCalled();
-    expect(mockCreateTerminal).toHaveBeenCalledWith(expect.objectContaining({
-      shellPath: 'powershell.exe',
-      shellArgs: expect.arrayContaining(['-NoExit']),
-    }));
-    const scriptPath = mockWriteFile.mock.calls[0][0] as string;
-    expect(scriptPath).toMatch(/\.ps1$/);
-    // Interactive: no sentinel or tee wrapping
-    const scriptContent = mockWriteFile.mock.calls[0][1] as string;
-    expect(scriptContent).not.toContain('Tee-Object');
-    expect(scriptContent).not.toContain('Out-File');
-    expect(scriptContent).not.toContain('echo $?');
+    // Plain terminal — no shellPath/shellArgs override
+    expect(mockCreateTerminal).toHaveBeenCalledWith(
+      expect.not.objectContaining({ shellPath: expect.anything() }),
+    );
+    // Command sent via sendText — no sentinel or tee wrapping
+    expect(mockSendText).toHaveBeenCalledOnce();
+    const sent = mockSendText.mock.calls[0][0] as string;
+    expect(sent).toContain('claude');
+    expect(sent).not.toContain('Tee-Object');
+    expect(sent).not.toContain('Out-File');
+    expect(sent).not.toContain('echo $?');
     expect(mockShowInformationMessage).not.toHaveBeenCalled();
   });
 
-  it('Copilot ask mode: interactive PS1 script with gh copilot command', async () => {
+  it('Copilot ask mode: plain terminal + sendText with gh copilot command', async () => {
     mockOnDidCloseTerminal.mockImplementation((cb: (t: unknown) => void) => {
       setTimeout(() => cb(mockTerminal), 2000);
       return { dispose: vi.fn() };
@@ -429,17 +429,21 @@ describe('CliRunner.execute — terminal commands (Windows)', () => {
       permissionMode: 'default',
     });
 
+    await vi.advanceTimersByTimeAsync(500);
     await vi.advanceTimersByTimeAsync(2000);
     await vi.advanceTimersByTimeAsync(500);
     const result = await promise;
 
     expect(result.success).toBe(true);
-    expect(mockSendText).not.toHaveBeenCalled();
-    const scriptContent = mockWriteFile.mock.calls[0][1] as string;
-    expect(scriptContent).toContain('gh copilot');
-    expect(scriptContent).not.toContain(' -p ');
-    expect(scriptContent).not.toContain('--yolo');
-    expect(scriptContent).not.toContain('Tee-Object');
+    expect(mockCreateTerminal).toHaveBeenCalledWith(
+      expect.not.objectContaining({ shellPath: expect.anything() }),
+    );
+    expect(mockSendText).toHaveBeenCalledOnce();
+    const sent = mockSendText.mock.calls[0][0] as string;
+    expect(sent).toContain('gh copilot');
+    expect(sent).not.toContain(' -p ');
+    expect(sent).not.toContain('--yolo');
+    expect(sent).not.toContain('Tee-Object');
     expect(mockShowInformationMessage).not.toHaveBeenCalled();
   });
 });
