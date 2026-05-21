@@ -204,11 +204,15 @@ describe('CliRunner.execute', () => {
 });
 
 // ---------------------------------------------------------------------------
-// CliRunner.execute — terminal interaction tests
+// CliRunner.execute — terminal interaction tests (POSIX / bash script path)
 // ---------------------------------------------------------------------------
-describe('CliRunner.execute — terminal commands', () => {
+describe('CliRunner.execute — terminal commands (POSIX)', () => {
+  const actualPlatform = process.platform;
+
   beforeEach(() => {
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
     vi.useFakeTimers();
+    mockWriteFile.mockClear();
     mockSendText.mockClear();
     mockShow.mockClear();
     mockOnDidCloseTerminal.mockClear();
@@ -216,6 +220,7 @@ describe('CliRunner.execute — terminal commands', () => {
   });
 
   afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: actualPlatform, configurable: true });
     vi.useRealTimers();
   });
 
@@ -230,13 +235,14 @@ describe('CliRunner.execute — terminal commands', () => {
       permissionMode: 'dangerously-skip-permissions',
     });
 
-    // Advance past sentinel polling (no shell-init delay in the new bash-script approach)
+    // Advance past sentinel polling (no shell-init delay in the bash-script approach)
     await vi.advanceTimersByTimeAsync(500);
 
     const result = await promise;
 
     expect(result.success).toBe(true);
-    // Terminal must be launched via bash script, not sendText
+    // Terminal launched via bash script — sendText never used for dispatch
+    expect(mockSendText).not.toHaveBeenCalled();
     expect(mockCreateTerminal).toHaveBeenCalledWith(expect.objectContaining({
       shellPath: '/bin/bash',
     }));
@@ -262,7 +268,7 @@ describe('CliRunner.execute — terminal commands', () => {
       permissionMode: 'default',
     });
 
-    // Advance past the terminal close simulation (no shell-init delay in the new bash-script approach)
+    // Advance past the terminal close simulation (no shell-init delay in the bash-script approach)
     await vi.advanceTimersByTimeAsync(2000);
     // Advance past abort poll interval
     await vi.advanceTimersByTimeAsync(500);
@@ -270,7 +276,8 @@ describe('CliRunner.execute — terminal commands', () => {
     const result = await promise;
 
     expect(result.success).toBe(true);
-    // Terminal must be launched via bash script, not sendText
+    // Terminal launched via bash script — sendText never used for dispatch
+    expect(mockSendText).not.toHaveBeenCalled();
     expect(mockCreateTerminal).toHaveBeenCalledWith(expect.objectContaining({
       shellPath: '/bin/bash',
     }));
@@ -302,7 +309,8 @@ describe('CliRunner.execute — terminal commands', () => {
     const result = await promise;
     expect(result.success).toBe(true);
 
-    // Terminal must be launched via bash script, not sendText
+    // Terminal launched via bash script — sendText never used for dispatch
+    expect(mockSendText).not.toHaveBeenCalled();
     expect(mockCreateTerminal).toHaveBeenCalledWith(expect.objectContaining({
       shellPath: '/bin/bash',
     }));
@@ -317,6 +325,121 @@ describe('CliRunner.execute — terminal commands', () => {
     expect(scriptContent).not.toContain('echo $?');
 
     // Runner no longer shows a notification — that's executeSpec.ts's responsibility
+    expect(mockShowInformationMessage).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CliRunner.execute — terminal interaction tests (Windows / PowerShell path)
+// ---------------------------------------------------------------------------
+describe('CliRunner.execute — terminal commands (Windows)', () => {
+  const actualPlatform = process.platform;
+
+  beforeEach(() => {
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+    vi.useFakeTimers();
+    mockWriteFile.mockClear();
+    mockSendText.mockClear();
+    mockShow.mockClear();
+    mockOnDidCloseTerminal.mockClear();
+    mockShowInformationMessage.mockClear();
+  });
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: actualPlatform, configurable: true });
+    vi.useRealTimers();
+  });
+
+  it('Claude dangerously-skip-permissions: PS1 script with Tee-Object and Out-File sentinel', async () => {
+    mockAccess.mockResolvedValue(undefined);
+    mockReadFile.mockResolvedValue('0');
+
+    const runner = new CliRunner();
+    const promise = runner.execute(makeSpec(), makeConfig(), {
+      provider: 'claude',
+      permissionMode: 'dangerously-skip-permissions',
+    });
+
+    // No 1-second delay — PS1 script approach is race-free like POSIX
+    await vi.advanceTimersByTimeAsync(500);
+    const result = await promise;
+
+    expect(result.success).toBe(true);
+    // Terminal launched via PS1 script — sendText never used for dispatch
+    expect(mockSendText).not.toHaveBeenCalled();
+    expect(mockCreateTerminal).toHaveBeenCalledWith(expect.objectContaining({
+      shellPath: 'powershell.exe',
+      shellArgs: expect.arrayContaining(['-NoExit', '-ExecutionPolicy', 'Bypass', '-Command']),
+    }));
+    // Script has .ps1 extension
+    const scriptPath = mockWriteFile.mock.calls[0][0] as string;
+    expect(scriptPath).toMatch(/\.ps1$/);
+    // Script content uses PowerShell syntax — no bash idioms
+    const scriptContent = mockWriteFile.mock.calls[0][1] as string;
+    expect(scriptContent).toContain('-p');
+    expect(scriptContent).toContain('--dangerously-skip-permissions');
+    expect(scriptContent).toContain('Tee-Object');
+    expect(scriptContent).toContain('$LASTEXITCODE');
+    expect(scriptContent).toContain('Out-File');
+    expect(scriptContent).not.toContain('#!/bin/bash');
+    expect(scriptContent).not.toContain('echo $?');
+  });
+
+  it('Claude default mode: interactive PS1 script, no sentinel wrapping', async () => {
+    mockOnDidCloseTerminal.mockImplementation((cb: (t: unknown) => void) => {
+      setTimeout(() => cb(mockTerminal), 2000);
+      return { dispose: vi.fn() };
+    });
+
+    const runner = new CliRunner();
+    const promise = runner.execute(makeSpec(), makeConfig(), {
+      provider: 'claude',
+      permissionMode: 'default',
+    });
+
+    await vi.advanceTimersByTimeAsync(2000); // terminal close fires
+    await vi.advanceTimersByTimeAsync(500);  // abort poll
+    const result = await promise;
+
+    expect(result.success).toBe(true);
+    expect(mockSendText).not.toHaveBeenCalled();
+    expect(mockCreateTerminal).toHaveBeenCalledWith(expect.objectContaining({
+      shellPath: 'powershell.exe',
+      shellArgs: expect.arrayContaining(['-NoExit']),
+    }));
+    const scriptPath = mockWriteFile.mock.calls[0][0] as string;
+    expect(scriptPath).toMatch(/\.ps1$/);
+    // Interactive: no sentinel or tee wrapping
+    const scriptContent = mockWriteFile.mock.calls[0][1] as string;
+    expect(scriptContent).not.toContain('Tee-Object');
+    expect(scriptContent).not.toContain('Out-File');
+    expect(scriptContent).not.toContain('echo $?');
+    expect(mockShowInformationMessage).not.toHaveBeenCalled();
+  });
+
+  it('Copilot ask mode: interactive PS1 script with gh copilot command', async () => {
+    mockOnDidCloseTerminal.mockImplementation((cb: (t: unknown) => void) => {
+      setTimeout(() => cb(mockTerminal), 2000);
+      return { dispose: vi.fn() };
+    });
+
+    const runner = new CliRunner();
+    const promise = runner.execute(makeSpec(), makeConfig(), {
+      provider: 'copilot',
+      permissionMode: 'default',
+    });
+
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(500);
+    const result = await promise;
+
+    expect(result.success).toBe(true);
+    expect(mockSendText).not.toHaveBeenCalled();
+    const scriptContent = mockWriteFile.mock.calls[0][1] as string;
+    expect(scriptContent).toContain('gh copilot');
+    expect(scriptContent).not.toContain(' -p ');
+    expect(scriptContent).not.toContain('--yolo');
+    expect(scriptContent).not.toContain('Tee-Object');
     expect(mockShowInformationMessage).not.toHaveBeenCalled();
   });
 });

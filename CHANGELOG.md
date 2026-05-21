@@ -2,6 +2,10 @@
 
 All notable changes to the SDD Platform extension will be documented in this file.
 
+## [1.2.0] - 2026-05-21
+
+- **Windows execution support** — Spec execution now works on Windows. Replaced the "not supported on Windows" error with a PowerShell script approach that mirrors the POSIX bash script exactly: a temp `.ps1` file is written with the command baked in and launched via `powershell.exe -NoExit -ExecutionPolicy Bypass -File <script>`. This eliminates the 1-second `sendText` timing race that a naive Windows port would have introduced. Non-interactive mode uses `Tee-Object` for output capture and `$LASTEXITCODE | Out-File` for the sentinel; interactive mode relies on terminal close as the completion signal, same as POSIX.
+
 ## [1.1.0] - 2026-05-08
 
 - **Terminal Command Race Condition** — Replaced `sendText`-based command delivery with a temp bash script launched as the terminal's `shellPath`. This eliminates a zsh PTY initialization race on macOS/WSL2 where commands appeared on screen but silently failed (exit 130/SIGINT) because zsh's ZLE startup consumed the input before the shell was ready.
