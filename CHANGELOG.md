@@ -4,7 +4,7 @@ All notable changes to the SDD Platform extension will be documented in this fil
 
 ## [1.2.0] - 2026-05-21
 
-- **Windows execution support** — Spec execution now works on Windows. Replaced the "not supported on Windows" error with a PowerShell script approach that mirrors the POSIX bash script exactly: a temp `.ps1` file is written with the command baked in and launched via `powershell.exe -NoExit -ExecutionPolicy Bypass -File <script>`. This eliminates the 1-second `sendText` timing race that a naive Windows port would have introduced. Non-interactive mode uses `Tee-Object` for output capture and `$LASTEXITCODE | Out-File` for the sentinel; interactive mode relies on terminal close as the completion signal, same as POSIX.
+- **Windows Claude/Copilot CLI PTY fix** — Reverted the Windows PowerShell script approach (`-File`/`-Command`) because launching Claude CLI via a `shellPath`-overridden terminal breaks its TTY detection, causing a blank terminal with no output. Windows now uses a plain VS Code terminal (no `shellPath` override) with `sendText` after a 500 ms startup delay. The zsh ZLE init race that required the bash-script fix on POSIX does not exist for PowerShell, so `sendText` is safe here. Non-interactive mode sends the command with `Tee-Object` + `$LASTEXITCODE | Out-File` chained via `;`; interactive mode sends the command bare and waits for terminal close.
 
 ## [1.1.0] - 2026-05-08
 
