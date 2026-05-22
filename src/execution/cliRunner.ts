@@ -14,9 +14,14 @@ import { SPECS_FOLDER } from '../utils/constants';
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const SENTINEL_POLL_MS = 500;
 
-/** Wraps a string in single quotes, escaping any internal single quotes. */
+/** Wraps a string in bash single quotes, escaping internal single quotes. */
 function sq(str: string): string {
   return `'${str.replace(/'/g, "'\\''")}'`;
+}
+
+/** Wraps a string in PowerShell single quotes, escaping internal single quotes. */
+function psq(str: string): string {
+  return `'${str.replace(/'/g, "''")}'`;
 }
 
 export class CliRunner implements ExecutionRunner {
@@ -50,10 +55,6 @@ export class CliRunner implements ExecutionRunner {
     aiConfig?: Partial<AIConfig>,
     specFilePath?: string,
   ): Promise<ExecutionResult> {
-    if (os.platform() === 'win32') {
-      return { success: false, output: '', duration: 0, error: 'Execution is not yet supported on Windows. Please use macOS or Linux.' };
-    }
-
     if (this._running) {
       return { success: false, output: '', duration: 0, error: 'Already running' };
     }
@@ -66,7 +67,7 @@ export class CliRunner implements ExecutionRunner {
     const ts = Date.now();
     const sentinel = path.join(os.tmpdir(), `sdd-${specId}-${ts}.sentinel`);
     const logFile = path.join(os.tmpdir(), `sdd-${specId}-${ts}.log`);
-    const scriptPath = path.join(os.tmpdir(), `sdd-${specId}-${ts}-cmd.sh`);
+    let scriptPath: string | null = null;
 
     try {
       // Pre-flight: ensure claude CLI is available
@@ -85,36 +86,56 @@ export class CliRunner implements ExecutionRunner {
 
       const { command, terminalInput, interactive } = await this._buildCommand(spec, config, aiConfig, specFilePath);
 
-      // For non-interactive (one-shot) commands, wrap so that:
-      //  1. Output streams to the terminal AND is captured to a log file (via tee).
-      //  2. The sentinel file gets the real exit code of the AI command.
-      // Interactive commands (Claude ask/plan, Copilot default) stay in REPL —
-      // the user signals completion via the "Complete & Close Terminal" button.
-      const wrappedCommand = interactive
-        ? command
-        : `{ ${command}; echo $? > ${sq(sentinel)}; } 2>&1 | tee ${sq(logFile)}`;
+      // Interactive commands stay in REPL — the user signals completion by closing
+      // the terminal ("Complete & Close Terminal" button in the Kanban UI).
+      let terminal: vscode.Terminal;
 
-      // Write the command to a temp script and launch bash with it as its first
-      // argument. This bypasses zsh's ZLE init phase which discards sendText input
-      // on WSL2 / macOS (commands appear on screen but never execute, or exit 130).
-      let scriptContent = `#!/bin/bash\n${wrappedCommand}\n`;
-      if (terminalInput !== undefined) {
-        // Embed the prompt as stdin via a here-string so it reaches the CLI process
-        // without any sendText timing dependency.
-        scriptContent = `#!/bin/bash\n${wrappedCommand} <<< ${sq(terminalInput)}\n`;
+      if (process.platform === 'win32') {
+        // Windows: plain terminal (no shellPath override) so Claude's PTY detection
+        // works correctly. The zsh ZLE init race that required a bash script on POSIX
+        // does not exist for PowerShell, so sendText after a brief startup delay is safe.
+        terminal = vscode.window.createTerminal({
+          name: `SDD: ${specId}`,
+          cwd: root,
+        });
+      } else {
+        // POSIX: bash script to bypass the zsh ZLE init race (discards sendText on
+        // WSL2/macOS and causes commands to exit 130/SIGINT).
+        const wrappedCommand = interactive
+          ? command
+          : `{ ${command}; echo $? > ${sq(sentinel)}; } 2>&1 | tee ${sq(logFile)}`;
+        let scriptContent = `#!/bin/bash\n${wrappedCommand}\n`;
+        if (terminalInput !== undefined) {
+          // Embed the prompt as stdin via a here-string so it reaches the CLI process
+          // without any sendText timing dependency.
+          scriptContent = `#!/bin/bash\n${wrappedCommand} <<< ${sq(terminalInput)}\n`;
+        }
+        scriptContent += `exec "\${SHELL:-bash}"\n`;
+        scriptPath = path.join(os.tmpdir(), `sdd-${specId}-${ts}-cmd.sh`);
+        await fs.writeFile(scriptPath, scriptContent, { mode: 0o700 });
+        terminal = vscode.window.createTerminal({
+          name: `SDD: ${specId}`,
+          cwd: root,
+          shellPath: '/bin/bash',
+          shellArgs: ['-l', scriptPath],
+        });
       }
-      scriptContent += `exec "\${SHELL:-bash}"\n`;
-      await fs.writeFile(scriptPath, scriptContent, { mode: 0o700 });
 
-      // Create a REAL VS Code terminal so Claude sees a genuine PTY.
-      const terminal = vscode.window.createTerminal({
-        name: `SDD: ${specId}`,
-        cwd: root,
-        shellPath: '/bin/bash',
-        shellArgs: ['-l', scriptPath],
-      });
       this._terminal = terminal;
       terminal.show();
+
+      if (process.platform === 'win32') {
+        // Brief pause for PowerShell prompt to become ready before sending input.
+        await new Promise<void>((r) => setTimeout(r, 500));
+        if (interactive) {
+          terminal.sendText(command);
+        } else {
+          terminal.sendText(
+            `${command} 2>&1 | Tee-Object -FilePath ${psq(logFile)}; ` +
+            `$LASTEXITCODE | Out-File -FilePath ${psq(sentinel)} -Encoding ascii`,
+          );
+        }
+      }
 
       if (interactive) {
         // Interactive modes: the caller is responsible for showing any
@@ -162,7 +183,7 @@ export class CliRunner implements ExecutionRunner {
       this._terminal = null;
       await fs.unlink(sentinel).catch(() => {});
       await fs.unlink(logFile).catch(() => {});
-      await fs.unlink(scriptPath).catch(() => {});
+      if (scriptPath) await fs.unlink(scriptPath).catch(() => {});
     }
   }
 

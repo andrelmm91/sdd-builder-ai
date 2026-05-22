@@ -1,6 +1,6 @@
 # SDD Builder AI — Govern AI Coding with Spec-Driven Development
 
-**v1.0.1** | **Stop losing control of AI-generated code. Ship with confidence.**
+**v1.2.0** | **Stop losing control of AI-generated code. Ship with confidence.**
 
 SDD Builder AI is a VS Code extension that brings **Spec-Driven Development** to your AI coding workflow. It sits between your ideas and your AI agent: creates specification documentation and breaks them into small, scoped, reviewable specs that keep every execution focused, traceable, and under your control.
 
@@ -174,6 +174,7 @@ Separate configuration for requirements AI and execution AI.
 ## Requirements
 
 - **VS Code** 1.85 or later
+- **Platform** — macOS, Linux, and Windows
 - **AI CLI (BYOK)** — one of the following, installed and authenticated:
   - [Claude CLI](https://docs.anthropic.com/en/docs/claude-code) (`npm install -g @anthropic-ai/claude-code`)
   - [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli) (`gh extension install github/gh-copilot`)

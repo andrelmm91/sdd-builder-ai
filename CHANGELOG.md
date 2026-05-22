@@ -2,6 +2,10 @@
 
 All notable changes to the SDD Platform extension will be documented in this file.
 
+## [1.2.0] - 2026-05-21
+
+- **Windows Claude/Copilot CLI PTY fix** — Reverted the Windows PowerShell script approach (`-File`/`-Command`) because launching Claude CLI via a `shellPath`-overridden terminal breaks its TTY detection, causing a blank terminal with no output. Windows now uses a plain VS Code terminal (no `shellPath` override) with `sendText` after a 500 ms startup delay. The zsh ZLE init race that required the bash-script fix on POSIX does not exist for PowerShell, so `sendText` is safe here. Non-interactive mode sends the command with `Tee-Object` + `$LASTEXITCODE | Out-File` chained via `;`; interactive mode sends the command bare and waits for terminal close.
+
 ## [1.1.0] - 2026-05-08
 
 - **Terminal Command Race Condition** — Replaced `sendText`-based command delivery with a temp bash script launched as the terminal's `shellPath`. This eliminates a zsh PTY initialization race on macOS/WSL2 where commands appeared on screen but silently failed (exit 130/SIGINT) because zsh's ZLE startup consumed the input before the shell was ready.
