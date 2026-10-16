@@ -49,3 +49,13 @@ export interface BulkExecutionState {
   isRunning: boolean;
   currentIndex: number;
 }
+
+export interface GitCheckpoint {
+  /** `git rev-parse HEAD` at checkpoint time. */
+  headSha: string;
+  /** Commit representing the full working tree at checkpoint time (stash sha when dirty, else headSha). */
+  baseSha: string;
+  /** Untracked, non-ignored files present at checkpoint time. */
+  untrackedBefore: string[];
+  createdAt: string;
+}

@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-083-NEW
 title: Create git checkpoint service to snapshot the workspace before execution
-status: ready
+status: done
 priority: high
 complexity: medium
 tags:
@@ -49,11 +49,11 @@ This spec creates a standalone service that takes a checkpoint of the git state 
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/execution/gitCheckpoint.test.ts` (with a mocked `ExecFn`) covers: clean tree, dirty tree (`baseSha` = stash sha), not a git repo (returns undefined), new untracked file reported as `A`, pre-existing untracked file not reported, AI commit after checkpoint still reported, and Windows backslash normalization.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] `src/execution/gitCheckpoint.test.ts` (with a mocked `ExecFn`) covers: clean tree, dirty tree (`baseSha` = stash sha), not a git repo (returns undefined), new untracked file reported as `A`, pre-existing untracked file not reported, AI commit after checkpoint still reported, and Windows backslash normalization.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
-- [ ] Running the functions against a real repo with a pre-existing modified file and a new AI-created file reports only the new file.
+- [x] Running the functions against a real repo with a pre-existing modified file and a new AI-created file reports only the new file.
 
 ## Constraints
 - Do not wire the service into execution or result capture (SDD-084).
