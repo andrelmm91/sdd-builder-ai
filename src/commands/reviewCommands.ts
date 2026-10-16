@@ -3,6 +3,10 @@ import { ReviewManager } from '../review/reviewManager';
 import { DiffProvider } from '../review/diffProvider';
 import type { SpecTreeItem } from '../views/sidebar/specTreeItem';
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
+import { getWorkspaceRoot, writeWorkspaceFile } from '../utils/fileSystem';
+import { EXECUTIONS_FOLDER } from '../utils/constants';
+import { getLatestExecution } from '../execution/resultCapture';
+import { restoreCheckpoint } from '../execution/gitCheckpoint';
 
 const _diffProvider = new DiffProvider();
 const _reviewManager = new ReviewManager(_diffProvider);
@@ -58,6 +62,72 @@ export async function applyRequestChanges(filePath: string, feedback: string): P
 
   const updated = serializeFrontmatter({ ...data, status: 'ready' }, newBody);
   await vscode.workspace.fs.writeFile(uri, Buffer.from(updated, 'utf8'));
+
+  // Keep the AI's changes and make the next run reuse the original checkpoint.
+  await markReuseCheckpoint(data['spec_id'] as string | undefined);
+}
+
+/** Flags the latest execution record so the next run keeps its checkpoint (cumulative re-runs). */
+async function markReuseCheckpoint(specId: string | undefined): Promise<void> {
+  if (!specId) return;
+  const latest = await getLatestExecution(specId);
+  if (!latest) return;
+  const padded = String(latest.executionNumber).padStart(3, '0');
+  await writeWorkspaceFile(
+    `${EXECUTIONS_FOLDER}/${specId}/exec-${padded}.json`,
+    JSON.stringify({ ...latest, reuseCheckpointOnNextRun: true }, null, 2)
+  );
+}
+
+/**
+ * Reverts the files changed by the latest execution of `specId` to their state at its checkpoint.
+ * Asks for confirmation unless `options.confirm` is `false`. Returns true if any file was restored or deleted.
+ */
+export async function discardExecutionChanges(
+  specId: string,
+  options?: { confirm?: boolean }
+): Promise<boolean> {
+  const record = await getLatestExecution(specId);
+  if (!record?.checkpoint) {
+    vscode.window.showWarningMessage(
+      `No checkpoint available for ${specId}; changes cannot be discarded automatically.`
+    );
+    return false;
+  }
+
+  const changedFiles = record.changedFiles ?? [];
+  if (options?.confirm !== false) {
+    const answer = await vscode.window.showWarningMessage(
+      `Discard ${changedFiles.length} file change(s) made by the AI for ${specId}? This cannot be undone.`,
+      { modal: true },
+      'Discard'
+    );
+    if (answer !== 'Discard') return false;
+  }
+
+  const root = getWorkspaceRoot();
+  if (!root) {
+    vscode.window.showErrorMessage('No workspace folder is open.');
+    return false;
+  }
+
+  const result = await restoreCheckpoint(record.checkpoint, changedFiles, root);
+  const count = result.restored.length + result.deleted.length;
+  if (result.skipped.length > 0) {
+    vscode.window.showWarningMessage(
+      `Discarded ${count} file(s) for ${specId}; could not revert: ${result.skipped
+        .map((s) => `${s.path} (${s.reason})`)
+        .join(', ')}`
+    );
+  } else {
+    vscode.window.showInformationMessage(`Discarded ${count} file change(s) for ${specId}.`);
+  }
+  if (result.headMoved) {
+    vscode.window.showWarningMessage(
+      'The AI created commit(s) after the checkpoint. Files were restored, but the commits remain; use git to remove them if needed.'
+    );
+  }
+  return count > 0;
 }
 
 
@@ -122,6 +192,22 @@ export function createRequestChangesCommand(refresh: () => void) {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       vscode.window.showErrorMessage(`Request changes failed: ${message}`);
+    }
+  };
+}
+
+export function createDiscardChangesCommand(refresh: () => void) {
+  return async (item?: SpecTreeItem | string): Promise<void> => {
+    const specId = await resolveSpecId(item);
+    if (!specId) {
+      vscode.window.showErrorMessage('No spec selected.');
+      return;
+    }
+    try {
+      if (await discardExecutionChanges(specId)) refresh();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      vscode.window.showErrorMessage(`Discard failed: ${message}`);
     }
   };
 }

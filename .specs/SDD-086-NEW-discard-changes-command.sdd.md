@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-086-NEW
 title: Add Discard AI Changes command and discard on reject only
-status: ready
+status: done
 priority: high
 complexity: medium
 tags:
@@ -24,6 +24,8 @@ depends_on:
 agent_skills: backend
 created: 2026-10-15
 ---
+
+
 
 ## Context
 SDD-084 persists a `checkpoint` and `changedFiles` in each execution record, and SDD-085 provides `restoreCheckpoint()`. This spec exposes them to the builder as a command and uses them when a spec is rejected.
@@ -56,11 +58,11 @@ Today, `ReviewManager.submitDecision(specId, 'reject')` runs `git checkout HEAD 
 
 ## Acceptance Criteria
 ### Automated
-- [ ] Tests for `discardExecutionChanges` cover: no record, no checkpoint, user cancels, `confirm: false` skipping the dialog, a successful restore, and the `headMoved` warning.
-- [ ] `src/review/reviewManager.test.ts` covers Reject: it calls the discard with `confirm: false` after the single confirmation, no longer runs `git checkout HEAD`, and does not discard when the user cancels. Without a checkpoint, it rejects without touching files.
-- [ ] A test asserts that `applyRequestChanges` never calls `restoreCheckpoint` and sets `reuseCheckpointOnNextRun: true` on the latest execution record.
-- [ ] A test asserts `sdd.discardChanges` is declared in `package.json` `contributes.commands`.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] Tests for `discardExecutionChanges` cover: no record, no checkpoint, user cancels, `confirm: false` skipping the dialog, a successful restore, and the `headMoved` warning.
+- [x] `src/review/reviewManager.test.ts` covers Reject: it calls the discard with `confirm: false` after the single confirmation, no longer runs `git checkout HEAD`, and does not discard when the user cancels. Without a checkpoint, it rejects without touching files.
+- [x] A test asserts that `applyRequestChanges` never calls `restoreCheckpoint` and sets `reuseCheckpointOnNextRun: true` on the latest execution record.
+- [x] A test asserts `sdd.discardChanges` is declared in `package.json` `contributes.commands`.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
 - [ ] Rejecting a spec returns the workspace to its pre-execution state after a single confirmation, and an unrelated pre-existing edit is preserved.

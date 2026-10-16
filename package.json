@@ -77,6 +77,10 @@
         "title": "SDD: Reject Spec"
       },
       {
+        "command": "sdd.discardChanges",
+        "title": "SDD: Discard AI Changes"
+      },
+      {
         "command": "sdd.openDashboard",
         "title": "SDD: Open Dashboard"
       },

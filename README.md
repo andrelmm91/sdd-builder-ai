@@ -129,6 +129,8 @@ When a spec needs rework, your feedback is injected directly into the next execu
 - Approve to mark Done, or write feedback to request changes
 - Feedback is appended to the spec's context section and status resets to Ready
 - The AI receives your exact feedback in the next run — no context is lost
+- The AI's changes are kept, so the re-run builds on the existing work
+- **Reject** discards the AI's changes (after one confirmation) using the git checkpoint taken before execution, covering all attempts and preserving your unrelated edits. You can also run `SDD: Discard AI Changes` on its own
 
 ---
 

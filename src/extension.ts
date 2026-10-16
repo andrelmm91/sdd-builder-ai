@@ -16,6 +16,7 @@ import {
   createApproveSpecCommand,
   createRequestChangesCommand,
   createRejectSpecCommand,
+  createDiscardChangesCommand,
 } from "./commands/reviewCommands";
 import { SpecTreeProvider } from "./views/sidebar/specTreeProvider";
 import { SpecCompletionProvider } from "./specs/completionProvider";
@@ -76,6 +77,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(
       "sdd.rejectSpec",
       createRejectSpecCommand(() => specTreeProvider.refresh())
+    ),
+    vscode.commands.registerCommand(
+      "sdd.discardChanges",
+      createDiscardChangesCommand(() => specTreeProvider.refresh())
     ),
     vscode.commands.registerCommand("sdd.openDashboard", () =>
       DashboardPanel.createOrShow(context.extensionUri)

@@ -9,6 +9,8 @@ import {
   getWorkspaceRoot,
 } from '../utils/fileSystem';
 import { execCommand } from '../utils/shell';
+import { getLatestExecution } from '../execution/resultCapture';
+import { discardExecutionChanges } from '../commands/reviewCommands';
 import { canTransition } from '../specs/lifecycle';
 import { SPECS_FOLDER, SPEC_FILE_EXTENSION, REVIEWS_FOLDER } from '../utils/constants';
 import type { SpecStatus } from '../specs/types';
@@ -55,7 +57,7 @@ export class ReviewManager {
    *
    * - approve    → spec transitions to "done"
    * - request_changes → spec transitions to "ready", feedback saved
-   * - reject     → user confirmed, changes reverted, spec transitions to "draft"
+   * - reject     → user confirmed, AI changes discarded via checkpoint, spec transitions to "draft"
    */
   async submitDecision(
     specId: string,
@@ -96,19 +98,25 @@ export class ReviewManager {
         );
       }
 
-      // For reject: warn the user and revert all changed files.
+      // For reject: one confirmation, then restore the pre-execution checkpoint.
       if (decision === 'reject') {
-        const confirmed = await vscode.window.showWarningMessage(
-          `Rejecting ${specId} will revert all uncommitted changes. This cannot be undone. Continue?`,
-          { modal: true },
-          'Reject & Revert'
-        );
-        if (confirmed !== 'Reject & Revert') return;
-
-        const changedFiles = await this._diffProvider.getChangedFiles();
-        if (changedFiles.length > 0) {
-          const fileArgs = changedFiles.map((f) => `"${f.path}"`).join(' ');
-          await execCommand(`git checkout HEAD -- ${fileArgs}`, { cwd: root });
+        const latest = await getLatestExecution(specId);
+        if (latest?.checkpoint) {
+          const count = latest.changedFiles?.length ?? 0;
+          const confirmed = await vscode.window.showWarningMessage(
+            `Reject ${specId} and discard ${count} file change(s) made by the AI? This cannot be undone.`,
+            { modal: true },
+            'Reject & Discard'
+          );
+          if (confirmed !== 'Reject & Discard') return;
+          await discardExecutionChanges(specId, { confirm: false });
+        } else {
+          const confirmed = await vscode.window.showWarningMessage(
+            `Reject ${specId}? No checkpoint is available, so the AI's changes will be kept.`,
+            { modal: true },
+            'Reject'
+          );
+          if (confirmed !== 'Reject') return;
         }
       }
 
