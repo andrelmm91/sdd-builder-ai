@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-080-BUGFIX
 title: Harden isCommandAvailable against shell injection
-status: ready
+status: review
 priority: medium
 complexity: low
 tags:
@@ -38,12 +38,12 @@ created: 2026-10-15
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/utils/shell.test.ts` adds cases for a valid name, an absolute path with spaces, and injection attempts using `;`, `&&`, `|`, single quotes, backticks and `$()`, asserting `false` and that no process is spawned.
-- [ ] `src/execution/postValidation.test.ts` covers the invalid base command path.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] `src/utils/shell.test.ts` adds cases for a valid name, an absolute path with spaces, and injection attempts using `;`, `&&`, `|`, single quotes, backticks and `$()`, asserting `false` and that no process is spawned.
+- [x] `src/execution/postValidation.test.ts` covers the invalid base command path.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
-- [ ] Setting `sdd.claudeCliBinary` to a malicious value shows the "CLI not found" error and runs nothing.
+- [x] Setting `sdd.claudeCliBinary` to a malicious value shows the "CLI not found" error and runs nothing.
 
 ## Constraints
 - Do not change `execCommand` semantics.

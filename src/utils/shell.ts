@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import * as os from 'os';
+import { quoteBash } from './shellQuote';
 
 export type ExecOptions = {
   cwd?: string;
@@ -60,14 +61,21 @@ export function execCommand(command: string, options: ExecOptions = {}): Promise
   });
 }
 
+const VALID_COMMAND_NAME = /^[A-Za-z0-9._\-/\\: ~]+$/;
+
 export async function isCommandAvailable(command: string): Promise<boolean> {
+  if (!command || !VALID_COMMAND_NAME.test(command)) {
+    return false;
+  }
+
   let checker: string;
   if (os.platform() === 'win32') {
-    checker = `where ${command}`;
+    // exec runs through cmd.exe; the allowed charset contains no double quotes or cmd metacharacters
+    checker = `where "${command}"`;
   } else {
     // Run through the user's login shell so PATH includes nvm, homebrew, etc.
     const userShell = process.env.SHELL || '/bin/sh';
-    checker = `${userShell} -l -c 'which ${command}'`;
+    checker = `${quoteBash(userShell)} -l -c ${quoteBash(`which ${quoteBash(command)}`)}`;
   }
   const result = await execCommand(checker);
   return result.success;
