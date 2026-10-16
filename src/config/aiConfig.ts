@@ -1,9 +1,36 @@
 import * as vscode from 'vscode';
 import { readWorkspaceFile, writeWorkspaceFile, getWorkspaceRoot } from '../utils/fileSystem';
 import { CONFIG_FILE, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
-import { DEFAULT_AI_CONFIG, DEFAULT_REQUIREMENTS_AI_CONFIG } from './aiConfigTypes';
+import { DEFAULT_AI_CONFIG, DEFAULT_REQUIREMENTS_AI_CONFIG, BUILTIN_MODELS, MODEL_ID_PATTERN } from './aiConfigTypes';
 import type { AIConfig, RequirementsAIConfig } from './aiConfigTypes';
 import { listAvailableSkills } from '../execution/skillsLoader';
+
+function sanitizeModels(raw: unknown): Record<string, string[]> | undefined {
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    console.warn('[SDD] Ignoring ai.models: expected an object keyed by provider');
+    return undefined;
+  }
+  const result: Record<string, string[]> = {};
+  for (const [provider, list] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(list) || !list.every((m) => typeof m === 'string' && m.trim() !== '')) {
+      console.warn(`[SDD] Ignoring ai.models.${provider}: expected an array of non-empty strings`);
+      continue;
+    }
+    result[provider] = [...new Set((list as string[]).map((m) => m.trim()))];
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+export function getModelsForProvider(provider: string, aiConfig?: AIConfig): string[] {
+  const custom = aiConfig?.models?.[provider];
+  if (custom && custom.length > 0) {
+    return [...custom];
+  }
+  return [...(BUILTIN_MODELS[provider] ?? [])];
+}
 
 export async function readAIConfig(): Promise<AIConfig | undefined> {
   const content = await readWorkspaceFile(CONFIG_FILE);
@@ -15,6 +42,7 @@ export async function readAIConfig(): Promise<AIConfig | undefined> {
     const parsed = JSON.parse(content) as { ai?: Partial<AIConfig> };
     // File exists but no ai key yet — return defaults so the form is usable
     const ai = parsed.ai ?? {};
+    const models = sanitizeModels(ai.models);
     return {
       provider: ai.provider ?? DEFAULT_AI_CONFIG.provider,
       permissionMode: ai.permissionMode ?? DEFAULT_AI_CONFIG.permissionMode,
@@ -26,6 +54,7 @@ export async function readAIConfig(): Promise<AIConfig | undefined> {
       commitCommandEnabled: ai.commitCommandEnabled ?? DEFAULT_AI_CONFIG.commitCommandEnabled,
       prCommand: ai.prCommand ?? DEFAULT_AI_CONFIG.prCommand,
       prCommandEnabled: ai.prCommandEnabled ?? DEFAULT_AI_CONFIG.prCommandEnabled,
+      ...(models ? { models } : {}),
     };
   } catch {
     return undefined;
@@ -42,7 +71,55 @@ export async function writeAIConfig(config: AIConfig): Promise<void> {
       // keep existing as empty
     }
   }
-  existing['ai'] = config;
+  // ai.models is owned by writeAIModels(); always keep whatever is on disk.
+  const previousModels = (existing['ai'] as { models?: unknown } | undefined)?.models;
+  const next: Record<string, unknown> = { ...config };
+  delete next['models'];
+  if (previousModels !== undefined) {
+    next['models'] = previousModels;
+  }
+  existing['ai'] = next;
+  await writeWorkspaceFile(CONFIG_FILE, JSON.stringify(existing, null, 2));
+}
+
+/** Replace only `ai.models`. Empty providers fall back to the built-in list. */
+export async function writeAIModels(models: Record<string, string[]>): Promise<void> {
+  const cleaned: Record<string, string[]> = {};
+  for (const [provider, list] of Object.entries(models)) {
+    const entries: string[] = [];
+    for (const raw of list) {
+      const value = String(raw).trim();
+      if (value === '') {
+        continue;
+      }
+      if (!MODEL_ID_PATTERN.test(value)) {
+        throw new Error(`Invalid model id for ${provider}: "${value}"`);
+      }
+      if (!entries.includes(value)) {
+        entries.push(value);
+      }
+    }
+    if (entries.length > 0) {
+      cleaned[provider] = entries;
+    }
+  }
+
+  const content = await readWorkspaceFile(CONFIG_FILE);
+  let existing: Record<string, unknown> = {};
+  if (content) {
+    try {
+      existing = JSON.parse(content) as Record<string, unknown>;
+    } catch {
+      // keep existing as empty
+    }
+  }
+  const ai: Record<string, unknown> = { ...((existing['ai'] as Record<string, unknown> | undefined) ?? {}) };
+  if (Object.keys(cleaned).length > 0) {
+    ai['models'] = cleaned;
+  } else {
+    delete ai['models'];
+  }
+  existing['ai'] = ai;
   await writeWorkspaceFile(CONFIG_FILE, JSON.stringify(existing, null, 2));
 }
 

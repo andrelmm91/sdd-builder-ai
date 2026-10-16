@@ -8,9 +8,9 @@ vi.mock('../utils/fileSystem', () => ({
   listFiles: vi.fn(),
 }));
 
-import { readAIConfig, writeAIConfig, getAvailableTags, getAvailableSkills } from './aiConfig';
+import { readAIConfig, writeAIConfig, writeAIModels, getModelsForProvider, getAvailableTags, getAvailableSkills } from './aiConfig';
 import { readWorkspaceFile, writeWorkspaceFile, getWorkspaceRoot, listFiles } from '../utils/fileSystem';
-import { DEFAULT_AI_CONFIG } from './aiConfigTypes';
+import { DEFAULT_AI_CONFIG, BUILTIN_MODELS } from './aiConfigTypes';
 
 const mockReadWorkspaceFile = vi.mocked(readWorkspaceFile);
 const mockWriteWorkspaceFile = vi.mocked(writeWorkspaceFile);
@@ -77,6 +77,98 @@ describe('writeAIConfig', () => {
       '.sdd/config.json',
       JSON.stringify({ ai: config }, null, 2),
     );
+  });
+});
+
+describe('ai.models', () => {
+  it('drops invalid entries, trims and de-duplicates valid ones', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({
+      ai: { models: { claude: [' fable ', 'fable', 'opus'], copilot: ['', 'x'], bad: 'nope' } },
+    }));
+    const config = await readAIConfig();
+    expect(config!.models).toEqual({ claude: ['fable', 'opus'] });
+    expect(warn).toHaveBeenCalledTimes(2);
+    warn.mockRestore();
+  });
+
+  it('writeAIConfig ignores a payload models that differs from disk', async () => {
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ ai: { models: { claude: ['fable'] } } }));
+    await writeAIConfig({ ...DEFAULT_AI_CONFIG, models: { claude: ['other'] } });
+    const written = JSON.parse(mockWriteWorkspaceFile.mock.calls[0][1]);
+    expect(written.ai.models).toEqual({ claude: ['fable'] });
+  });
+
+  it('writeAIConfig drops payload models when none is on disk', async () => {
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ ai: {} }));
+    await writeAIConfig({ ...DEFAULT_AI_CONFIG, models: { claude: ['other'] } });
+    const written = JSON.parse(mockWriteWorkspaceFile.mock.calls[0][1]);
+    expect(written.ai.models).toBeUndefined();
+  });
+
+  it('writeAIConfig preserves ai.models already on disk when config omits it', async () => {
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ ai: { models: { claude: ['fable'] } } }));
+    await writeAIConfig({ ...DEFAULT_AI_CONFIG });
+    const written = JSON.parse(mockWriteWorkspaceFile.mock.calls[0][1]);
+    expect(written.ai.models).toEqual({ claude: ['fable'] });
+  });
+});
+
+describe('writeAIModels', () => {
+  const written = () => JSON.parse(mockWriteWorkspaceFile.mock.calls[0][1]);
+
+  it('writes a list and keeps other ai and top-level keys', async () => {
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ name: 'x', ai: { provider: 'copilot', model: 'm' } }));
+    await writeAIModels({ claude: ['fable', 'opus'] });
+    expect(written()).toEqual({
+      name: 'x',
+      ai: { provider: 'copilot', model: 'm', models: { claude: ['fable', 'opus'] } },
+    });
+  });
+
+  it('trims, drops empties and de-duplicates keeping first order', async () => {
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({}));
+    await writeAIModels({ claude: [' b ', 'a', '', 'b', '  '] });
+    expect(written().ai.models).toEqual({ claude: ['b', 'a'] });
+  });
+
+  it('removes empty providers', async () => {
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ ai: { models: { claude: ['x'], copilot: ['y'] } } }));
+    await writeAIModels({ claude: [], copilot: ['y'] });
+    expect(written().ai.models).toEqual({ copilot: ['y'] });
+  });
+
+  it('deletes ai.models when all providers are empty', async () => {
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ ai: { provider: 'claude', models: { claude: ['x'] } } }));
+    await writeAIModels({ claude: [], copilot: [] });
+    expect(written().ai).toEqual({ provider: 'claude' });
+  });
+
+  it('rejects an invalid id without writing', async () => {
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({}));
+    await expect(writeAIModels({ claude: ['ok', 'my model'] })).rejects.toThrow(/claude.*my model/);
+    expect(mockWriteWorkspaceFile).not.toHaveBeenCalled();
+  });
+});
+
+describe('getModelsForProvider', () => {
+  it('returns built-in list without user models', () => {
+    expect(getModelsForProvider('claude')).toEqual([...BUILTIN_MODELS.claude]);
+  });
+
+  it('user list replaces the built-in list', () => {
+    const cfg = { ...DEFAULT_AI_CONFIG, models: { claude: ['fable'] } };
+    expect(getModelsForProvider('claude', cfg)).toEqual(['fable']);
+    expect(getModelsForProvider('copilot', cfg)).toEqual([...BUILTIN_MODELS.copilot]);
+  });
+
+  it('empty user list falls back to built-in', () => {
+    const cfg = { ...DEFAULT_AI_CONFIG, models: { claude: [] } };
+    expect(getModelsForProvider('claude', cfg)).toEqual([...BUILTIN_MODELS.claude]);
+  });
+
+  it('unknown provider returns empty list', () => {
+    expect(getModelsForProvider('nope')).toEqual([]);
   });
 });
 

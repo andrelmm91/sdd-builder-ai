@@ -1,10 +1,33 @@
 import * as vscode from 'vscode';
 import { BaseWebviewPanel } from '../BaseWebviewPanel';
-import { readAIConfig, writeAIConfig, readRequirementsAIConfig, writeRequirementsAIConfig, getAvailableTags, getAvailableSkills } from '../../../config/aiConfig';
+import { readAIConfig, writeAIConfig, readRequirementsAIConfig, writeRequirementsAIConfig, getAvailableTags, getAvailableSkills, getModelsForProvider, writeAIModels } from '../../../config/aiConfig';
+import { BUILTIN_MODELS } from '../../../config/aiConfigTypes';
 import { initProject } from '../../../commands/initProject';
 import type { AIConfig, RequirementsAIConfig } from '../../../config/aiConfigTypes';
 
 const outputChannel = vscode.window.createOutputChannel('SDD AI Config');
+
+function resolveModels(config: AIConfig): Record<string, string[]> {
+  return Object.fromEntries(
+    Object.keys(BUILTIN_MODELS).map((p) => [p, getModelsForProvider(p, config)]),
+  );
+}
+
+function builtinModels(): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(BUILTIN_MODELS).map(([p, list]) => [p, [...list]]));
+}
+
+function modelPayload(config: AIConfig): {
+  models: Record<string, string[]>;
+  customModels: Record<string, string[]>;
+  builtinModels: Record<string, string[]>;
+} {
+  return {
+    models: resolveModels(config),
+    customModels: config.models ?? {},
+    builtinModels: builtinModels(),
+  };
+}
 
 export class AiConfigPanel extends BaseWebviewPanel {
   private static instance: AiConfigPanel | undefined;
@@ -33,7 +56,7 @@ export class AiConfigPanel extends BaseWebviewPanel {
         if (config === undefined) {
           this.post('notInitialized', {});
         } else {
-          this.post('configData', { config, tags, skills });
+          this.post('configData', { config, tags, skills, ...modelPayload(config) });
         }
         break;
       }
@@ -47,7 +70,7 @@ export class AiConfigPanel extends BaseWebviewPanel {
           readRequirementsAIConfig(),
         ]);
         if (config !== undefined) {
-          this.post('configData', { config, tags, skills });
+          this.post('configData', { config, tags, skills, ...modelPayload(config) });
         }
         if (reqConfig !== undefined) {
           this.post('requirementsConfigData', { config: reqConfig });
@@ -66,6 +89,24 @@ export class AiConfigPanel extends BaseWebviewPanel {
           outputChannel.appendLine(`[saveConfig] ERROR: ${err}`);
           this.post('saveError', { message: String(err) });
           void vscode.window.showErrorMessage(`Failed to save AI config: ${err}`);
+        }
+        break;
+      }
+      case 'saveModels': {
+        try {
+          const { models } = message.data as { models: Record<string, string[]> };
+          await writeAIModels(models);
+          const config = await readAIConfig();
+          if (config === undefined) {
+            throw new Error('Project not initialized');
+          }
+          this.post('modelsSaved', modelPayload(config));
+          void vscode.window.showInformationMessage('Model lists saved.');
+        } catch (err) {
+          const text = err instanceof Error ? err.message : String(err);
+          outputChannel.appendLine(`[saveModels] ERROR: ${text}`);
+          this.post('modelsSaveError', { message: text });
+          void vscode.window.showErrorMessage(`Failed to save model lists: ${text}`);
         }
         break;
       }

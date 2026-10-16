@@ -2,6 +2,11 @@
 
 All notable changes to the SDD Platform extension will be documented in this file.
 
+## [2.0.0] - 2026-10-18
+
+- **Edit model lists in the AI Configuration UI** — New "Model Lists" section lets you customize, reorder, add, remove and reset the Claude/Copilot model lists and save them to `ai.models` without editing `config.json`; the model dropdowns refresh immediately. Saving the execution or requirements form no longer touches `ai.models`.
+- **Updated model lists + per-provider overrides** — Claude now offers `fable`, `opusplan`, `opus[1m]` and `sonnet[1m]`; Copilot adds the 5.5 Claude models. Model lists now come from a single source in the extension, and you can define your own per provider under `ai.models` in `.sdd/config.json` (replaces the built-in list). A saved model that is in no list is still shown and kept.
+
 ## [1.2.0] - 2026-05-21
 
 - **Windows Claude/Copilot CLI PTY fix** — Reverted the Windows PowerShell script approach (`-File`/`-Command`) because launching Claude CLI via a `shellPath`-overridden terminal breaks its TTY detection, causing a blank terminal with no output. Windows now uses a plain VS Code terminal (no `shellPath` override) with `sendText` after a 500 ms startup delay. The zsh ZLE init race that required the bash-script fix on POSIX does not exist for PowerShell, so `sendText` is safe here. Non-interactive mode sends the command with `Tee-Object` + `$LASTEXITCODE | Out-File` chained via `;`; interactive mode sends the command bare and waits for terminal close.

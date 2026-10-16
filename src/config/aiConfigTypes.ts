@@ -21,10 +21,13 @@ export interface AIConfig {
   commitCommandEnabled?: boolean;
   prCommand?: string;
   prCommandEnabled?: boolean;
+  /** User-defined model lists keyed by provider id; replaces the built-in list for that provider. */
+  models?: Record<string, string[]>;
 }
 
-export const CLAUDE_MODELS = ['opus', 'sonnet', 'haiku'] as const;
+export const CLAUDE_MODELS = ['opus', 'sonnet', 'haiku', 'fable', 'opusplan', 'opus[1m]', 'sonnet[1m]'] as const;
 export const COPILOT_MODELS = [
+  'claude-opus-5.5', 'claude-sonnet-5.5', 'claude-haiku-5.5',
   'claude-sonnet-4.6', 'claude-sonnet-4.5', 'claude-haiku-4.5',
   'claude-opus-4.6', 'claude-opus-4.6-fast', 'claude-opus-4.5', 'claude-sonnet-4',
   'gemini-3-pro-preview',
@@ -32,6 +35,14 @@ export const COPILOT_MODELS = [
   'gpt-5.1-codex-max', 'gpt-5.1-codex', 'gpt-5.1', 'gpt-5.1-codex-mini',
   'gpt-5-mini', 'gpt-4.1',
 ] as const;
+
+export const BUILTIN_MODELS: Record<string, readonly string[]> = {
+  claude: CLAUDE_MODELS,
+  copilot: COPILOT_MODELS,
+};
+
+/** Accepted shape of a user-defined model id (e.g. `opus[1m]`, `gpt-5.5`, `org/model:tag`). */
+export const MODEL_ID_PATTERN = /^[A-Za-z0-9._:@/[\]-]{1,100}$/;
 
 export const CLAUDE_PERMISSION_MODES: readonly ClaudePermissionMode[] = [
   'default',

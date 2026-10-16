@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-111-BUGFIX
 title: Update model lists and let users override them per provider
-status: review
+status: done
 priority: high
 complexity: medium
 tags:
@@ -23,6 +23,8 @@ depends_on: []
 agent_skills: backend
 created: 2026-10-15
 ---
+
+
 
 ## Context
 The model lists offered in AI Configuration are out of date, and they are defined twice:

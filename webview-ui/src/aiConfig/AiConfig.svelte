@@ -55,17 +55,99 @@
     ],
   };
 
-  const MODELS: Record<AIProvider, string[]> = {
-    claude: ['opus', 'sonnet', 'haiku'],
-    copilot: [
-      'claude-sonnet-4.6', 'claude-sonnet-4.5', 'claude-haiku-4.5',
-      'claude-opus-4.6', 'claude-opus-4.6-fast', 'claude-opus-4.5', 'claude-sonnet-4',
-      'gemini-3-pro-preview',
-      'gpt-5.4', 'gpt-5.3-codex', 'gpt-5.2-codex', 'gpt-5.2',
-      'gpt-5.1-codex-max', 'gpt-5.1-codex', 'gpt-5.1', 'gpt-5.1-codex-mini',
-      'gpt-5-mini', 'gpt-4.1',
-    ],
-  };
+  // Per-provider model lists, sent by the extension in `configData`.
+  let models = $state<Record<string, string[]>>({});
+
+  /** Keep the saved model selectable even when it is in no list. */
+  function withSaved(list: string[], current: string): string[] {
+    return current && !list.includes(current) ? [...list, current] : list;
+  }
+
+  // Keep in sync with MODEL_ID_PATTERN in src/config/aiConfigTypes.ts.
+  const MODEL_ID_PATTERN = /^[A-Za-z0-9._:@/[\]-]{1,100}$/;
+  const MODEL_PROVIDERS: { value: AIProvider; label: string }[] = [
+    { value: 'claude', label: 'Claude' },
+    { value: 'copilot', label: 'Copilot' },
+  ];
+
+  // Model Lists editor: draft is null for a provider in built-in mode.
+  let builtinModels = $state<Record<string, string[]>>({});
+  let savedCustom = $state<Record<string, string[]>>({});
+  let draft = $state<Record<string, string[] | null>>({});
+  let newModel = $state<Record<string, string>>({});
+  let modelInputError = $state<Record<string, string>>({});
+  let modelsSaveMessage = $state('');
+  let modelsJustSaved = $state(false);
+
+  function draftFromCustom(custom: Record<string, string[]>): Record<string, string[] | null> {
+    return Object.fromEntries(MODEL_PROVIDERS.map((p) => [p.value, custom[p.value]?.length ? [...custom[p.value]] : null]));
+  }
+
+  function normalizedDraft(): Record<string, string[]> {
+    const out: Record<string, string[]> = {};
+    for (const p of MODEL_PROVIDERS) {
+      const list = draft[p.value];
+      if (list && list.length > 0) out[p.value] = [...list];
+    }
+    return out;
+  }
+
+  const modelsDirty = $derived(
+    JSON.stringify(normalizedDraft()) !== JSON.stringify(
+      Object.fromEntries(MODEL_PROVIDERS.filter((p) => savedCustom[p.value]?.length).map((p) => [p.value, savedCustom[p.value]])),
+    ),
+  );
+
+  function customize(p: string) {
+    draft[p] = [...(builtinModels[p] ?? [])];
+    modelsSaveMessage = '';
+  }
+
+  function resetToBuiltin(p: string) {
+    draft[p] = null;
+    modelInputError[p] = '';
+    modelsSaveMessage = '';
+  }
+
+  function addModel(p: string) {
+    const list = draft[p];
+    const value = (newModel[p] ?? '').trim();
+    if (!list || !value) return;
+    if (!MODEL_ID_PATTERN.test(value)) {
+      modelInputError[p] = 'Use 1–100 letters, digits or . _ : @ / [ ] - (no spaces or quotes).';
+      return;
+    }
+    if (list.includes(value)) {
+      modelInputError[p] = `"${value}" is already in the list.`;
+      return;
+    }
+    draft[p] = [...list, value];
+    newModel[p] = '';
+    modelInputError[p] = '';
+  }
+
+  function removeModel(p: string, index: number) {
+    draft[p] = (draft[p] ?? []).filter((_, i) => i !== index);
+  }
+
+  function moveModel(p: string, index: number, delta: number) {
+    const list = [...(draft[p] ?? [])];
+    const target = index + delta;
+    if (target < 0 || target >= list.length) return;
+    [list[index], list[target]] = [list[target], list[index]];
+    draft[p] = list;
+  }
+
+  function saveModels() {
+    modelsSaveMessage = '';
+    postMessage('saveModels', { models: JSON.parse(JSON.stringify(normalizedDraft())) });
+  }
+
+  function missingModelWarning(selected: string, p: string): string {
+    const list = models[p];
+    if (!selected || !list || list.length === 0 || list.includes(selected)) return '';
+    return `"${selected}" is not in the ${p} list; it will still be used.`;
+  }
 
   let provider = $state<AIProvider>('claude');
   let permissionMode = $state<PermissionMode>('default');
@@ -96,20 +178,20 @@
   let reqSaveError = $state(false);
 
   const permissionOptions = $derived(PERMISSION_MODES[provider]);
-  const modelOptions = $derived(MODELS[provider]);
+  const modelOptions = $derived(withSaved(models[provider] ?? [], model));
   const reqPermissionOptions = $derived(PERMISSION_MODES[reqProvider]);
-  const reqModelOptions = $derived(MODELS[reqProvider]);
+  const reqModelOptions = $derived(withSaved(models[reqProvider] ?? [], reqModel));
 
   function onProviderChange(newProvider: AIProvider) {
     provider = newProvider;
     permissionMode = PERMISSION_MODES[newProvider][1].value;
-    model = MODELS[newProvider][0];
+    model = models[newProvider]?.[0] ?? '';
   }
 
   function onReqProviderChange(newProvider: AIProvider) {
     reqProvider = newProvider;
     reqPermissionMode = PERMISSION_MODES[newProvider][1].value;
-    reqModel = MODELS[newProvider][0];
+    reqModel = models[newProvider]?.[0] ?? '';
   }
 
   function addMapping() {
@@ -172,7 +254,12 @@
         saveError = true;
         setTimeout(() => (saveError = false), 3000);
       } else if (msg.type === 'configData') {
-        const d = msg.data as { config: AIConfig; tags: string[]; skills: string[] };
+        const d = msg.data as {
+          config: AIConfig; tags: string[]; skills: string[];
+          models: Record<string, string[]>;
+          customModels?: Record<string, string[]>;
+          builtinModels?: Record<string, string[]>;
+        };
         const c = d.config;
         notInitialized = false;
         provider = c.provider;
@@ -187,6 +274,20 @@
         prCommandEnabled = c.prCommandEnabled;
         availableTags = d.tags;
         availableSkills = d.skills;
+        models = d.models ?? {};
+        builtinModels = d.builtinModels ?? {};
+        savedCustom = d.customModels ?? {};
+        draft = draftFromCustom(savedCustom);
+      } else if (msg.type === 'modelsSaved') {
+        const d = msg.data as { models: Record<string, string[]>; customModels: Record<string, string[]> };
+        models = d.models ?? {};
+        savedCustom = d.customModels ?? {};
+        draft = draftFromCustom(savedCustom);
+        modelsSaveMessage = '';
+        modelsJustSaved = true;
+        setTimeout(() => (modelsJustSaved = false), 2000);
+      } else if (msg.type === 'modelsSaveError') {
+        modelsSaveMessage = (msg.data as { message: string }).message;
       } else if (msg.type === 'requirementsConfigData') {
         const d = msg.data as { config: RequirementsAIConfig };
         const c = d.config;
@@ -257,6 +358,10 @@
           <option value={m}>{m}</option>
         {/each}
       </select>
+      {#if missingModelWarning(model, provider)}
+        <p class="field-warning">{missingModelWarning(model, provider)}</p>
+      {/if}
+      <p class="field-hint">Manage models in Model Lists below.</p>
     </section>
 
     {#if provider === 'claude'}
@@ -451,6 +556,10 @@
           <option value={m}>{m}</option>
         {/each}
       </select>
+      {#if missingModelWarning(reqModel, reqProvider)}
+        <p class="field-warning">{missingModelWarning(reqModel, reqProvider)}</p>
+      {/if}
+      <p class="field-hint">Manage models in Model Lists below.</p>
     </section>
 
     {#if reqProvider === 'claude'}
@@ -499,6 +608,67 @@
     <div class="save-row">
       <button class="btn-save" class:btn-save-success={reqSaved} class:btn-save-error={reqSaveError} use:directClick={saveRequirementsConfig}>
         {reqSaved ? 'Saved!' : reqSaveError ? 'Error!' : 'Save Requirements Config'}
+      </button>
+    </div>
+
+    <hr class="section-divider" />
+    <div class="section-group-heading">Model Lists</div>
+    <p class="field-hint">Shared by the execution and requirements model dropdowns. A custom list replaces the built-in list for that provider; the first entry is the default when switching provider.</p>
+
+    {#each MODEL_PROVIDERS as p}
+      {@const list = draft[p.value]}
+      <section class="model-card">
+        <div class="label-row">
+          <span class="field-label">{p.label}</span>
+          <span class="mode-badge" class:custom={list !== null && list !== undefined}>{list ? 'Custom' : 'Built-in'}</span>
+        </div>
+
+        {#if list}
+          <ul class="chip-list">
+            {#each list as m, i (m)}
+              <li class="chip">
+                <span class="chip-text">{m}</span>
+                <button class="chip-btn" aria-label="Move {m} up" disabled={i === 0} onclick={() => moveModel(p.value, i, -1)}>↑</button>
+                <button class="chip-btn" aria-label="Move {m} down" disabled={i === list.length - 1} onclick={() => moveModel(p.value, i, 1)}>↓</button>
+                <button class="chip-btn chip-remove" aria-label="Remove {m}" onclick={() => removeModel(p.value, i)}>×</button>
+              </li>
+            {/each}
+          </ul>
+          <div class="add-mapping-row">
+            <input
+              class="form-input"
+              type="text"
+              placeholder="Model id"
+              aria-label="New {p.label} model id"
+              bind:value={newModel[p.value]}
+              onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addModel(p.value); } }}
+            />
+            <button class="btn-add" onclick={() => addModel(p.value)} disabled={!(newModel[p.value] ?? '').trim()}>Add</button>
+            <button class="btn-reset" onclick={() => resetToBuiltin(p.value)}>Reset to built-in</button>
+          </div>
+          {#if modelInputError[p.value]}
+            <p class="field-error">{modelInputError[p.value]}</p>
+          {/if}
+        {:else}
+          <ul class="chip-list">
+            {#each builtinModels[p.value] ?? [] as m}
+              <li class="chip readonly"><span class="chip-text">{m}</span></li>
+            {/each}
+          </ul>
+          <div>
+            <button class="btn-reset" onclick={() => customize(p.value)}>Customize</button>
+          </div>
+        {/if}
+      </section>
+    {/each}
+
+    {#if modelsSaveMessage}
+      <p class="field-error">{modelsSaveMessage}</p>
+    {/if}
+    <div class="save-row models-save-row">
+      {#if modelsDirty}<span class="unsaved">Unsaved changes</span>{/if}
+      <button class="btn-save" class:btn-save-success={modelsJustSaved} disabled={!modelsDirty} onclick={saveModels}>
+        {modelsJustSaved && !modelsDirty ? 'Saved!' : 'Save model lists'}
       </button>
     </div>
   </div>
@@ -783,4 +953,80 @@
     background: var(--vscode-list-hoverBackground);
     color: var(--vscode-foreground);
   }
+
+  .field-warning {
+    font-size: 0.8em;
+    margin: 0;
+    color: var(--vscode-editorWarning-foreground, var(--vscode-charts-yellow));
+  }
+
+  .field-error {
+    font-size: 0.8em;
+    margin: 0;
+    color: var(--vscode-errorForeground);
+  }
+
+  .model-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 4px;
+  }
+
+  .mode-badge {
+    font-size: 0.75em;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+  }
+  .mode-badge.custom {
+    outline: 1px solid var(--vscode-focusBorder);
+  }
+
+  .chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 4px 2px 8px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 12px;
+    background: var(--vscode-input-background);
+    font-size: 0.85em;
+  }
+  .chip.readonly { padding-right: 8px; color: var(--vscode-descriptionForeground); }
+
+  .chip-btn {
+    background: none;
+    border: none;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: inherit;
+    border-radius: 3px;
+  }
+  .chip-btn:hover:not(:disabled) { background: var(--vscode-list-hoverBackground); }
+  .chip-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .chip-remove { color: var(--vscode-errorForeground); }
+
+  .models-save-row {
+    align-items: center;
+    gap: 12px;
+  }
+  .unsaved {
+    font-size: 0.85em;
+    color: var(--vscode-editorWarning-foreground, var(--vscode-charts-yellow));
+  }
+  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

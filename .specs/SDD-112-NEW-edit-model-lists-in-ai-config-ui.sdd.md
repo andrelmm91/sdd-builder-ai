@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-112-NEW
 title: Edit and save per-provider model lists from the AI Config UI
-status: review
+status: done
 priority: high
 complexity: medium
 tags:
