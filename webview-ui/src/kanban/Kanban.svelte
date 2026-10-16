@@ -165,6 +165,10 @@
     postMessage('clearBulk', {});
   }
 
+  function discardChanges(specId: string) {
+    postMessage('discardChanges', { specId });
+  }
+
   function openModal(card: SpecCard) {
     feedbackText = '';
     modalSpec = card;
@@ -374,6 +378,15 @@
                   <button class="btn-action btn-changes" onclick={() => openModal(card)}>
                     Request Changes
                   </button>
+                  {#if card.changedFiles && card.changedFiles.length > 0}
+                    <button
+                      class="btn-action btn-discard"
+                      draggable={false}
+                      onclick={(e) => { e.stopPropagation(); discardChanges(card.spec_id); }}
+                    >
+                      Discard changes
+                    </button>
+                  {/if}
                 {/if}
               </div>
 
@@ -762,6 +775,12 @@
   .btn-approve:hover { background: var(--vscode-charts-green); opacity: 0.85; }
   .btn-changes  { background: var(--vscode-charts-orange); color: #fff; }
   .btn-changes:hover { background: var(--vscode-charts-orange); opacity: 0.85; }
+  .btn-discard {
+    background: transparent;
+    color: var(--vscode-errorForeground);
+    border: 1px solid var(--vscode-errorForeground);
+  }
+  .btn-discard:hover { background: var(--vscode-toolbar-hoverBackground); }
   .btn-execute-all { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
   .btn-execute-all:hover { background: var(--vscode-button-hoverBackground); }
   .btn-execute-all-disabled,

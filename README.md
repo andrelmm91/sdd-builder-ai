@@ -129,8 +129,21 @@ When a spec needs rework, your feedback is injected directly into the next execu
 - Approve to mark Done, or write feedback to request changes
 - Feedback is appended to the spec's context section and status resets to Ready
 - The AI receives your exact feedback in the next run — no context is lost
-- The AI's changes are kept, so the re-run builds on the existing work
-- **Reject** discards the AI's changes (after one confirmation) using the git checkpoint taken before execution, covering all attempts and preserving your unrelated edits. You can also run `SDD: Discard AI Changes` on its own
+- The AI's changes are kept, so the re-run builds on the existing work instead of starting over (fewer tokens)
+- **Reject** discards the AI's changes — see the Safety Net below
+
+---
+
+### Safety Net — Undo Any AI Run
+Before every execution, SDD takes a git checkpoint of your workspace, so you can always get back to where you were.
+
+- **Accurate change list** — review cards show exactly the files the AI changed, including new and committed files, and never your own edits
+- **Reject = undo** — after one confirmation, the AI's files go back to how they were before the run. Your unrelated work is left alone
+- **Covers every attempt** — after one or more Request Changes rounds, Reject still undoes all of them
+- **Discard anytime** — click **Discard changes** on a review card or run `SDD: Discard AI Changes`
+- If the AI made commits, the files are restored and you are told the commits remain
+
+Requires the workspace to be a git repository.
 
 ---
 
@@ -183,7 +196,7 @@ Separate configuration for requirements AI and execution AI.
 - **AI CLI (BYOK)** — one of the following, installed and authenticated:
   - [Claude CLI](https://docs.anthropic.com/en/docs/claude-code) (`npm install -g @anthropic-ai/claude-code`)
   - [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli) (`gh extension install github/gh-copilot`)
-- **Git** configured in the workspace
+- **Git** configured in the workspace (required for change tracking and discard)
 - **gh CLI** (optional, for PR automation) — [cli.github.com](https://cli.github.com)
 
 ---

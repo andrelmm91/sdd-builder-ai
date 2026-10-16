@@ -120,6 +120,15 @@ export class KanbanPanel extends BaseWebviewPanel {
         }
         break;
       }
+      case 'discardChanges': {
+        const { specId } = message.data as { specId: string };
+        try {
+          await vscode.commands.executeCommand('sdd.discardChanges', specId);
+        } finally {
+          await this.sendSpecs();
+        }
+        break;
+      }
       case 'completeInteractiveSpec':
         completeInteractiveSpec();
         break;
