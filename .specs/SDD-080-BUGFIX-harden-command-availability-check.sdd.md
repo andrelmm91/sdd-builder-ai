@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-080-BUGFIX
 title: Harden isCommandAvailable against shell injection
-status: review
+status: done
 priority: medium
 complexity: low
 tags:
