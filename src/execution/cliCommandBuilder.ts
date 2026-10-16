@@ -1,9 +1,5 @@
 import type { AIConfig, RequirementsAIConfig, ClaudeEffort } from '../config/aiConfigTypes';
-
-/** Wraps a string in single quotes, escaping any internal single quotes. */
-function sq(str: string): string {
-  return `'${str.replace(/'/g, "'\\''")}'`;
-}
+import { quoteForShell } from '../utils/shellQuote';
 
 export interface CliCommandOptions {
   cliBinary: string;
@@ -31,7 +27,7 @@ export function buildCliCommand(options: CliCommandOptions): string {
     const parts = ['gh', 'copilot'];
     // Note: gh copilot does not support a --model flag; model selection is not available here.
     if (aiConfig?.permissionMode === 'yolo') parts.push('--yolo');
-    parts.push('-p', sq(normalizedPrompt));
+    parts.push('-p', quoteForShell(normalizedPrompt));
     return parts.join(' ');
   }
 
@@ -54,6 +50,6 @@ export function buildCliCommand(options: CliCommandOptions): string {
     parts.push('--dangerously-skip-permissions');
   }
   // plan mode: no extra flag — Claude's default interactive mode asks for tool approval
-  parts.push(sq(normalizedPrompt));
+  parts.push(quoteForShell(normalizedPrompt));
   return parts.join(' ');
 }

@@ -11,19 +11,10 @@ import { DEFAULT_PRE_PROMPT } from '../config/aiConfigTypes';
 import { getProviderBinary, getCliNotFoundMessage } from '../config/extensionConfig';
 import { getSkillsPath } from './skillsLoader';
 import { SPECS_FOLDER } from '../utils/constants';
+import { quoteBash, quoteForShell } from '../utils/shellQuote';
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const SENTINEL_POLL_MS = 500;
-
-/** Wraps a string in bash single quotes, escaping internal single quotes. */
-function sq(str: string): string {
-  return `'${str.replace(/'/g, "'\\''")}'`;
-}
-
-/** Wraps a string in PowerShell single quotes, escaping internal single quotes. */
-function psq(str: string): string {
-  return `'${str.replace(/'/g, "''")}'`;
-}
 
 export class CliRunner implements ExecutionRunner {
   private _running = false;
@@ -102,12 +93,12 @@ export class CliRunner implements ExecutionRunner {
         // WSL2/macOS and causes commands to exit 130/SIGINT).
         const wrappedCommand = interactive
           ? command
-          : `{ ${command}; echo $? > ${sq(sentinel)}; } 2>&1 | tee ${sq(logFile)}`;
+          : `{ ${command}; echo $? > ${quoteBash(sentinel)}; } 2>&1 | tee ${quoteBash(logFile)}`;
         let scriptContent = `#!/bin/bash\n${wrappedCommand}\n`;
         if (terminalInput !== undefined) {
           // Embed the prompt as stdin via a here-string so it reaches the CLI process
           // without any sendText timing dependency.
-          scriptContent = `#!/bin/bash\n${wrappedCommand} <<< ${sq(terminalInput)}\n`;
+          scriptContent = `#!/bin/bash\n${wrappedCommand} <<< ${quoteBash(terminalInput)}\n`;
         }
         scriptContent += `exec "\${SHELL:-bash}"\n`;
         scriptPath = path.join(os.tmpdir(), `sdd-${specId}-${ts}-cmd.sh`);
@@ -130,8 +121,8 @@ export class CliRunner implements ExecutionRunner {
           terminal.sendText(command);
         } else {
           terminal.sendText(
-            `${command} 2>&1 | Tee-Object -FilePath ${psq(logFile)}; ` +
-            `$LASTEXITCODE | Out-File -FilePath ${psq(sentinel)} -Encoding ascii`,
+            `${command} 2>&1 | Tee-Object -FilePath ${quoteForShell(logFile)}; ` +
+            `$LASTEXITCODE | Out-File -FilePath ${quoteForShell(sentinel)} -Encoding ascii`,
           );
         }
       }
@@ -362,14 +353,14 @@ export class CliRunner implements ExecutionRunner {
       if (aiConfig?.permissionMode === 'yolo') {
         // Yolo mode: pass prompt via -p flag for non-interactive batch execution.
         parts.push('--yolo');
-        parts.push('-p', sq(prompt));
+        parts.push('-p', quoteForShell(prompt));
         return { command: parts.join(' ') };
       }
 
       // Default (ask) mode: interactive, analogous to Claude's ask/plan mode.
       // Pass the prompt as a positional argument (not -p which is for batch/non-interactive).
       // Without --yolo the agent will pause for permission on each tool use.
-      parts.push(sq(prompt));
+      parts.push(quoteForShell(prompt));
       return { command: parts.join(' '), interactive: true };
     }
 
@@ -381,7 +372,7 @@ export class CliRunner implements ExecutionRunner {
       // Without it, Claude enters REPL mode and the sentinel never runs.
       parts.push('-p', '--dangerously-skip-permissions');
     }
-    parts.push(sq(prompt));
+    parts.push(quoteForShell(prompt));
 
     // Default and plan modes are interactive — Claude stays in REPL,
     // user approves/denies tools. Sentinel won't work; use terminal close.

@@ -4,9 +4,10 @@ All notable changes to the SDD Platform extension will be documented in this fil
 
 ## [2.0.0] - 2026-10-18
 
-- **Provider-aware CLI pre-flight check** — Executing a spec now verifies the binary of the configured AI provider (`gh` for Copilot, the Claude binary otherwise) instead of always requiring Claude. Copilot users without Claude installed are no longer blocked, and the "CLI not found" error names the provider and binary.
-- **Edit model lists in the AI Configuration UI** — New "Model Lists" section lets you customize, reorder, add, remove and reset the Claude/Copilot model lists and save them to `ai.models` without editing `config.json`; the model dropdowns refresh immediately. Saving the execution or requirements form no longer touches `ai.models`.
-- **Updated model lists + per-provider overrides** — Claude now offers `fable`, `opusplan`, `opus[1m]` and `sonnet[1m]`; Copilot adds the 5.5 Claude models. Model lists now come from a single source in the extension, and you can define your own per provider under `ai.models` in `.sdd/config.json` (replaces the built-in list). A saved model that is in no list is still shown and kept.
+- **Platform-correct shell quoting** (BUGFIX) — Prompts, spec titles and skill paths are now quoted for the shell that runs them: bash on macOS/Linux and PowerShell on Windows (single quotes doubled, embedded `"` escaped for native executables). Apostrophes (e.g. `Don't modify tests`) no longer break the CLI command on Windows. New shared helper `src/utils/shellQuote.ts` replaces the duplicated local quoting functions.
+- **Provider-aware CLI pre-flight check** (BUGFIX) — Executing a spec now verifies the binary of the configured AI provider (`gh` for Copilot, the Claude binary otherwise) instead of always requiring Claude. Copilot users without Claude installed are no longer blocked, and the "CLI not found" error names the provider and binary.
+- **Edit model lists in the AI Configuration UI** (NEW) — New "Model Lists" section lets you customize, reorder, add, remove and reset the Claude/Copilot model lists and save them to `ai.models` without editing `config.json`; the model dropdowns refresh immediately. Saving the execution or requirements form no longer touches `ai.models`.
+- **Updated model lists + per-provider overrides** (NEW) — Claude now offers `fable`, `opusplan`, `opus[1m]` and `sonnet[1m]`; Copilot adds the 5.5 Claude models. Model lists now come from a single source in the extension, and you can define your own per provider under `ai.models` in `.sdd/config.json` (replaces the built-in list). A saved model that is in no list is still shown and kept.
 
 ## [1.2.0] - 2026-05-21
 

@@ -397,6 +397,32 @@ describe('CliRunner.execute — terminal commands (Windows)', () => {
     expect(sent).not.toContain('#!/bin/bash');
   });
 
+  it("doubles single quotes in the spec title substituted into the commit command", async () => {
+    mockAccess.mockResolvedValue(undefined);
+    mockReadFile.mockResolvedValue('0');
+
+    const runner = new CliRunner();
+    const promise = runner.execute(
+      makeSpec({ frontmatter: { ...makeSpec().frontmatter, title: "Fix user's profile" } }),
+      makeConfig(),
+      {
+        provider: 'claude',
+        permissionMode: 'dangerously-skip-permissions',
+        commitCommandEnabled: true,
+        commitCommand: 'git commit -m "{spec_id}: {title}"',
+      },
+    );
+
+    await vi.advanceTimersByTimeAsync(500);
+    await vi.advanceTimersByTimeAsync(500);
+    await promise;
+
+    const sent = mockSendText.mock.calls[0][0] as string;
+    expect(sent).toContain("Fix user''s profile");
+    expect(sent).not.toContain("'\''");
+    expect(sent).toContain('\\"SDD-026: Fix');
+  });
+
   it('Claude default mode: plain terminal + sendText, interactive (no sentinel)', async () => {
     mockOnDidCloseTerminal.mockImplementation((cb: (t: unknown) => void) => {
       setTimeout(() => cb(mockTerminal), 2000);

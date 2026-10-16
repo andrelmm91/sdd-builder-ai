@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-079-BUGFIX
 title: Fix prompt quoting for PowerShell on Windows
-status: ready
+status: done
 priority: high
 complexity: medium
 tags:
@@ -20,6 +20,10 @@ depends_on: []
 agent_skills: backend
 created: 2026-10-15
 ---
+
+
+
+
 
 ## Context
 `CliRunner._buildCommand()` (`src/execution/cliRunner.ts`) and `buildCliCommand()` (`src/execution/cliCommandBuilder.ts`) quote the prompt with a bash-style helper `sq()`, which escapes an embedded single quote as `'\''`. On Windows, the command is sent via `terminal.sendText` to a PowerShell terminal, where that sequence is not a valid escape. Any apostrophe in the pre-prompt, the spec title (substituted into commit/PR commands) or skill paths produces a broken command line.
@@ -47,12 +51,12 @@ created: 2026-10-15
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/utils/shellQuote.test.ts` covers plain text, single quotes, double quotes, `$`, backticks and newlines for both `linux` and `win32`.
-- [ ] Existing `cliRunner.test.ts` tests still pass, and a new test asserts that on `win32` a title containing an apostrophe produces a doubled single quote in the generated command.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] `src/utils/shellQuote.test.ts` covers plain text, single quotes, double quotes, `$`, backticks and newlines for both `linux` and `win32`.
+- [x] Existing `cliRunner.test.ts` tests still pass, and a new test asserts that on `win32` a title containing an apostrophe produces a doubled single quote in the generated command.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
-- [ ] On Windows, a spec whose title contains an apostrophe executes with the commit command enabled, and the full prompt reaches the CLI.
+- [x] On Windows, a spec whose title contains an apostrophe executes with the commit command enabled, and the full prompt reaches the CLI.
 
 ## Constraints
 - Do not change the terminal launch strategy (plain terminal on Windows, bash script on POSIX).
