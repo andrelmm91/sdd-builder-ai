@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-082-BUGFIX
 title: Stop the default pre-prompt from asking the AI to edit spec status
-status: ready
+status: done
 priority: high
 complexity: low
 tags:
@@ -38,8 +38,8 @@ The default execution pre-prompt (`DEFAULT_PRE_PROMPT` in `src/config/aiConfigTy
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/config/aiConfigTypes.test.ts` asserts `DEFAULT_PRE_PROMPT` contains `{spec_file}` and does not contain `status to review`.
-- [ ] `src/config/aiConfig.test.ts` covers: legacy prompt migrated, custom prompt preserved, missing prompt falls back to the new default.
+- [x] `src/config/aiConfigTypes.test.ts` asserts `DEFAULT_PRE_PROMPT` contains `{spec_file}` and does not contain `status to review`.
+- [x] `src/config/aiConfig.test.ts` covers: legacy prompt migrated, custom prompt preserved, missing prompt falls back to the new default.
 - [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual

@@ -10,7 +10,7 @@ vi.mock('../utils/fileSystem', () => ({
 
 import { readAIConfig, writeAIConfig, writeAIModels, getModelsForProvider, getAvailableTags, getAvailableSkills } from './aiConfig';
 import { readWorkspaceFile, writeWorkspaceFile, getWorkspaceRoot, listFiles } from '../utils/fileSystem';
-import { DEFAULT_AI_CONFIG, BUILTIN_MODELS } from './aiConfigTypes';
+import { DEFAULT_AI_CONFIG, BUILTIN_MODELS, DEFAULT_PRE_PROMPT, LEGACY_PRE_PROMPT } from './aiConfigTypes';
 
 const mockReadWorkspaceFile = vi.mocked(readWorkspaceFile);
 const mockWriteWorkspaceFile = vi.mocked(writeWorkspaceFile);
@@ -46,6 +46,24 @@ describe('readAIConfig', () => {
     expect(config!.model).toBe('gpt-4o');
     expect(config!.permissionMode).toBe('default');
     expect(config!.prePromptTemplate).toBe(DEFAULT_AI_CONFIG.prePromptTemplate);
+  });
+
+  it('migrates the legacy pre-prompt to the new default', async () => {
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ ai: { prePromptTemplate: LEGACY_PRE_PROMPT } }));
+    const config = await readAIConfig();
+    expect(config!.prePromptTemplate).toBe(DEFAULT_PRE_PROMPT);
+  });
+
+  it('preserves a custom pre-prompt', async () => {
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ ai: { prePromptTemplate: 'Do {spec_file} my way' } }));
+    const config = await readAIConfig();
+    expect(config!.prePromptTemplate).toBe('Do {spec_file} my way');
+  });
+
+  it('falls back to the new default when the pre-prompt is missing', async () => {
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ ai: {} }));
+    const config = await readAIConfig();
+    expect(config!.prePromptTemplate).toBe(DEFAULT_PRE_PROMPT);
   });
 
   it('reads complete config from file', async () => {

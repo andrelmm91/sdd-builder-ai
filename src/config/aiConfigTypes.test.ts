@@ -7,6 +7,7 @@ import {
   CLAUDE_PERMISSION_MODES,
   COPILOT_PERMISSION_MODES,
   DEFAULT_PRE_PROMPT,
+  LEGACY_PRE_PROMPT,
   DEFAULT_AI_CONFIG,
   MODEL_ID_PATTERN,
 } from './aiConfigTypes';
@@ -57,6 +58,12 @@ describe('aiConfigTypes', () => {
 
   it('exports DEFAULT_PRE_PROMPT', () => {
     expect(DEFAULT_PRE_PROMPT).toContain('{spec_file}');
+    expect(DEFAULT_PRE_PROMPT).not.toContain('status to review');
+  });
+
+  it('exports LEGACY_PRE_PROMPT as the old default', () => {
+    expect(LEGACY_PRE_PROMPT).toContain('status to review');
+    expect(LEGACY_PRE_PROMPT).not.toBe(DEFAULT_PRE_PROMPT);
   });
 
   it('exports DEFAULT_AI_CONFIG with correct defaults', () => {

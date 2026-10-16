@@ -56,6 +56,10 @@ export const COPILOT_PERMISSION_MODES: readonly CopilotPermissionMode[] = [
 ] as const;
 
 export const DEFAULT_PRE_PROMPT =
+  'Implement {spec_file}. Tick the acceptance criteria checkboxes you have verified. Do not modify the spec frontmatter; status is managed by SDD.';
+
+/** Previous default, which asked the AI to edit the spec status. Migrated to DEFAULT_PRE_PROMPT on read. */
+export const LEGACY_PRE_PROMPT =
   'Implement {spec_file}. Update open tasks and its status to review after completion.';
 
 export const DEFAULT_COMMIT_COMMAND = 'git add -A && git commit -m "{spec_id}: {title}"';

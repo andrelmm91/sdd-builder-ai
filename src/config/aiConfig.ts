@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { readWorkspaceFile, writeWorkspaceFile, getWorkspaceRoot } from '../utils/fileSystem';
 import { CONFIG_FILE, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
-import { DEFAULT_AI_CONFIG, DEFAULT_REQUIREMENTS_AI_CONFIG, BUILTIN_MODELS, MODEL_ID_PATTERN } from './aiConfigTypes';
+import { DEFAULT_AI_CONFIG, DEFAULT_REQUIREMENTS_AI_CONFIG, BUILTIN_MODELS, MODEL_ID_PATTERN, LEGACY_PRE_PROMPT } from './aiConfigTypes';
 import type { AIConfig, RequirementsAIConfig } from './aiConfigTypes';
 import { listAvailableSkills } from '../execution/skillsLoader';
 
@@ -49,7 +49,10 @@ export async function readAIConfig(): Promise<AIConfig | undefined> {
       model: ai.model ?? DEFAULT_AI_CONFIG.model,
       effort: (ai as Partial<AIConfig>).effort ?? DEFAULT_AI_CONFIG.effort,
       tagSkillMappings: ai.tagSkillMappings ?? [],
-      prePromptTemplate: ai.prePromptTemplate ?? DEFAULT_AI_CONFIG.prePromptTemplate,
+      prePromptTemplate:
+        ai.prePromptTemplate === undefined || ai.prePromptTemplate === LEGACY_PRE_PROMPT
+          ? DEFAULT_AI_CONFIG.prePromptTemplate
+          : ai.prePromptTemplate,
       commitCommand: ai.commitCommand ?? DEFAULT_AI_CONFIG.commitCommand,
       commitCommandEnabled: ai.commitCommandEnabled ?? DEFAULT_AI_CONFIG.commitCommandEnabled,
       prCommand: ai.prCommand ?? DEFAULT_AI_CONFIG.prCommand,
