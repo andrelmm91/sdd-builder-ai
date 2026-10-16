@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-078-BUGFIX
 title: Fix CLI pre-flight check to use the configured provider binary
-status: review
+status: done
 priority: high
 complexity: low
 tags:
