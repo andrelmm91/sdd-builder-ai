@@ -1,6 +1,9 @@
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { execCommand } from '../utils/shell';
 import type { ExecResult } from '../utils/shell';
-import type { GitCheckpoint } from './types';
+import { quoteForShell } from '../utils/shellQuote';
+import type { GitCheckpoint, RestoreResult } from './types';
 
 export type ExecFn = (cmd: string, opts: { cwd: string }) => Promise<ExecResult>;
 
@@ -82,5 +85,103 @@ export async function getChangesSince(
     }
   }
 
-  return [...entries].map(([path, status]) => `${status} ${path}`);
+  return [...entries].map(([file, status]) => `${status} ${file}`);
+}
+
+async function restoreFromBase(
+  cp: GitCheckpoint,
+  file: string,
+  root: string,
+  exec: ExecFn,
+): Promise<string | undefined> {
+  const q = quoteForShell(file);
+  const checkout = await exec(`git checkout ${cp.baseSha} -- ${q}`, { cwd: root });
+  if (!checkout.success) { return checkout.stderr.trim() || 'git checkout failed'; }
+  const reset = await exec(`git reset -q -- ${q}`, { cwd: root });
+  if (!reset.success) { return reset.stderr.trim() || 'git reset failed'; }
+  return undefined;
+}
+
+async function existedAtBase(cp: GitCheckpoint, file: string, root: string, exec: ExecFn): Promise<boolean> {
+  const res = await exec(`git cat-file -e ${quoteForShell(`${cp.baseSha}:${file}`)}`, { cwd: root });
+  return res.success;
+}
+
+async function deleteFromDisk(file: string, root: string, exec: ExecFn): Promise<void> {
+  await exec(`git reset -q -- ${quoteForShell(file)}`, { cwd: root });
+  await fs.rm(path.join(root, file), { force: true });
+}
+
+/** Maps renamed (new) paths to their old path, as seen from the checkpoint base. */
+async function findRenameSources(cp: GitCheckpoint, root: string, exec: ExecFn): Promise<Map<string, string>> {
+  const sources = new Map<string, string>();
+  const diff = await exec(`git -c core.quotepath=off diff --name-status -M ${cp.baseSha}`, { cwd: root });
+  if (!diff.success) { return sources; }
+  for (const line of toLines(diff.stdout)) {
+    const [rawStatus, oldPath, newPath] = line.split('\t');
+    if (rawStatus.startsWith('R') && oldPath && newPath) {
+      sources.set(normalizePath(newPath), normalizePath(oldPath));
+    }
+  }
+  return sources;
+}
+
+/**
+ * Reverts only the files in `changedFiles` (`"<STATUS> <path>"`) to their state at the checkpoint.
+ * Never resets HEAD or touches other files; commits made by the AI are left in place (`headMoved`).
+ */
+export async function restoreCheckpoint(
+  cp: GitCheckpoint,
+  changedFiles: string[],
+  root: string,
+  exec: ExecFn = execCommand,
+): Promise<RestoreResult> {
+  const result: RestoreResult = { restored: [], deleted: [], skipped: [], headMoved: false };
+
+  const head = await exec('git rev-parse HEAD', { cwd: root });
+  result.headMoved = head.success && head.stdout.trim() !== cp.headSha;
+
+  const renameSources = changedFiles.some((entry) => entry.startsWith('R'))
+    ? await findRenameSources(cp, root, exec)
+    : new Map<string, string>();
+
+  const restore = async (file: string): Promise<boolean> => {
+    const error = await restoreFromBase(cp, file, root, exec);
+    if (error) { result.skipped.push({ path: file, reason: error }); return false; }
+    result.restored.push(file);
+    return true;
+  };
+
+  for (const entry of changedFiles) {
+    const status = entry.charAt(0);
+    const file = normalizePath(entry.slice(1).trim());
+    if (!file) { continue; }
+
+    try {
+      if (status === 'M' || status === 'D') {
+        await restore(file);
+      } else if (status === 'A') {
+        if (await existedAtBase(cp, file, root, exec)) {
+          await restore(file);
+        } else {
+          await deleteFromDisk(file, root, exec);
+          result.deleted.push(file);
+        }
+      } else if (status === 'R') {
+        const oldPath = renameSources.get(file);
+        if (!oldPath) {
+          result.skipped.push({ path: file, reason: 'could not determine the original path of the rename' });
+        } else if (await restore(oldPath)) {
+          await deleteFromDisk(file, root, exec);
+          result.deleted.push(file);
+        }
+      } else {
+        result.skipped.push({ path: file, reason: `unsupported status "${status}"` });
+      }
+    } catch (err) {
+      result.skipped.push({ path: file, reason: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  return result;
 }

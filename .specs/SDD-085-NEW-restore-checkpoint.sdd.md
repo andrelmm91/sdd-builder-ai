@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-085-NEW
 title: Add restoreCheckpoint to revert only the files an execution changed
-status: ready
+status: done
 priority: high
 complexity: medium
 tags:
@@ -21,6 +21,8 @@ depends_on:
 agent_skills: backend
 created: 2026-10-15
 ---
+
+
 
 ## Context
 Vibe coders rarely review diffs line by line. They need a safe, one-click way to throw away what the AI did on a spec and return to the exact state before the run. With the `GitCheckpoint` from SDD-083, the files an execution touched can be restored precisely while the builder's own unrelated work is left alone.
@@ -43,9 +45,9 @@ This spec adds only the restore logic. The command and UI come in SDD-086 and SD
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/execution/gitCheckpoint.test.ts` (mocked `ExecFn` and file system) covers `M`, `D`, `A` (new file deleted), `A` (file existed at base, restored), `R`, a per-file failure recorded in `skipped`, and `headMoved` detection.
-- [ ] A test asserts that no command containing `reset --hard`, `clean` or `stash pop` is ever issued.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] `src/execution/gitCheckpoint.test.ts` (mocked `ExecFn` and file system) covers `M`, `D`, `A` (new file deleted), `A` (file existed at base, restored), `R`, a per-file failure recorded in `skipped`, and `headMoved` detection.
+- [x] A test asserts that no command containing `reset --hard`, `clean` or `stash pop` is ever issued.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
 - [ ] In a real repo, after an AI run that modified one file and created another, restore returns the workspace to its pre-run state, and an unrelated pre-existing edit is preserved.

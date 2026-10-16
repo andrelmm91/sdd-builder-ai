@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createCheckpoint, getChangesSince } from './gitCheckpoint';
+import { createCheckpoint, getChangesSince, restoreCheckpoint } from './gitCheckpoint';
 import type { ExecFn } from './gitCheckpoint';
 import type { GitCheckpoint } from './types';
+
+const rmMock = vi.hoisted(() => vi.fn(async () => undefined));
+vi.mock('fs/promises', () => ({ rm: rmMock }));
 
 const ok = (stdout: string) => ({ stdout, stderr: '', exitCode: 0, success: true });
 const fail = () => ({ stdout: '', stderr: 'fatal: not a git repository', exitCode: 128, success: false });
@@ -82,5 +85,73 @@ describe('getChangesSince', () => {
   it('normalizes Windows backslashes and removes duplicates', async () => {
     const exec = mockExec({ 'diff': 'M\tsrc\\a.ts\n', 'ls-files': 'src\\a.ts\nsrc\\dir\\n.ts\n' });
     expect(await getChangesSince(cp, '/repo', exec)).toEqual(['M src/a.ts', 'A src/dir/n.ts']);
+  });
+});
+
+describe('restoreCheckpoint', () => {
+  const cmdsOf = (exec: ReturnType<typeof vi.fn>) => exec.mock.calls.map((c) => c[0] as string);
+
+  function restoreExec(opts: { head?: string; existing?: string[]; failOn?: string; diff?: string } = {}) {
+    return vi.fn(async (cmd: string) => {
+      if (cmd.startsWith('git rev-parse HEAD')) { return ok(`${opts.head ?? 'head1'}\n`); }
+      if (cmd.includes('diff --name-status')) { return ok(opts.diff ?? ''); }
+      if (cmd.includes('cat-file -e')) {
+        return (opts.existing ?? []).some((f) => cmd.includes(f)) ? ok('') : fail();
+      }
+      if (opts.failOn && cmd.includes(opts.failOn) && cmd.includes('checkout')) { return fail(); }
+      return ok('');
+    }) as unknown as ExecFn & ReturnType<typeof vi.fn>;
+  }
+
+  beforeEach(() => { rmMock.mockClear(); });
+
+  it('restores M and D files from baseSha and unstages them', async () => {
+    const exec = restoreExec();
+    const res = await restoreCheckpoint(cp, ['M src/a.ts', 'D src/b.ts'], '/repo', exec);
+    expect(res.restored).toEqual(['src/a.ts', 'src/b.ts']);
+    const cmds = cmdsOf(exec);
+    expect(cmds.some((c) => c.includes('checkout base1 --') && c.includes('src/a.ts'))).toBe(true);
+    expect(cmds.some((c) => c.includes('reset -q --') && c.includes('src/b.ts'))).toBe(true);
+    expect(rmMock).not.toHaveBeenCalled();
+  });
+
+  it('deletes an A file that did not exist at base', async () => {
+    const res = await restoreCheckpoint(cp, ['A new.ts'], '/repo', restoreExec());
+    expect(res.deleted).toEqual(['new.ts']);
+    expect(rmMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores an A file that existed at base', async () => {
+    const res = await restoreCheckpoint(cp, ['A kept.ts'], '/repo', restoreExec({ existing: ['kept.ts'] }));
+    expect(res.restored).toEqual(['kept.ts']);
+    expect(res.deleted).toEqual([]);
+    expect(rmMock).not.toHaveBeenCalled();
+  });
+
+  it('restores the old path and deletes the new path for R', async () => {
+    const res = await restoreCheckpoint(cp, ['R new.ts'], '/repo', restoreExec({ diff: 'R100\told.ts\tnew.ts\n' }));
+    expect(res.restored).toEqual(['old.ts']);
+    expect(res.deleted).toEqual(['new.ts']);
+    expect(rmMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('records a per-file failure in skipped and continues', async () => {
+    const res = await restoreCheckpoint(cp, ['M bad.ts', 'M good.ts'], '/repo', restoreExec({ failOn: 'bad.ts' }));
+    expect(res.skipped).toHaveLength(1);
+    expect(res.skipped[0].path).toBe('bad.ts');
+    expect(res.restored).toEqual(['good.ts']);
+  });
+
+  it('detects headMoved', async () => {
+    expect((await restoreCheckpoint(cp, [], '/repo', restoreExec({ head: 'head2' }))).headMoved).toBe(true);
+    expect((await restoreCheckpoint(cp, [], '/repo', restoreExec())).headMoved).toBe(false);
+  });
+
+  it('never issues destructive git commands', async () => {
+    const exec = restoreExec({ diff: 'R100\told.ts\tnew.ts\n', head: 'head2' });
+    await restoreCheckpoint(cp, ['M a.ts', 'D b.ts', 'A c.ts', 'R new.ts'], '/repo', exec);
+    for (const c of cmdsOf(exec)) {
+      expect(c).not.toMatch(/reset --hard|clean|stash pop/);
+    }
   });
 });

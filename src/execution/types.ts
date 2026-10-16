@@ -63,3 +63,13 @@ export interface GitCheckpoint {
   untrackedBefore: string[];
   createdAt: string;
 }
+
+export interface RestoreResult {
+  /** Paths restored to their content at `baseSha`. */
+  restored: string[];
+  /** Paths removed because they did not exist at `baseSha`. */
+  deleted: string[];
+  skipped: { path: string; reason: string }[];
+  /** True when HEAD moved since the checkpoint (the AI committed); commits are not reset. */
+  headMoved: boolean;
+}
