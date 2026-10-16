@@ -65,6 +65,11 @@ vi.mock('../execution/resultCapture', () => ({
     logPath: '.sdd/executions/SDD-030/exec-001.log',
     changedFiles: [],
   }),
+  getLatestExecution: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../execution/gitCheckpoint', () => ({
+  createCheckpoint: vi.fn(),
 }));
 
 vi.mock('../execution/postValidation', () => ({
@@ -78,9 +83,12 @@ vi.mock('../utils/fileSystem', () => ({
 }));
 
 import * as vscode from 'vscode';
-import { createExecuteSpecCommand } from './executeSpec';
+import { createExecuteSpecCommand, _resetNoGitNoticeForTesting } from './executeSpec';
 import { isCommandAvailable } from '../utils/shell';
 import { readAIConfig } from '../config/aiConfig';
+import { captureResults, getLatestExecution } from '../execution/resultCapture';
+import { createCheckpoint } from '../execution/gitCheckpoint';
+import type { GitCheckpoint } from '../execution/types';
 
 function makeSpecContent(status: string): string {
   return `---
@@ -241,6 +249,76 @@ describe('createExecuteSpecCommand', () => {
     await command(undefined);
 
     expect(vscode.window.withProgress).toHaveBeenCalled();
+  });
+
+  describe('checkpoint handling', () => {
+    const checkpoint: GitCheckpoint = {
+      headSha: 'head1', baseSha: 'base1', untrackedBefore: [], createdAt: '2026-10-15T00:00:00.000Z',
+    };
+    const item = { kind: 'spec' as const, filePath: '/ws/.specs/SDD-030.sdd.md' };
+
+    beforeEach(() => {
+      vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(
+        Buffer.from(makeSpecContent('ready')) as unknown as Uint8Array
+      );
+      // Run the withProgress task with a non-cancelled token
+      vi.mocked(vscode.window.withProgress).mockImplementation(
+        (async (_o: unknown, task: (p: unknown, t: unknown) => Promise<unknown>) =>
+          task({ report: vi.fn() }, { isCancellationRequested: false, onCancellationRequested: vi.fn() })) as never
+      );
+      mockRunnerExecute.mockResolvedValue({ success: true, output: 'ok', duration: 1 });
+      vi.mocked(createCheckpoint).mockResolvedValue(checkpoint);
+      vi.mocked(getLatestExecution).mockResolvedValue(undefined);
+    });
+
+    it('creates the checkpoint before status moves to in_progress and passes it to captureResults', async () => {
+      await command(item as never);
+
+      expect(createCheckpoint).toHaveBeenCalledWith('/workspace');
+      const checkpointOrder = vi.mocked(createCheckpoint).mock.invocationCallOrder[0];
+      const firstWriteOrder = vi.mocked(vscode.workspace.fs.writeFile).mock.invocationCallOrder[0];
+      expect(checkpointOrder).toBeLessThan(firstWriteOrder);
+      expect(vi.mocked(vscode.workspace.fs.writeFile).mock.calls[0][1].toString()).toContain('status: in_progress');
+      expect(captureResults).toHaveBeenCalledWith('SDD-030', expect.anything(), checkpoint);
+    });
+
+    it('reuses the previous checkpoint when reuseCheckpointOnNextRun is set', async () => {
+      const previous: GitCheckpoint = { ...checkpoint, baseSha: 'old' };
+      vi.mocked(getLatestExecution).mockResolvedValue({
+        specId: 'SDD-030', executionNumber: 1, timestamp: '', status: 'completed', duration: 1,
+        testsPassed: null, prUrl: null, checkpoint: previous, reuseCheckpointOnNextRun: true,
+      });
+
+      await command(item as never);
+
+      expect(createCheckpoint).not.toHaveBeenCalled();
+      expect(captureResults).toHaveBeenCalledWith('SDD-030', expect.anything(), previous);
+    });
+
+    it('creates a new checkpoint when the latest record has no reuse flag', async () => {
+      vi.mocked(getLatestExecution).mockResolvedValue({
+        specId: 'SDD-030', executionNumber: 1, timestamp: '', status: 'completed', duration: 1,
+        testsPassed: null, prUrl: null, checkpoint: { ...checkpoint, baseSha: 'old' },
+      });
+
+      await command(item as never);
+
+      expect(createCheckpoint).toHaveBeenCalledTimes(1);
+      expect(captureResults).toHaveBeenCalledWith('SDD-030', expect.anything(), checkpoint);
+    });
+
+    it('continues and shows a one-time notice when not in a git repository', async () => {
+      vi.mocked(createCheckpoint).mockResolvedValue(undefined);
+      _resetNoGitNoticeForTesting();
+
+      await command(item as never);
+      await command(item as never);
+
+      expect(captureResults).toHaveBeenCalledWith('SDD-030', expect.anything(), undefined);
+      const notices = vi.mocked(vscode.window.showInformationMessage).mock.calls
+        .filter(([m]) => String(m).includes('outside a git repository'));
+      expect(notices).toHaveLength(1);
+    });
   });
 
   it('shows error on parse failure', async () => {

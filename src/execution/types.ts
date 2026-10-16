@@ -7,6 +7,10 @@ export interface ExecutionRecord {
   testsPassed: boolean | null;
   prUrl: string | null;
   changedFiles?: string[];
+  /** Git state before this execution; lets Discard restore it after a reload. */
+  checkpoint?: GitCheckpoint;
+  /** Set by Request Changes: the next run reuses `checkpoint` instead of creating a new one. */
+  reuseCheckpointOnNextRun?: boolean;
 }
 
 export interface ExecutionResult {

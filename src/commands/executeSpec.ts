@@ -6,16 +6,44 @@ import { getWorkspaceRoot, writeWorkspaceFile, readWorkspaceFile } from '../util
 import { isCommandAvailable } from '../utils/shell';
 import { getBudgetForComplexity } from '../execution/budgetEnforcer';
 import { CliRunner } from '../execution/cliRunner';
-import { captureResults } from '../execution/resultCapture';
+import { captureResults, getLatestExecution } from '../execution/resultCapture';
+import { createCheckpoint } from '../execution/gitCheckpoint';
 import { runPostValidation } from '../execution/postValidation';
 import { getClaudeCliBinary, getProviderBinary, getCliNotFoundMessage, getTestCommand, getAutoValidate } from '../config/extensionConfig';
 import { readAIConfig } from '../config/aiConfig';
 import { EXECUTIONS_FOLDER } from '../utils/constants';
 import type { SpecTreeItem } from '../views/sidebar/specTreeItem';
-import type { ExecutionConfig } from '../execution/types';
+import type { ExecutionConfig, GitCheckpoint } from '../execution/types';
 
 // Singleton runner — only one spec executes at a time.
 const _runner = new CliRunner();
+
+let _noGitNoticeShown = false;
+
+/** Test helper: re-arms the one-time "no git repository" notice. */
+export function _resetNoGitNoticeForTesting(): void {
+  _noGitNoticeShown = false;
+}
+
+/**
+ * Returns the checkpoint to track this run against: the previous record's checkpoint when
+ * Request Changes asked for reuse, otherwise a fresh one. Undefined outside a git repository.
+ */
+async function resolveCheckpoint(specId: string, root: string | undefined): Promise<GitCheckpoint | undefined> {
+  const latest = await getLatestExecution(specId).catch(() => undefined);
+  if (latest?.reuseCheckpointOnNextRun && latest.checkpoint) {
+    return latest.checkpoint;
+  }
+
+  const checkpoint = root ? await createCheckpoint(root) : undefined;
+  if (!checkpoint && !_noGitNoticeShown) {
+    _noGitNoticeShown = true;
+    void vscode.window.showInformationMessage(
+      'Change tracking and discard are unavailable outside a git repository.'
+    );
+  }
+  return checkpoint;
+}
 
 /**
  * Core execution logic for a single spec. Called by both the direct Execute command
@@ -95,6 +123,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
   // withProgress cannot host custom buttons, so we use showInformationMessage
   // as the sole control point for the duration of the AI session.
   if (isInteractiveMode(aiConfig)) {
+    const checkpoint = await resolveCheckpoint(specId, root);
     try {
       await updateSpecStatus(uri, content, 'in_progress');
       doRefresh();
@@ -137,7 +166,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
           ...executionResult,
           success: false,
           error: executionResult.error ?? 'Cancelled by user',
-        });
+        }, checkpoint);
         await patchExecutionRecord(capture, { status: 'aborted' });
         await updateSpecStatus(uri, content, 'ready');
         doRefresh();
@@ -147,7 +176,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     }
 
     try {
-      const capture = await captureResults(specId, executionResult);
+      const capture = await captureResults(specId, executionResult, checkpoint);
       if (!executionResult.success) {
         throw new Error(executionResult.error ?? 'CLI execution failed');
       }
@@ -162,7 +191,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       try {
-        await captureResults(specId, { ...executionResult, success: false, error: message });
+        await captureResults(specId, { ...executionResult, success: false, error: message }, checkpoint);
       } catch { /* best-effort */ }
       try {
         await updateSpecStatus(uri, content, 'ready');
@@ -179,6 +208,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
 
   // ── Non-interactive execution path (progress notification) ────────────────
   let success = false;
+  const checkpoint = await resolveCheckpoint(specId, root);
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
@@ -212,7 +242,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
             ...executionResult,
             success: false,
             error: executionResult.error ?? 'Cancelled by user',
-          });
+          }, checkpoint);
           await patchExecutionRecord(capture, { status: 'aborted' });
 
           await updateSpecStatus(uri, content, 'ready');
@@ -223,7 +253,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
 
         // Capture results
         progress.report({ message: 'Capturing results…', increment: 20 });
-        const capture = await captureResults(specId, executionResult);
+        const capture = await captureResults(specId, executionResult, checkpoint);
 
         if (!executionResult.success) {
           throw new Error(executionResult.error ?? 'CLI execution failed');
@@ -256,7 +286,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
               ...executionResult,
               success: false,
               error: message,
-            });
+            }, checkpoint);
           } catch {
             // best-effort capture
           }

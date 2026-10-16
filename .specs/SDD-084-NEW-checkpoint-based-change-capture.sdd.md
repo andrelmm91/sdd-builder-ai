@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-084-NEW
 title: Use the git checkpoint to capture accurate changed files per execution
-status: ready
+status: review
 priority: high
 complexity: medium
 tags:
@@ -24,6 +24,8 @@ agent_skills: backend
 created: 2026-10-15
 ---
 
+
+
 ## Context
 SDD-083 introduced `createCheckpoint()` and `getChangesSince()` in `src/execution/gitCheckpoint.ts`. This spec uses them so every execution record lists exactly the files the AI changed, including new untracked files and changes it committed, and excluding the builder's pre-existing edits.
 
@@ -44,10 +46,10 @@ The checkpoint is also persisted in the execution record so the "Discard changes
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/execution/resultCapture.test.ts` covers: checkpoint provided (uses `getChangesSince`), checkpoint absent (fallback), and the checkpoint persisted in the written JSON.
-- [ ] `src/commands/executeSpec.test.ts` asserts `createCheckpoint` is called before the status changes to `in_progress`, and that its result is passed to `captureResults`.
-- [ ] `src/commands/executeSpec.test.ts` asserts that when the latest record has `reuseCheckpointOnNextRun: true` and a checkpoint, `createCheckpoint` is not called and that checkpoint is passed to `captureResults`. Without the flag, a new checkpoint is created.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] `src/execution/resultCapture.test.ts` covers: checkpoint provided (uses `getChangesSince`), checkpoint absent (fallback), and the checkpoint persisted in the written JSON.
+- [x] `src/commands/executeSpec.test.ts` asserts `createCheckpoint` is called before the status changes to `in_progress`, and that its result is passed to `captureResults`.
+- [x] `src/commands/executeSpec.test.ts` asserts that when the latest record has `reuseCheckpointOnNextRun: true` and a checkpoint, `createCheckpoint` is not called and that checkpoint is passed to `captureResults`. Without the flag, a new checkpoint is created.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
 - [ ] With an unrelated uncommitted edit in the workspace, execute a spec that creates a new file: the review card lists only the new file as `A`.
