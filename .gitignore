@@ -29,7 +29,8 @@ Thumbs.db
 *.swo
 
 # development AI
-.sdd/
-.specs/
 .claude/
 .copilot/
+.sdd/*
+!.sdd/conventions.md
+!.sdd/skills
