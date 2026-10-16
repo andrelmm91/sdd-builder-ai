@@ -5,7 +5,7 @@ status: ready
 priority: medium
 complexity: low
 tags:
-  - feature
+  - feature:GitCheckpoint
   - phase-2
   - ui
   - rel-v2.0
