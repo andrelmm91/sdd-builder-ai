@@ -140,7 +140,7 @@ Before every execution, SDD takes a git checkpoint of your workspace, so you can
 - **Accurate change list** — review cards show exactly the files the AI changed, including new and committed files, and never your own edits
 - **Reject = undo** — after one confirmation, the AI's files go back to how they were before the run. Your unrelated work is left alone
 - **Covers every attempt** — after one or more Request Changes rounds, Reject still undoes all of them
-- **Discard anytime** — click **Discard changes** on a review card or run `SDD: Discard AI Changes`
+- **One click from the board** — the **Reject** button on review cards discards the changes and moves the card back to Draft. You can also run `SDD: Discard AI Changes` to only undo the files
 - If the AI made commits, the files are restored and you are told the commits remain
 
 Requires the workspace to be a git repository.

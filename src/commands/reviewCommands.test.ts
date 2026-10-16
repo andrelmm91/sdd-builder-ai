@@ -7,6 +7,7 @@ vi.mock('vscode', () => ({
     showErrorMessage: vi.fn(),
     showWarningMessage: vi.fn(),
     showInformationMessage: vi.fn(),
+    showQuickPick: vi.fn(),
   },
   Uri: { file: (p: string) => ({ fsPath: p }) },
   workspace: { fs: { readFile: vi.fn(), writeFile: vi.fn() } },
@@ -15,6 +16,8 @@ vi.mock('vscode', () => ({
 vi.mock('../utils/fileSystem', () => ({
   getWorkspaceRoot: vi.fn(),
   writeWorkspaceFile: vi.fn(),
+  listFiles: vi.fn(),
+  readWorkspaceFile: vi.fn(),
 }));
 
 vi.mock('../execution/resultCapture', () => ({ getLatestExecution: vi.fn() }));
@@ -23,8 +26,8 @@ vi.mock('../review/reviewManager', () => ({ ReviewManager: class {} }));
 vi.mock('../review/diffProvider', () => ({ DiffProvider: class {} }));
 
 import * as vscode from 'vscode';
-import { discardExecutionChanges, applyRequestChanges } from './reviewCommands';
-import { getWorkspaceRoot, writeWorkspaceFile } from '../utils/fileSystem';
+import { discardExecutionChanges, applyRequestChanges, resolveSpec } from './reviewCommands';
+import { getWorkspaceRoot, writeWorkspaceFile, listFiles, readWorkspaceFile } from '../utils/fileSystem';
 import { getLatestExecution } from '../execution/resultCapture';
 import { restoreCheckpoint } from '../execution/gitCheckpoint';
 
@@ -116,6 +119,45 @@ describe('applyRequestChanges', () => {
     const call = vi.mocked(writeWorkspaceFile).mock.calls[0];
     expect(call[0]).toBe('.sdd/executions/SDD-1/exec-003.json');
     expect(JSON.parse(call[1])).toMatchObject({ checkpoint, reuseCheckpointOnNextRun: true });
+  });
+});
+
+describe('resolveSpec', () => {
+  const specs: Record<string, string> = {
+    '.specs/a.sdd.md': '---\nspec_id: SDD-1\ntitle: One\nstatus: review\n---\n',
+    '.specs/b.sdd.md': '---\nspec_id: SDD-2\ntitle: Two\nstatus: ready\n---\n',
+  };
+
+  beforeEach(() => {
+    vi.mocked(listFiles).mockResolvedValue(Object.keys(specs));
+    vi.mocked(readWorkspaceFile).mockImplementation(async (f) => specs[f]);
+  });
+
+  it('resolves a bare spec ID (Kanban board) to its file', async () => {
+    const spec = await resolveSpec('SDD-2');
+    expect(spec).toMatchObject({ specId: 'SDD-2', filePath: path.join('/ws', '.specs/b.sdd.md') });
+  });
+
+  it('returns undefined for an unknown spec ID', async () => {
+    expect(await resolveSpec('SDD-404')).toBeUndefined();
+  });
+
+  it('resolves a spec file path via its frontmatter', async () => {
+    vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(Buffer.from(specs['.specs/a.sdd.md']));
+    expect(await resolveSpec('/ws/.specs/a.sdd.md')).toEqual({ specId: 'SDD-1', filePath: '/ws/.specs/a.sdd.md' });
+  });
+
+  it('asks the user to pick among review specs when no argument is given', async () => {
+    vi.mocked(vscode.window.showQuickPick).mockImplementation(async (items) => (items as unknown[])[0] as never);
+    const spec = await resolveSpec(undefined);
+    const offered = vi.mocked(vscode.window.showQuickPick).mock.calls[0][0] as { label: string }[];
+    expect(offered.map((i) => i.label)).toEqual(['SDD-1']);
+    expect(spec?.specId).toBe('SDD-1');
+  });
+
+  it('returns undefined when the pick is cancelled', async () => {
+    vi.mocked(vscode.window.showQuickPick).mockResolvedValue(undefined);
+    expect(await resolveSpec(undefined)).toBeUndefined();
   });
 });
 

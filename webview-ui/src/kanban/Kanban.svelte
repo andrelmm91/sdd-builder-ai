@@ -165,8 +165,8 @@
     postMessage('clearBulk', {});
   }
 
-  function discardChanges(specId: string) {
-    postMessage('discardChanges', { specId });
+  function rejectSpec(specId: string) {
+    postMessage('rejectSpec', { specId });
   }
 
   function openModal(card: SpecCard) {
@@ -378,15 +378,14 @@
                   <button class="btn-action btn-changes" onclick={() => openModal(card)}>
                     Request Changes
                   </button>
-                  {#if card.changedFiles && card.changedFiles.length > 0}
-                    <button
-                      class="btn-action btn-discard"
-                      draggable={false}
-                      onclick={(e) => { e.stopPropagation(); discardChanges(card.spec_id); }}
-                    >
-                      Discard changes
-                    </button>
-                  {/if}
+                  <button
+                    class="btn-action btn-discard"
+                    draggable={false}
+                    title="Discard the AI's changes and move the spec back to Draft"
+                    onclick={(e) => { e.stopPropagation(); rejectSpec(card.spec_id); }}
+                  >
+                    Reject
+                  </button>
                 {/if}
               </div>
 

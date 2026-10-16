@@ -120,10 +120,10 @@ export class KanbanPanel extends BaseWebviewPanel {
         }
         break;
       }
-      case 'discardChanges': {
+      case 'rejectSpec': {
         const { specId } = message.data as { specId: string };
         try {
-          await vscode.commands.executeCommand('sdd.discardChanges', specId);
+          await vscode.commands.executeCommand('sdd.rejectSpec', specId);
         } finally {
           await this.sendSpecs();
         }
