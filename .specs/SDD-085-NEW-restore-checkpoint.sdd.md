@@ -1,10 +1,14 @@
 ---
 spec_id: SDD-085-NEW
 title: Add restoreCheckpoint to revert only the files an execution changed
-status: draft
+status: ready
 priority: high
 complexity: medium
-tags: [feature, phase-2, backend, rel-v2.0]
+tags:
+  - feature
+  - phase-2
+  - backend
+  - rel-v2.0
 relevant_files:
   - src/execution/gitCheckpoint.ts
   - src/execution/types.ts
@@ -12,7 +16,8 @@ must_not_touch:
   - src/extension.ts
   - src/commands/executeSpec.ts
   - src/commands/reviewCommands.ts
-depends_on: [SDD-083-NEW]
+depends_on:
+  - SDD-083-NEW
 agent_skills: backend
 created: 2026-10-15
 ---

@@ -25,7 +25,7 @@ SDD-078 to SDD-109 change how execution, review and configuration behave. Parts 
 ### Functional
 - `README.md`:
   - "Scoped Execution": describe glob support in `must_not_touch` and `relevant_files`, post-run scope analysis, violation badges and the approve warning.
-  - Add a "Safety net" section covering git checkpoints, the Discard AI Changes command and button, and recovery of stale in-progress specs.
+  - Add a "Safety net" section covering git checkpoints, the Discard AI Changes command and button, and recovery of stale in-progress specs. Explain that Reject discards the AI's changes, while Request Changes keeps them so the next run builds on them, and a later Reject still discards every attempt.
   - Add a "Quality gates" section covering the `gates` config, the spec `verify` field, results on review cards, and `autoRetryMax`.
   - "Bring Your Own AI": document `customProviders` with one example, user-defined model lists edited from the "Model Lists" section of AI Configuration and stored in `ai.models` (which replace the built-in suggestions per provider), and per-spec `provider`/`model` overrides.
   - Mention the `SDD: Run Doctor` command in getting started.

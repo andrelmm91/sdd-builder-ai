@@ -1,10 +1,14 @@
 ---
 spec_id: SDD-083-NEW
 title: Create git checkpoint service to snapshot the workspace before execution
-status: draft
+status: ready
 priority: high
 complexity: medium
-tags: [feature, phase-2, backend, rel-v2.0]
+tags:
+  - feature
+  - phase-2
+  - backend
+  - rel-v2.0
 relevant_files:
   - src/execution/gitCheckpoint.ts
   - src/execution/types.ts
@@ -13,7 +17,8 @@ must_not_touch:
   - src/extension.ts
   - src/commands/executeSpec.ts
   - src/execution/resultCapture.ts
-depends_on: [SDD-080-BUGFIX]
+depends_on:
+  - SDD-080-BUGFIX
 agent_skills: backend
 created: 2026-10-15
 ---

@@ -1,10 +1,14 @@
 ---
 spec_id: SDD-087-NEW
 title: Add Discard Changes button to review cards on the Kanban board
-status: draft
+status: ready
 priority: medium
 complexity: low
-tags: [feature, phase-2, ui, rel-v2.0]
+tags:
+  - feature
+  - phase-2
+  - ui
+  - rel-v2.0
 relevant_files:
   - src/views/webviews/kanban/KanbanPanel.ts
   - webview-ui/src/kanban/Kanban.svelte
@@ -12,7 +16,8 @@ must_not_touch:
   - src/extension.ts
   - src/commands/reviewCommands.ts
   - webview-ui/src/lib/vscode.ts
-depends_on: [SDD-086-NEW]
+depends_on:
+  - SDD-086-NEW
 agent_skills: frontend
 created: 2026-10-15
 ---
