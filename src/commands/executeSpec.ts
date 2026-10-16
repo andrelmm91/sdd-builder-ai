@@ -8,7 +8,7 @@ import { getBudgetForComplexity } from '../execution/budgetEnforcer';
 import { CliRunner } from '../execution/cliRunner';
 import { captureResults } from '../execution/resultCapture';
 import { runPostValidation } from '../execution/postValidation';
-import { getClaudeCliBinary, getTestCommand, getAutoValidate } from '../config/extensionConfig';
+import { getClaudeCliBinary, getProviderBinary, getCliNotFoundMessage, getTestCommand, getAutoValidate } from '../config/extensionConfig';
 import { readAIConfig } from '../config/aiConfig';
 import { EXECUTIONS_FOLDER } from '../utils/constants';
 import type { SpecTreeItem } from '../views/sidebar/specTreeItem';
@@ -61,21 +61,20 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     return false;
   }
 
-  // --- Pre-flight: Claude CLI available ---
+  // --- Read AI config ---
+  const aiConfig = await readAIConfig();
+
+  // --- Pre-flight: provider CLI available ---
   const claudeCliBinary = getClaudeCliBinary();
-  const cliAvailable = await isCommandAvailable(claudeCliBinary);
+  const providerBinary = getProviderBinary(aiConfig, claudeCliBinary);
+  const cliAvailable = await isCommandAvailable(providerBinary);
   if (!cliAvailable) {
-    vscode.window.showErrorMessage(
-      `Claude CLI not found: "${claudeCliBinary}". Install it or update sdd.claudeCliBinary in settings.`
-    );
+    vscode.window.showErrorMessage(getCliNotFoundMessage(aiConfig, providerBinary));
     return false;
   }
 
   // --- Derive budget from complexity ---
   const budget = getBudgetForComplexity(spec.frontmatter.complexity);
-
-  // --- Read AI config ---
-  const aiConfig = await readAIConfig();
 
   // --- Build execution config ---
   const testCommand = await getTestCommand();

@@ -161,6 +161,18 @@ describe('CliRunner.execute', () => {
     expect(result.error).toMatch(/no-such-cli/);
   });
 
+  it('checks gh (never claude) when provider is copilot', async () => {
+    mockIsCommandAvailable.mockResolvedValue(false);
+    mockIsCommandAvailable.mockClear();
+    const runner = new CliRunner();
+
+    const result = await runner.execute(makeSpec(), makeConfig(), { provider: 'copilot' });
+
+    expect(mockIsCommandAvailable).toHaveBeenCalledWith('gh');
+    expect(mockIsCommandAvailable).not.toHaveBeenCalledWith('claude');
+    expect(result.error).toMatch(/Copilot CLI not found: "gh"/);
+  });
+
   it('returns error result when no workspace is open', async () => {
     mockGetWorkspaceRoot.mockReturnValue(undefined);
     const runner = new CliRunner();

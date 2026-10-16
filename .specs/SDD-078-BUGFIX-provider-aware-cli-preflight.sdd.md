@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-078-BUGFIX
 title: Fix CLI pre-flight check to use the configured provider binary
-status: ready
+status: review
 priority: high
 complexity: low
 tags:
@@ -34,6 +34,8 @@ Spec execution always verifies that the Claude CLI binary (`sdd.claudeCliBinary`
 
 **Reproduce:** Set `ai.provider` to `copilot` in `.sdd/config.json` on a machine without `claude` on PATH, then execute a ready spec.
 
+Feedback for re-execution: When I run for the first time in the folder, Claude doesnt trust the folder and stop the execution due to permission. For this case, the SDD should be moved to ready back and not review
+
 ## Requirements
 ### Functional
 - Add `getProviderBinary(aiConfig: Partial<AIConfig> | undefined): string` to `src/config/extensionConfig.ts`. It must return `getClaudeCliBinary()` for provider `claude` (or an undefined provider) and `gh` for provider `copilot`.
@@ -47,12 +49,12 @@ Spec execution always verifies that the Claude CLI binary (`sdd.claudeCliBinary`
 
 ## Acceptance Criteria
 ### Automated
-- [ ] Unit tests for `getProviderBinary` cover `claude`, `copilot` and an undefined provider.
-- [ ] A test in `src/commands/executeSpec.test.ts` or `src/execution/cliRunner.test.ts` asserts that with provider `copilot`, `isCommandAvailable` is called with `gh` and never with `claude`.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] Unit tests for `getProviderBinary` cover `claude`, `copilot` and an undefined provider.
+- [x] A test in `src/commands/executeSpec.test.ts` or `src/execution/cliRunner.test.ts` asserts that with provider `copilot`, `isCommandAvailable` is called with `gh` and never with `claude`.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
-- [ ] With provider `copilot` and no Claude installed, executing a ready spec launches `gh copilot` instead of showing a Claude error.
+- [x] With provider `copilot` and no Claude installed, executing a ready spec launches `gh copilot` instead of showing a Claude error.
 
 ## Constraints
 - Do not change how the CLI command itself is built (`_buildCommand`).

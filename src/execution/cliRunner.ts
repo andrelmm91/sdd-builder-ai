@@ -8,6 +8,7 @@ import type { SpecDocument } from '../specs/types';
 import type { ExecutionConfig, ExecutionResult, ExecutionRunner } from './types';
 import type { AIConfig } from '../config/aiConfigTypes';
 import { DEFAULT_PRE_PROMPT } from '../config/aiConfigTypes';
+import { getProviderBinary, getCliNotFoundMessage } from '../config/extensionConfig';
 import { getSkillsPath } from './skillsLoader';
 import { SPECS_FOLDER } from '../utils/constants';
 
@@ -70,13 +71,11 @@ export class CliRunner implements ExecutionRunner {
     let scriptPath: string | null = null;
 
     try {
-      // Pre-flight: ensure claude CLI is available
-      const cliAvailable = await isCommandAvailable(config.claudeCliBinary);
+      // Pre-flight: ensure the provider's CLI is available
+      const providerBinary = getProviderBinary(aiConfig, config.claudeCliBinary);
+      const cliAvailable = await isCommandAvailable(providerBinary);
       if (!cliAvailable) {
-        return this._fail(
-          startTime,
-          `Claude CLI not found: "${config.claudeCliBinary}". Install it or update sdd.claudeCliBinary in settings.`,
-        );
+        return this._fail(startTime, getCliNotFoundMessage(aiConfig, providerBinary));
       }
 
       const root = getWorkspaceRoot();
@@ -140,7 +139,16 @@ export class CliRunner implements ExecutionRunner {
       if (interactive) {
         // Interactive modes: the caller is responsible for showing any
         // notification and calling completeInteractive() when done.
-        await this._waitForTerminalClose(config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+        const closeCode = await this._waitForTerminalClose(config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+        // A non-zero exit (e.g. Claude stopped on the untrusted-folder prompt) must not reach review.
+        if (closeCode && !this._aborted) {
+          return {
+            success: false,
+            output: '',
+            duration: Date.now() - startTime,
+            error: `Process exited with code ${closeCode}`,
+          };
+        }
         return { success: true, output: '', duration: Date.now() - startTime };
       }
 
@@ -248,7 +256,7 @@ export class CliRunner implements ExecutionRunner {
    * Waits for the terminal to be closed by the user (interactive modes).
    * Resolves on terminal close or abort, rejects on timeout.
    */
-  private _waitForTerminalClose(timeoutMs: number): Promise<void> {
+  private _waitForTerminalClose(timeoutMs: number): Promise<number | undefined> {
     return new Promise((resolve, reject) => {
       let settled = false;
 
@@ -267,7 +275,7 @@ export class CliRunner implements ExecutionRunner {
 
       const abortPoll = setInterval(() => {
         if (this._aborted) {
-          settle(resolve);
+          settle(() => resolve(undefined));
         }
       }, SENTINEL_POLL_MS);
 
@@ -280,7 +288,7 @@ export class CliRunner implements ExecutionRunner {
 
       const terminalCloseDisposable = vscode.window.onDidCloseTerminal((closed) => {
         if (closed === this._terminal) {
-          settle(resolve);
+          settle(() => resolve(closed.exitStatus?.code));
         }
       });
     });

@@ -39,6 +39,10 @@ vi.mock('../utils/shell', () => ({
 
 vi.mock('../config/extensionConfig', () => ({
   getClaudeCliBinary: vi.fn().mockReturnValue('claude'),
+  getProviderBinary: (cfg: { provider?: string } | undefined, claude = 'claude') =>
+    cfg?.provider === 'copilot' ? 'gh' : claude,
+  getCliNotFoundMessage: (cfg: { provider?: string } | undefined, bin: string) =>
+    `${cfg?.provider === 'copilot' ? 'Copilot' : 'Claude'} CLI not found: "${bin}".`,
   getTestCommand: vi.fn().mockResolvedValue('npm test'),
   getAutoValidate: vi.fn().mockReturnValue(false),
 }));
@@ -76,6 +80,7 @@ vi.mock('../utils/fileSystem', () => ({
 import * as vscode from 'vscode';
 import { createExecuteSpecCommand } from './executeSpec';
 import { isCommandAvailable } from '../utils/shell';
+import { readAIConfig } from '../config/aiConfig';
 
 function makeSpecContent(status: string): string {
   return `---
@@ -172,6 +177,22 @@ describe('createExecuteSpecCommand', () => {
       expect.stringContaining('Claude CLI not found')
     );
     expect(vscode.window.withProgress).not.toHaveBeenCalled();
+  });
+
+  it('checks the gh binary (not claude) when provider is copilot', async () => {
+    vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(
+      Buffer.from(makeSpecContent('ready')) as unknown as Uint8Array
+    );
+    vi.mocked(readAIConfig).mockResolvedValueOnce({ provider: 'copilot', permissionMode: 'yolo' } as never);
+    vi.mocked(isCommandAvailable).mockResolvedValue(false);
+
+    await command({ kind: 'spec' as const, filePath: '/ws/.specs/SDD-030.sdd.md' } as never);
+
+    expect(isCommandAvailable).toHaveBeenCalledWith('gh');
+    expect(isCommandAvailable).not.toHaveBeenCalledWith('claude');
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Copilot CLI not found: "gh"')
+    );
   });
 
   it('shows error when another execution is running', async () => {
