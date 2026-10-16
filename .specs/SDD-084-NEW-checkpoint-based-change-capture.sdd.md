@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-084-NEW
 title: Use the git checkpoint to capture accurate changed files per execution
-status: review
+status: done
 priority: high
 complexity: medium
 tags:
