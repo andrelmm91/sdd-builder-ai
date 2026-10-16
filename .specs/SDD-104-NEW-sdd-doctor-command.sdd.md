@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-108-NEW
+spec_id: SDD-104-NEW
 title: Add SDD Doctor command to check the environment before executing
 status: draft
 priority: medium
@@ -12,7 +12,7 @@ relevant_files:
 must_not_touch:
   - src/commands/executeSpec.ts
   - src/execution/cliRunner.ts
-depends_on: [SDD-078-BUGFIX, SDD-092-NEW, SDD-101-NEW]
+depends_on: [SDD-078-BUGFIX, SDD-088-NEW, SDD-097-NEW]
 agent_skills: backend
 created: 2026-10-15
 ---
@@ -26,7 +26,7 @@ New users, especially vibe coders, hit setup problems at execution time: the AI 
 - `DoctorReport = { checks: { id: string; label: string; status: 'ok' | 'warn' | 'fail'; detail: string; fix?: string }[] }`.
 - Checks:
   1. `.sdd/config.json` exists and parses (fail).
-  2. The configured provider's binary is available, using `getProviderBinary` from SDD-078 or the provider definitions from SDD-101 (fail).
+  2. The configured provider's binary is available, using `getProviderBinary` from SDD-078 or the provider definitions from SDD-097 (fail).
   3. `git` is available and the workspace is a git repository (warn; detail explains that change tracking and discard are disabled).
   4. Working tree is clean (warn; detail lists the count of modified files).
   5. At least one quality gate or test command is configured (warn).

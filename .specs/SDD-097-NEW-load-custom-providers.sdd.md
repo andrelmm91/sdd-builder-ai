@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-101-NEW
+spec_id: SDD-097-NEW
 title: Load custom provider definitions from project config
 status: draft
 priority: medium
@@ -12,13 +12,13 @@ relevant_files:
 must_not_touch:
   - src/extension.ts
   - src/execution/cliRunner.ts
-depends_on: [SDD-100-NEW]
+depends_on: [SDD-096-NEW]
 agent_skills: backend
 created: 2026-10-15
 ---
 
 ## Context
-With `ProviderDefinition` from SDD-100, builders can declare their own agent CLIs. AI settings live under the `ai` key in `.sdd/config.json` (`readAIConfig` and `writeAIConfig` in `src/config/aiConfig.ts`). This spec adds a `customProviders` array there and exposes the merged provider list.
+With `ProviderDefinition` from SDD-096, builders can declare their own agent CLIs. AI settings live under the `ai` key in `.sdd/config.json` (`readAIConfig` and `writeAIConfig` in `src/config/aiConfig.ts`). This spec adds a `customProviders` array there and exposes the merged provider list.
 
 ## Requirements
 ### Functional
@@ -26,7 +26,7 @@ With `ProviderDefinition` from SDD-100, builders can declare their own agent CLI
 - `readAIConfig()` reads `ai.customProviders`, keeps only entries for which `validateProviderDefinition` returns no errors, and logs invalid entries with `console.warn` along with their errors.
 - `writeAIConfig()` preserves `customProviders` when saving.
 - Export `getAvailableProviders(aiConfig?: AIConfig): ProviderDefinition[]`, returning the built-ins merged with valid custom providers (custom overrides by `id`). Each returned definition's `models` is set to `resolveProviderModels(def, aiConfig.models)`, so the precedence is `ai.models[id]`, then the custom provider's `models`, then the built-in list.
-- Reimplement `getModelsForProvider` (from SDD-111) on top of `getAvailableProviders`, so a custom provider's models also appear in the AI Config form.
+- Reimplement `getModelsForProvider` (from SDD-107) on top of `getAvailableProviders`, so a custom provider's models also appear in the AI Config form.
 - When `ai.provider` refers to an unknown id, `readAIConfig()` falls back to `claude` and logs a warning.
 
 ### Non-Functional
@@ -63,4 +63,4 @@ With `ProviderDefinition` from SDD-100, builders can declare their own agent CLI
 This example is illustrative. The exact Codex flags must be verified by the builder.
 
 ## Constraints
-- Do not use providers for command building yet (SDD-102).
+- Do not use providers for command building yet (SDD-098).

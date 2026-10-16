@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-105-NEW
+spec_id: SDD-101-NEW
 title: Derive execution timeout from spec complexity
 status: draft
 priority: low
@@ -22,7 +22,7 @@ created: 2026-10-15
 ## Requirements
 ### Functional
 - Add `getTimeoutForComplexity(complexity: SpecComplexity): number` to `src/execution/budgetEnforcer.ts`, returning milliseconds: `low` → 10 min, `medium` → 20 min, `high` → 40 min.
-- Add a VS Code setting read `sdd.timeoutMultiplier` (number, default `1`, clamped 0.25–10) through `vscode.workspace.getConfiguration('sdd')`. The final timeout is `getTimeoutForComplexity(c) * multiplier`. Declaring the setting in `package.json` is left to SDD-109.
+- Add a VS Code setting read `sdd.timeoutMultiplier` (number, default `1`, clamped 0.25–10) through `vscode.workspace.getConfiguration('sdd')`. The final timeout is `getTimeoutForComplexity(c) * multiplier`. Declaring the setting in `package.json` is left to SDD-105.
 - `executeSingleSpec()` sets `config.timeoutMs` from this value.
 - The timeout error shown to the builder includes the limit: `Execution timed out after N minutes. Increase timeout_minutes in the spec or sdd.timeoutMultiplier.`
 

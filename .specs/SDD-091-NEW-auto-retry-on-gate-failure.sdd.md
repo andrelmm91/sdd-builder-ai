@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-095-NEW
+spec_id: SDD-091-NEW
 title: Automatically re-run execution with gate failure feedback
 status: draft
 priority: medium
@@ -14,13 +14,13 @@ must_not_touch:
   - src/extension.ts
   - src/execution/bulkExecution.ts
   - src/execution/qualityGates.ts
-depends_on: [SDD-094-NEW]
+depends_on: [SDD-090-NEW]
 agent_skills: backend
 created: 2026-10-15
 ---
 
 ## Context
-Vibe coders usually can't or won't debug failing tests themselves. When the AI finishes but required quality gates fail (SDD-094), the most useful next step is to send the failure output back to the AI automatically and let it fix its own work, up to a configured limit. This only makes sense in non-interactive mode (Claude `dangerously-skip-permissions`, Copilot `yolo`), where no human approves each step.
+Vibe coders usually can't or won't debug failing tests themselves. When the AI finishes but required quality gates fail (SDD-090), the most useful next step is to send the failure output back to the AI automatically and let it fix its own work, up to a configured limit. This only makes sense in non-interactive mode (Claude `dangerously-skip-permissions`, Copilot `yolo`), where no human approves each step.
 
 ## Requirements
 ### Functional

@@ -56,5 +56,4 @@ The checkpoint is also persisted in the execution record so the "Discard changes
 - [ ] With the commit command enabled, the review card still lists the files the AI committed.
 
 ## Constraints
-- Do not change scope violation logic here (SDD-090).
 - Do not change the Kanban UI.

@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-092-NEW
+spec_id: SDD-088-NEW
 title: Add configurable quality gates and a gate runner
 status: draft
 priority: high
@@ -19,7 +19,7 @@ created: 2026-10-15
 ---
 
 ## Context
-After execution, SDD can optionally run one test command (`runPostValidation` in `src/execution/postValidation.ts`), but the result is only stored as `testsPassed`. Projects usually need several checks (tests, type check, lint, build). This spec introduces named quality gates in `.sdd/config.json` and a runner that executes them in order. SDD-094 wires the runner into execution.
+After execution, SDD can optionally run one test command (`runPostValidation` in `src/execution/postValidation.ts`), but the result is only stored as `testsPassed`. Projects usually need several checks (tests, type check, lint, build). This spec introduces named quality gates in `.sdd/config.json` and a runner that executes them in order. SDD-090 wires the runner into execution.
 
 ## Requirements
 ### Functional
@@ -30,7 +30,7 @@ After execution, SDD can optionally run one test command (`runPostValidation` in
   - `GateRunSummary = { passed: boolean; results: GateResult[] }`. `passed` is true when every required gate passed.
 - Create `src/execution/qualityGates.ts` exporting `runGates(gates, cwd, options?: { stopOnRequiredFailure?: boolean; extraCommands?: string[] }): Promise<GateRunSummary>`:
   - Runs gates sequentially through the logic in `runPostValidation` (refactor it into a reusable `runCommandCheck(command, cwd)` in `postValidation.ts` and keep `runPostValidation` as a thin wrapper).
-  - `extraCommands` run after configured gates as required gates named `verify-1`, `verify-2`, and so on (used by SDD-093).
+  - `extraCommands` run after configured gates as required gates named `verify-1`, `verify-2`, and so on (used by SDD-089).
   - Each gate's `output` is truncated to its last 8 KB.
   - With `stopOnRequiredFailure` (default `false`), the runner stops after the first failed required gate.
 
@@ -48,5 +48,5 @@ After execution, SDD can optionally run one test command (`runPostValidation` in
 - [ ] None.
 
 ## Constraints
-- Do not change `executeSpec.ts` (SDD-094).
+- Do not change `executeSpec.ts` (SDD-090).
 - Do not add a UI for editing gates in this spec.

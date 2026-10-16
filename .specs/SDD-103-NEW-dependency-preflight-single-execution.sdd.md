@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-107-NEW
+spec_id: SDD-103-NEW
 title: Warn before executing a spec whose dependencies are not done
 status: draft
 priority: medium
@@ -11,7 +11,7 @@ relevant_files:
 must_not_touch:
   - src/extension.ts
   - src/execution/bulkExecution.ts
-depends_on: [SDD-106-NEW]
+depends_on: [SDD-102-NEW]
 agent_skills: backend
 created: 2026-10-15
 ---
@@ -23,7 +23,7 @@ A single spec can be executed (from the Kanban board, the tree view or the comma
 ### Functional
 - Add `getUnmetDependencies(spec: SpecData, all: SpecData[]): string[]` to `src/planning/dependencyResolver.ts`. It returns the ids in `spec.depends_on` that are missing from `all` or not in status `done`.
 - In `executeSingleSpec()`, after the status pre-flight, load all specs from `.specs/` and compute unmet dependencies. If there are any, show the modal warning `<specId> depends on specs that are not done: <list>. Execute anyway?` with the action `Execute Anyway`. Dismissing aborts and returns `false`.
-- Add a `skipDependencyCheck?: boolean` parameter to `executeSingleSpec` so bulk execution (which checks dependencies itself after SDD-106) can bypass the prompt. Bulk callers are updated in a follow-up if needed; the default is `false`.
+- Add a `skipDependencyCheck?: boolean` parameter to `executeSingleSpec` so bulk execution (which checks dependencies itself after SDD-102) can bypass the prompt. Bulk callers are updated in a follow-up if needed; the default is `false`.
 
 ### Non-Functional
 - One scan of `.specs/` per execution at most.

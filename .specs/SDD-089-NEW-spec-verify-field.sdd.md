@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-093-NEW
+spec_id: SDD-089-NEW
 title: Add optional verify commands to spec frontmatter
 status: draft
 priority: medium
@@ -19,7 +19,7 @@ created: 2026-10-15
 ---
 
 ## Context
-Every spec has "Automated" acceptance criteria, but they are prose ("Unit tests pass for X"), so SDD cannot run them. An optional `verify` frontmatter field lets a spec author list the exact shell commands proving the spec is done, for example `npx vitest run src/utils/glob.test.ts`. SDD-094 runs them as extra quality gates.
+Every spec has "Automated" acceptance criteria, but they are prose ("Unit tests pass for X"), so SDD cannot run them. An optional `verify` frontmatter field lets a spec author list the exact shell commands proving the spec is done, for example `npx vitest run src/execution/qualityGates.test.ts`. SDD-090 runs them as extra quality gates.
 
 ## Requirements
 ### Functional

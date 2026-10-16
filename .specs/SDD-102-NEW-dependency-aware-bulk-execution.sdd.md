@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-106-NEW
+spec_id: SDD-102-NEW
 title: Order and gate bulk execution by spec dependencies
 status: draft
 priority: high

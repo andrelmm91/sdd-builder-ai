@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-097-NEW
+spec_id: SDD-093-NEW
 title: Ask before moving interactive runs with no changes to review
 status: draft
 priority: medium

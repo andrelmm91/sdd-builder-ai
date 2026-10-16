@@ -59,4 +59,4 @@ Feedback for re-execution: When I run for the first time in the folder, Claude d
 ## Constraints
 - Do not change how the CLI command itself is built (`_buildCommand`).
 - Do not add new VS Code settings.
-- Do not modify `src/execution/cliCommandBuilder.ts` (covered by the provider refactor in SDD-102).
+- Do not modify `src/execution/cliCommandBuilder.ts` (covered by the provider refactor in SDD-098).

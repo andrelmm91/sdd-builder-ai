@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-096-NEW
+spec_id: SDD-092-NEW
 title: Show quality gate results on Kanban review cards
 status: draft
 priority: medium
@@ -13,13 +13,13 @@ must_not_touch:
   - src/extension.ts
   - src/commands/executeSpec.ts
   - webview-ui/src/lib/vscode.ts
-depends_on: [SDD-094-NEW, SDD-091-NEW]
+depends_on: [SDD-090-NEW]
 agent_skills: frontend
 created: 2026-10-15
 ---
 
 ## Context
-SDD-094 stores `gates: GateRunSummary` in each execution record. Showing a pass/fail summary on the review card lets a builder judge a spec at a glance without opening logs.
+SDD-090 stores `gates: GateRunSummary` in each execution record. Showing a pass/fail summary on the review card lets a builder judge a spec at a glance without opening logs.
 
 ## Requirements
 ### Functional

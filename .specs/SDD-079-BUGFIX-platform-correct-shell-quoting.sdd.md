@@ -61,4 +61,4 @@ created: 2026-10-15
 ## Constraints
 - Do not change the terminal launch strategy (plain terminal on Windows, bash script on POSIX).
 - Do not add dependencies.
-- Delivering the prompt via a file is covered by SDD-099. This spec only fixes quoting.
+- Delivering the prompt via a file is covered by SDD-095. This spec only fixes quoting.

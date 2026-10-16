@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-111-BUGFIX
+spec_id: SDD-107-BUGFIX
 title: Update model lists and let users override them per provider
 status: done
 priority: high
@@ -94,5 +94,5 @@ The model lists offered in AI Configuration are out of date, and they are define
 
 ## Constraints
 - Do not change how the model is passed to the CLI (`--model` handling in `cliRunner.ts` and `cliCommandBuilder.ts`).
-- Do not turn the model field into a free-text input; SDD-103 does that later. This spec keeps the `<select>`.
+- Do not turn the model field into a free-text input; SDD-099 does that later. This spec keeps the `<select>`.
 - Do not add a UI editor for `ai.models`.

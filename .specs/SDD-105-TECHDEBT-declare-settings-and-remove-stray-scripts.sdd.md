@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-109-TECHDEBT
+spec_id: SDD-105-TECHDEBT
 title: Declare new settings in package.json and remove stray scripts
 status: draft
 priority: low
@@ -12,13 +12,13 @@ relevant_files:
 must_not_touch:
   - src/extension.ts
   - src/commands/executeSpec.ts
-depends_on: [SDD-099-NEW, SDD-105-NEW]
+depends_on: [SDD-095-NEW, SDD-101-NEW]
 agent_skills: infra
 created: 2026-10-15
 ---
 
 ## Context
-SDD-099 reads `sdd.inlineRelevantFiles` and SDD-105 reads `sdd.timeoutMultiplier` with defaults, but neither is declared in `package.json` `contributes.configuration`, so they don't appear in the VS Code Settings UI. Separately, `test-parse.mjs` and `test-validate.mjs` at the repository root are leftover ad-hoc scripts, not part of the Vitest suite or the build.
+SDD-095 reads `sdd.inlineRelevantFiles` and SDD-101 reads `sdd.timeoutMultiplier` with defaults, but neither is declared in `package.json` `contributes.configuration`, so they don't appear in the VS Code Settings UI. Separately, `test-parse.mjs` and `test-validate.mjs` at the repository root are leftover ad-hoc scripts, not part of the Vitest suite or the build.
 
 ## Requirements
 ### Functional

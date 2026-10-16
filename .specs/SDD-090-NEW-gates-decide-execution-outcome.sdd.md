@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-094-NEW
+spec_id: SDD-090-NEW
 title: Run quality gates after execution and record results
 status: draft
 priority: high
@@ -13,13 +13,13 @@ must_not_touch:
   - src/extension.ts
   - src/execution/cliRunner.ts
   - src/execution/resultCapture.ts
-depends_on: [SDD-092-NEW, SDD-093-NEW, SDD-084-NEW]
+depends_on: [SDD-088-NEW, SDD-089-NEW, SDD-084-NEW]
 agent_skills: backend
 created: 2026-10-15
 ---
 
 ## Context
-`executeSingleSpec()` currently calls `runPostValidation()` only when `autoValidate` and `testCommand` are set, stores `testsPassed`, and always moves the spec to `review`, even when tests fail. This spec replaces that with the gate runner from SDD-092 plus the spec's own `verify` commands from SDD-093, and stores the full results so the builder sees them on the review card (SDD-096).
+`executeSingleSpec()` currently calls `runPostValidation()` only when `autoValidate` and `testCommand` are set, stores `testsPassed`, and always moves the spec to `review`, even when tests fail. This spec replaces that with the gate runner from SDD-088 plus the spec's own `verify` commands from SDD-089, and stores the full results so the builder sees them on the review card (SDD-092).
 
 ## Requirements
 ### Functional
@@ -42,5 +42,5 @@ created: 2026-10-15
 - [ ] Executing a spec that breaks a test shows the failed-checks warning and records the failure in `exec-NNN.json`.
 
 ## Constraints
-- Do not implement retries here (SDD-095).
+- Do not implement retries here (SDD-091).
 - Do not change `cliRunner.ts`.
