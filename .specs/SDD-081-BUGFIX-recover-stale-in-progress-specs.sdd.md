@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-081-BUGFIX
 title: Recover specs stuck in in_progress after a crash or reload
-status: ready
+status: done
 priority: high
 complexity: medium
 tags:
@@ -21,6 +21,10 @@ depends_on: []
 agent_skills: backend
 created: 2026-10-15
 ---
+
+
+
+
 
 ## Context
 When a spec executes, `executeSingleSpec()` writes `status: in_progress` to the spec file and only reverts it when the run completes, fails or is cancelled in the same VS Code session. If VS Code is closed, reloaded or crashes mid-run, the spec stays `in_progress` forever. The lifecycle in `src/specs/lifecycle.ts` allows only `in_progress → review`, so the builder cannot even drag the card back and must edit the YAML by hand.
@@ -44,12 +48,12 @@ When a spec executes, `executeSingleSpec()` writes `status: in_progress` to the 
 
 ## Acceptance Criteria
 ### Automated
-- [ ] Lifecycle tests assert `canTransition('in_progress', 'ready')` is true.
-- [ ] `src/execution/staleRecovery.test.ts` covers: no stale specs (no notification), stale specs with "Reset to Ready" (files rewritten), "Ignore" (files untouched), and a running execution (no-op).
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] Lifecycle tests assert `canTransition('in_progress', 'ready')` is true.
+- [x] `src/execution/staleRecovery.test.ts` covers: no stale specs (no notification), stale specs with "Reset to Ready" (files rewritten), "Ignore" (files untouched), and a running execution (no-op).
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
-- [ ] Start an execution, reload the window, and confirm the recovery prompt appears and resets the card.
+- [x] Start an execution, reload the window, and confirm the recovery prompt appears and resets the card.
 
 ## Constraints
 - Do not modify `src/extension.ts` beyond the single call.

@@ -313,6 +313,11 @@ export function completeInteractiveSpec(): void {
   _runner.completeInteractive();
 }
 
+/** Returns true while a spec execution is running in this session. */
+export function isExecutionRunning(): boolean {
+  return _runner.isRunning();
+}
+
 /** Cancels the currently running spec execution. */
 export function cancelCurrentSpec(): void {
   _runner.abort();

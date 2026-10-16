@@ -21,6 +21,7 @@ import { SpecTreeProvider } from "./views/sidebar/specTreeProvider";
 import { SpecCompletionProvider } from "./specs/completionProvider";
 import { StatusBarManager } from "./views/statusBar";
 import { activate as activateDiagnostics } from "./specs/diagnostics";
+import { recoverStaleSpecs } from "./execution/staleRecovery";
 import { DashboardPanel } from "./views/webviews/dashboard/DashboardPanel";
 import { KanbanPanel } from "./views/webviews/kanban/KanbanPanel";
 import { RequirementBoardPanel } from "./views/webviews/requirementBoard/RequirementBoardPanel";
@@ -158,6 +159,8 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }
   });
+
+  void recoverStaleSpecs();
 }
 
 export function deactivate(): void {

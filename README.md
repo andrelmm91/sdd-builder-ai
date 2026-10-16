@@ -103,6 +103,8 @@ A five-column board where each spec moves from idea to shipped code.
 
 Drag and drop cards between columns. Every transition is validated — no skipping stages.
 
+If VS Code is closed or crashes during an execution, specs left in **In Progress** are detected on the next startup and you can reset them to **Ready** with one click (or drag the card back manually).
+
 ![SDD Kanban Board](https://github.com/user-attachments/assets/918b706c-361f-4944-a046-9578273d91bb)
 
 ![SDD execution](https://github.com/user-attachments/assets/bdd1ef83-239f-465e-857a-5f9332b867b9)
