@@ -185,6 +185,23 @@
   const reqProviderOptions = $derived(withSavedProvider(reqProvider));
   const permissionOptions = $derived(withSavedMode(modesOf(provider), permissionMode));
   const modelSuggestions = $derived(modelsOf(provider));
+  // A <datalist> filters its options by the typed text, so a pre-filled model hid every other
+  // suggestion. Use a full <select> instead, with "Other…" revealing a free-text model id.
+  const OTHER_MODEL = '__other__';
+  let modelOtherChosen = $state(false);
+  const modelIsOther = $derived(
+    modelOtherChosen || modelSuggestions.length === 0 || (model !== '' && !modelSuggestions.includes(model)),
+  );
+
+  function onModelSelect(value: string) {
+    if (value === OTHER_MODEL) {
+      modelOtherChosen = true;
+      model = '';
+    } else {
+      modelOtherChosen = false;
+      model = value;
+    }
+  }
   const reqPermissionOptions = $derived(withSavedMode(modesOf(reqProvider), reqPermissionMode));
   const reqModelOptions = $derived(withSaved(modelsOf(reqProvider), reqModel));
 
@@ -197,6 +214,7 @@
     provider = newProvider;
     permissionMode = defaultModeFor(newProvider);
     model = modelsOf(newProvider)[0] ?? '';
+    modelOtherChosen = false;
   }
 
   function onReqProviderChange(newProvider: AIProvider) {
@@ -278,6 +296,7 @@
         provider = c.provider;
         permissionMode = c.permissionMode;
         model = c.model;
+        modelOtherChosen = false;
         effort = c.effort ?? 'medium';
         tagSkillMappings = c.tagSkillMappings;
         prePromptTemplate = c.prePromptTemplate;
@@ -384,13 +403,33 @@
 
     <section class="form-section">
       <label class="field-label" for="model-select">Model</label>
-      <input id="model-select" class="form-input" type="text" list="model-suggestions" bind:value={model} />
-      <datalist id="model-suggestions">
-        {#each modelSuggestions as m}
-          <option value={m}></option>
-        {/each}
-      </datalist>
-      {#if missingModelWarning(model, provider)}
+      {#if modelSuggestions.length > 0}
+        <select
+          id="model-select"
+          class="form-select"
+          value={modelIsOther ? OTHER_MODEL : model}
+          onchange={(e) => onModelSelect((e.currentTarget as HTMLSelectElement).value)}
+        >
+          {#if model === '' && !modelIsOther}
+            <option value="">(no model selected)</option>
+          {/if}
+          {#each modelSuggestions as m (m)}
+            <option value={m}>{m}</option>
+          {/each}
+          <option value={OTHER_MODEL}>Other (type a model id)…</option>
+        </select>
+      {/if}
+      {#if modelIsOther}
+        <input
+          id={modelSuggestions.length > 0 ? 'model-other' : 'model-select'}
+          class="form-input model-other"
+          type="text"
+          placeholder="Model id, e.g. gpt-5.5"
+          aria-label="Model id"
+          bind:value={model}
+        />
+      {/if}
+      {#if !modelOtherChosen && missingModelWarning(model, provider)}
         <p class="field-warning">{missingModelWarning(model, provider)}</p>
       {/if}
       <p class="field-hint">Manage models in Model Lists below.</p>
@@ -796,6 +835,8 @@
     font-size: 0.9em;
     margin-bottom: 2px;
   }
+
+  .model-other { margin-top: 4px; }
 
   .form-select,
   .form-input {

@@ -61,6 +61,12 @@
   const errors = $derived(validation?.errors ?? []);
   const canSave = $derived(dirty && !validating && !saving && errors.length === 0);
   const builtinIds = $derived(new Set(builtins.map((b) => b.id)));
+  const RECOMMENDED_START = 'claude';
+  // Recommended built-in first, the others in their original order.
+  const startOptions = $derived([
+    ...builtins.filter((b) => b.id === RECOMMENDED_START),
+    ...builtins.filter((b) => b.id !== RECOMMENDED_START),
+  ]);
 
   // Debounced validation of the provider being edited.
   $effect(() => {
@@ -312,18 +318,24 @@
 
       <div class="field">
         <label class="field-label" for="prov-id">Id</label>
-        <input id="prov-id" class="form-input mono" class:invalid={at('id').length > 0} type="text" bind:value={d.id} readonly={!editingIsNew} />
-        {#if !editingIsNew}<p class="field-hint">The id cannot change after the first save; specs and settings may reference it.</p>{/if}
+        <input id="prov-id" class="form-input mono" class:invalid={at('id').length > 0} type="text" placeholder="e.g. codex" bind:value={d.id} readonly={!editingIsNew} />
+        {#if editingIsNew}
+          <p class="field-hint">A short internal name: lowercase letters, digits and dashes, starting with a letter. It is saved in your settings and can't be changed later. Use <code>claude</code> or <code>copilot</code> to replace a built-in provider.</p>
+        {:else}
+          <p class="field-hint">The id cannot change after the first save; specs and settings may reference it.</p>
+        {/if}
         {@render fieldErrors('id')}
       </div>
       <div class="field">
         <label class="field-label" for="prov-label">Label</label>
-        <input id="prov-label" class="form-input" class:invalid={at('label').length > 0} type="text" bind:value={d.label} />
+        <input id="prov-label" class="form-input" class:invalid={at('label').length > 0} type="text" placeholder="e.g. OpenAI Codex CLI" bind:value={d.label} />
+        <p class="field-hint">The name shown in the provider dropdowns.</p>
         {@render fieldErrors('label')}
       </div>
       <div class="field">
         <label class="field-label" for="prov-binary">Binary</label>
-        <input id="prov-binary" class="form-input mono" class:invalid={at('binary').length > 0} type="text" bind:value={d.binary} />
+        <input id="prov-binary" class="form-input mono" class:invalid={at('binary').length > 0} type="text" placeholder="e.g. codex" bind:value={d.binary} />
+        <p class="field-hint">The program to run: the command you type in a terminal, or its full path. Arguments go in the invocation lists below, not here.</p>
         {@render fieldErrors('binary')}
         {#if validation && !validation.binaryFound && d.binary}
           <p class="field-warning">"{d.binary}" was not found on PATH</p>
@@ -332,7 +344,7 @@
       <div class="field">
         <label class="field-label" for="prov-fileref">File reference format</label>
         <input id="prov-fileref" class="form-input mono" class:invalid={at('fileRefFormat').length > 0} type="text" bind:value={d.fileRefFormat} />
-        <p class="field-hint">Use <code>{'{path}'}</code> once, e.g. <code>@{'{path}'}</code> or <code>#file:{'{path}'}</code>.</p>
+        <p class="field-hint">How this CLI refers to a file in a prompt. SDD uses it to point the AI at the instructions file for each run. Include <code>{'{path}'}</code> once: Claude uses <code>@{'{path}'}</code>, Copilot uses <code>#file:{'{path}'}</code>, and CLIs that just take a plain path use <code>{'{path}'}</code>.</p>
         {@render fieldErrors('fileRefFormat')}
       </div>
 
@@ -343,7 +355,13 @@
             <input type="checkbox" checked={inv !== undefined} onchange={(e) => toggleInvocation(d, key, (e.currentTarget as HTMLInputElement).checked)} />
             {key === 'batch' ? 'Batch invocation' : 'Interactive invocation'}
           </label>
+          {#if key === 'batch'}
+            <p class="field-hint">The arguments that make the CLI run on its own and exit when done, with no questions asked (e.g. <code>exec</code>, <code>{'{prompt}'}</code>). Turn this off if the CLI has no unattended mode.</p>
+          {:else}
+            <p class="field-hint">The arguments that open a chat session in the terminal, where you can watch and approve the AI's actions (often just <code>{'{prompt}'}</code>).</p>
+          {/if}
           {#if inv}
+            <p class="field-hint">Enter one argument per row, in order. Don't add quotes; SDD quotes each argument for you. <code>{'{prompt}'}</code> is replaced with the instruction to read the spec, and must appear exactly once.</p>
             {@render stringList(`${key}.args`, inv.args, 'both', 'argument')}
           {/if}
           {@render fieldErrors(key)}
@@ -352,29 +370,46 @@
 
       <div class="field">
         <span class="field-label">Model arguments</span>
-        <p class="field-hint">Added only when a model is set; must contain <code>{'{model}'}</code>.</p>
+        <p class="field-hint">How to pass the chosen model to the CLI, e.g. <code>--model</code> then <code>{'{model}'}</code>. These are added only when a model is selected. Leave empty if the CLI has no model option.</p>
         {@render stringList('modelArgs', d.modelArgs!, 'model', 'e.g. --model')}
       </div>
 
       <div class="field">
         <span class="field-label">Permission modes</span>
+        <p class="field-hint">The choices offered in the "Permission mode" dropdown for this provider, i.e. how much the AI may do without asking. Each mode runs either the Batch or the Interactive invocation above, plus its own extra arguments. The first mode is the default.</p>
         {#each d.permissionModes as pm, mi}
           <div class="mode-row">
+            <div class="label-row">
+              <span class="mode-title">Mode {mi + 1}{mi === 0 ? ' (default)' : ''}</span>
+              <button class="chip-btn chip-remove" aria-label="Remove mode" title="Remove mode" disabled={d.permissionModes.length === 1} onclick={() => d.permissionModes.splice(mi, 1)}>×</button>
+            </div>
             <div class="mode-fields">
-              <input class="form-input mono" class:invalid={at(`permissionModes[${mi}].id`).length > 0} type="text" placeholder="id" aria-label="Mode id" bind:value={pm.id} />
-              <input class="form-input" class:invalid={at(`permissionModes[${mi}].label`).length > 0} type="text" placeholder="label" aria-label="Mode label" bind:value={pm.label} />
-              <select class="form-select" aria-label="Mode type" bind:value={pm.mode}>
-                <option value="batch">Batch</option>
-                <option value="interactive">Interactive</option>
-              </select>
-              <button class="chip-btn chip-remove" aria-label="Remove mode" disabled={d.permissionModes.length === 1} onclick={() => d.permissionModes.splice(mi, 1)}>×</button>
+              <div class="mode-field">
+                <label class="sub-label" for={`pm-id-${mi}`}>Id</label>
+                <input id={`pm-id-${mi}`} class="form-input mono" class:invalid={at(`permissionModes[${mi}].id`).length > 0} type="text" placeholder="e.g. auto" bind:value={pm.id} />
+                <span class="field-hint">Internal name saved in settings.</span>
+              </div>
+              <div class="mode-field">
+                <label class="sub-label" for={`pm-label-${mi}`}>Name</label>
+                <input id={`pm-label-${mi}`} class="form-input" class:invalid={at(`permissionModes[${mi}].label`).length > 0} type="text" placeholder="e.g. Full auto" bind:value={pm.label} />
+                <span class="field-hint">Shown in the dropdown.</span>
+              </div>
+              <div class="mode-field">
+                <label class="sub-label" for={`pm-mode-${mi}`}>Runs as</label>
+                <select id={`pm-mode-${mi}`} class="form-select" bind:value={pm.mode}>
+                  <option value="batch">Batch (unattended)</option>
+                  <option value="interactive">Interactive (you approve)</option>
+                </select>
+                <span class="field-hint">{pm.mode === 'batch' ? 'Uses the Batch invocation; required for bulk execution.' : 'Uses the Interactive invocation in a terminal session.'}</span>
+              </div>
             </div>
             {@render fieldErrors(`permissionModes[${mi}].id`)}
             {@render fieldErrors(`permissionModes[${mi}].label`)}
             {@render fieldErrors(`permissionModes[${mi}].mode`)}
             {@render fieldErrors(`permissionModes[${mi}]`)}
-            <span class="field-hint">Extra arguments</span>
-            {@render stringList(`permissionModes[${mi}].extraArgs`, pm.extraArgs!, 'none', 'argument')}
+            <span class="sub-label">Extra arguments</span>
+            <span class="field-hint">Flags added only for this mode, e.g. <code>--full-auto</code> or <code>--dangerously-skip-permissions</code>. Leave empty if none.</span>
+            {@render stringList(`permissionModes[${mi}].extraArgs`, pm.extraArgs!, 'none', 'e.g. --full-auto')}
           </div>
         {/each}
         <div class="arg-actions"><button class="btn-reset" onclick={() => addMode(d)}>Add permission mode</button></div>
@@ -383,14 +418,22 @@
 
       <div class="field">
         <span class="field-label">Suggested models</span>
-        {@render stringList('models', d.models!, 'none', 'model id')}
+        <p class="field-hint">Model names offered as suggestions in the model field, first one as the default. Users can still type any other model. Your own lists in "Model Lists" take priority.</p>
+        {@render stringList('models', d.models!, 'none', 'e.g. gpt-5.5')}
       </div>
 
       {#if errors.length === 0 && validation && validation.previews.length > 0}
         <div class="field">
           <span class="field-label">Command preview</span>
-          <pre class="preview">{#each validation.previews as pv}{pv.label}: {pv.command}
-{/each}</pre>
+          <p class="field-hint">The exact command SDD will run for each permission mode, using the first suggested model. Check it before saving.</p>
+          <div class="preview-list">
+            {#each validation.previews as pv (pv.modeId)}
+              <div class="preview-item">
+                <span class="preview-label">{pv.label}</span>
+                <pre class="preview">{pv.command}</pre>
+              </div>
+            {/each}
+          </div>
         </div>
       {/if}
 
@@ -404,11 +447,16 @@
     <div class="arg-actions">
       {#if choosingStart}
         <span class="field-hint">Start from:</span>
-        <button class="btn-reset" onclick={() => startAdd('blank')}>Blank</button>
-        {#each builtins as b}
-          <button class="btn-reset" onclick={() => startAdd(b.id)}>Copy of {b.label}</button>
+        {#each startOptions as b (b.id)}
+          <button class={b.id === RECOMMENDED_START ? 'btn-add' : 'btn-secondary'} onclick={() => startAdd(b.id)}>
+            Copy of {b.label}{b.id === RECOMMENDED_START ? ' (Recommended)' : ''}
+          </button>
         {/each}
+        <button class="btn-secondary" onclick={() => startAdd('blank')}>Blank</button>
         <button class="btn-reset" onclick={() => (choosingStart = false)}>Cancel</button>
+        {#if builtins.some((b) => b.id === RECOMMENDED_START)}
+          <p class="field-hint start-hint">Recommended: start from Claude CLI. It comes with every field already filled in and working, so you only change what's different for your CLI.</p>
+        {/if}
       {:else}
         <button class="btn-add" onclick={() => (choosingStart = true)}>Add provider</button>
       {/if}
@@ -429,13 +477,25 @@
   .arg-row { display: flex; gap: 4px; align-items: center; }
   .arg-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .mode-row { display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--vscode-panel-border); border-radius: 4px; }
-  .mode-fields { display: flex; gap: 6px; align-items: center; }
-  .mode-fields .form-input, .mode-fields .form-select { flex: 1; min-width: 0; width: auto; }
+  .mode-fields { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+  .mode-field { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 140px; }
+  .mode-title { font-size: 0.85em; font-weight: 600; }
+  .sub-label { font-size: 0.8em; font-weight: 600; }
   .mono { font-family: var(--vscode-editor-font-family, monospace); }
   .invalid { border-color: var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground)); }
+  .preview-list { display: flex; flex-direction: column; gap: 8px; }
+  .preview-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 4px;
+  }
+  .preview-label { font-size: 0.8em; font-weight: 600; color: var(--vscode-descriptionForeground); }
   .preview {
     margin: 0;
-    padding: 8px;
+    padding: 6px 8px;
     background: var(--vscode-textCodeBlock-background);
     border-radius: 3px;
     font-family: var(--vscode-editor-font-family, monospace);
@@ -498,6 +558,18 @@
   }
   .btn-reset:hover:not(:disabled) { background: var(--vscode-list-hoverBackground); color: var(--vscode-foreground); }
   .btn-reset:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-secondary {
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    border: none;
+    border-radius: 3px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+  }
+  .btn-secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }
+  .start-hint { flex-basis: 100%; }
   .btn-reset.danger { color: var(--vscode-errorForeground); border-color: var(--vscode-errorForeground); }
   .chip-btn { background: none; border: none; color: var(--vscode-foreground); cursor: pointer; padding: 0 4px; font-size: inherit; border-radius: 3px; }
   .chip-btn:hover:not(:disabled) { background: var(--vscode-list-hoverBackground); }
