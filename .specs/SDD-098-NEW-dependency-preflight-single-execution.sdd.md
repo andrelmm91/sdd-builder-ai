@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-098-NEW
 title: Warn before executing a spec whose dependencies are not done
-status: review
+status: done
 priority: medium
 complexity: low
 tags:

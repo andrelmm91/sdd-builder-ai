@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-097-NEW
 title: Run the bulk queue in the order added and flag dependency problems
-status: review
+status: done
 priority: high
 complexity: medium
 tags:
