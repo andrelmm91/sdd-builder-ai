@@ -1,10 +1,14 @@
 ---
 spec_id: SDD-090-NEW
 title: Deliver the execution prompt to the CLI through an instructions file
-status: draft
+status: review
 priority: high
 complexity: medium
-tags: [feature, phase-5, backend, rel-v2.0]
+tags:
+  - feature
+  - phase-5
+  - backend
+  - rel-v2.0
 relevant_files:
   - src/execution/cliRunner.ts
   - src/execution/contextAssembler.ts
@@ -12,7 +16,9 @@ relevant_files:
 must_not_touch:
   - src/extension.ts
   - src/execution/cliCommandBuilder.ts
-depends_on: [SDD-089-TECHDEBT, SDD-079-BUGFIX]
+depends_on:
+  - SDD-089-TECHDEBT
+  - SDD-079-BUGFIX
 agent_skills: backend
 created: 2026-10-15
 ---
@@ -26,7 +32,7 @@ created: 2026-10-15
 - The CLI prompt argument becomes `Read and follow all instructions in <fileRef of the prompt file>.` Here `fileRef` uses the provider's format (`@path` for Claude, `#file:path` for Copilot).
 - Pre-prompt, skill paths, post-execution commands move into the document and are removed from the inline argument.
 - Keep the prompt file after the run (it is part of the audit trail), and add its relative path as an optional `promptFile` field on the result so `captureResults` can store it in the record. If `ExecutionResult` needs a new field, add it as optional.
-- Read the VS Code setting `sdd.inlineRelevantFiles` (boolean, default `false`) via `vscode.workspace.getConfiguration('sdd')` and pass it through as `inlineFileContents`. Declaring the setting in `package.json` is left to SDD-100.
+- Relevant files are always listed as paths in the instructions file; their contents are never inlined.
 
 ### Non-Functional
 - The inline CLI argument must contain no characters that need escaping beyond the file path.
@@ -34,8 +40,8 @@ created: 2026-10-15
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/execution/cliRunner.test.ts` asserts that the prompt file is written with the expected sections, that the generated command contains only the short instruction and the file reference for both providers, and that pre-prompt text no longer appears inline.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] `src/execution/cliRunner.test.ts` asserts that the prompt file is written with the expected sections, that the generated command contains only the short instruction and the file reference for both providers, and that pre-prompt text no longer appears inline.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
 - [ ] Executing a spec on Windows and on macOS/Linux starts the CLI, which reads the prompt file and implements the spec.

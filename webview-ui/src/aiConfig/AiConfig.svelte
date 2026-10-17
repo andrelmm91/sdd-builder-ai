@@ -485,6 +485,7 @@
       <p class="field-hint">Use <code>{'{spec_file}'}</code> as a placeholder for the spec path.</p>
     </section>
 
+
     <section class="form-section">
       <div class="section-heading">Git Commands</div>
       <p class="field-hint">These commands are appended to the execution prompt so the AI agent handles git operations. Use <code>{'{spec_id}'}</code> and <code>{'{title}'}</code> as placeholders.</p>

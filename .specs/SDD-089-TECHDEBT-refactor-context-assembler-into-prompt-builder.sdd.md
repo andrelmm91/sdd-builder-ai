@@ -1,10 +1,14 @@
 ---
 spec_id: SDD-089-TECHDEBT
 title: Refactor contextAssembler into the execution prompt document builder
-status: draft
+status: review
 priority: medium
 complexity: medium
-tags: [techdebt, phase-5, backend, rel-v2.0]
+tags:
+  - techdebt
+  - phase-5
+  - backend
+  - rel-v2.0
 relevant_files:
   - src/execution/contextAssembler.ts
   - src/execution/skillsLoader.ts
@@ -13,7 +17,8 @@ must_not_touch:
   - src/extension.ts
   - src/execution/cliRunner.ts
   - src/commands/executeSpec.ts
-depends_on: [SDD-082-BUGFIX]
+depends_on:
+  - SDD-082-BUGFIX
 agent_skills: backend
 created: 2026-10-15
 ---
@@ -29,7 +34,7 @@ This spec reshapes the assembler into a builder for the execution instructions d
 - Extend `ContextOptions` with:
   - `specFileRef: string`: the provider-specific reference to the spec file (for example `@.specs/X.sdd.md`).
   - `skillPaths?: string[]`: resolved skill file paths (replacing raw skill content).
-  - `inlineFileContents?: boolean`, default `false`. When false, `## Relevant Files` lists paths only and tells the agent to read them. When true, it keeps today's behavior of inlining contents.
+  - `## Relevant Files` always lists paths only and tells the agent to read them (the earlier `inlineFileContents` option was removed).
   - `extraInstructions?: string`: appended as `## Additional Instructions` (used for retry feedback).
 - The document order must be: Instructions (pre-prompt with `{spec_file}` replaced by `specFileRef`), Spec reference (do not inline the spec body when `specFileRef` is given; tell the agent to read it), Relevant Files, Conventions, Agent Skills (paths), Scope Constraints (must list `must_not_touch` and state that SDD verifies scope after the run), Post-Execution Commands, Previous Feedback, Additional Instructions.
 - Replace byte truncation with a UTF-8-safe truncation that never splits a character and appends `\n\n[truncated by SDD]`.
@@ -39,11 +44,11 @@ This spec reshapes the assembler into a builder for the execution instructions d
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/execution/contextAssembler.test.ts` is updated for the new section order, path-only relevant files by default, the inline option, skill paths, extra instructions, and a truncation test with multi-byte characters (for example emoji) at the boundary that produces valid UTF-8.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] `src/execution/contextAssembler.test.ts` is updated for the new section order, path-only relevant files, skill paths, extra instructions, and a truncation test with multi-byte characters (for example emoji) at the boundary that produces valid UTF-8.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
-- [ ] None.
+- [x] None.
 
 ## Constraints
 - Do not call the builder from `cliRunner.ts` or `executeSpec.ts` (SDD-090).
