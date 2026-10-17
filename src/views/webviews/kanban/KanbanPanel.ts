@@ -15,11 +15,14 @@ import {
 import { getLatestExecution } from '../../../execution/resultCapture';
 import { applyRequestChanges } from '../../../commands/reviewCommands';
 import type { SpecData, SpecStatus } from '../../../specs/types';
-import { readAIConfig } from '../../../config/aiConfig';
+import { readAIConfig, getAvailableProviders } from '../../../config/aiConfig';
+import { isBatchMode, resolveProviderDefinition } from '../../../execution/providerCommand';
 
 interface CardActionMessage {
   action: 'markReady' | 'execute' | 'approve' | 'requestChanges';
   specId: string;
+  /** `execute` only: model for this run, chosen from the card's "run with model" menu. */
+  model?: string;
 }
 
 interface KanbanMoveMessage {
@@ -120,6 +123,15 @@ export class KanbanPanel extends BaseWebviewPanel {
         }
         break;
       }
+      case 'rejectSpec': {
+        const { specId } = message.data as { specId: string };
+        try {
+          await vscode.commands.executeCommand('sdd.rejectSpec', specId);
+        } finally {
+          await this.sendSpecs();
+        }
+        break;
+      }
       case 'completeInteractiveSpec':
         completeInteractiveSpec();
         break;
@@ -154,12 +166,18 @@ export class KanbanPanel extends BaseWebviewPanel {
 
   private async sendSpecs(): Promise<void> {
     const [specs, aiConfig] = await Promise.all([this.loadSpecs(), readAIConfig()]);
+    // Same rule as requireFullPermissionForBulk, so custom providers' batch modes count too.
     const isFullPermission = aiConfig
-      ? aiConfig.provider === 'copilot'
-        ? aiConfig.permissionMode === 'yolo'
-        : aiConfig.permissionMode === 'dangerously-skip-permissions'
+      ? isBatchMode(resolveProviderDefinition(aiConfig), aiConfig.permissionMode)
       : false;
-    this.post('specList', { specs, isFullPermission });
+    // Models offered by the Execute button's "run with model" menu: the current provider's list.
+    const provider = aiConfig ? getAvailableProviders(aiConfig).find((p) => p.id === aiConfig.provider) : undefined;
+    const runModels = {
+      providerLabel: provider?.label ?? aiConfig?.provider ?? '',
+      defaultModel: aiConfig?.model ?? '',
+      models: provider?.models ?? [],
+    };
+    this.post('specList', { specs, isFullPermission, runModels });
   }
 
   private async loadSpecs(): Promise<Array<SpecData & { changedFiles?: string[]; automatedCriteria?: string; manualCriteria?: string }>> {
@@ -241,7 +259,8 @@ export class KanbanPanel extends BaseWebviewPanel {
         this.post('interactiveExecution', { specId: msg.specId });
       }
       try {
-        await vscode.commands.executeCommand(ACTION_COMMAND_MAP['execute'], filePath);
+        const options = msg.model ? { model: msg.model } : undefined;
+        await vscode.commands.executeCommand(ACTION_COMMAND_MAP['execute'], filePath, options);
       } finally {
         if (interactive) {
           this.post('interactiveExecution', { specId: null });

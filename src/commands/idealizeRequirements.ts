@@ -9,6 +9,7 @@ import { IDEALIZATION_FILENAME, PRODUCT_FOLDER } from '../utils/constants';
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { isCommandAvailable } from '../utils/shell';
 import { buildCliCommand } from '../execution/cliCommandBuilder';
+import { isBatchMode, resolveProviderDefinition } from '../execution/providerCommand';
 import { runInTerminal } from '../execution/processSpawner';
 import { setActiveRequirementsTerminal } from '../execution/requirementsRunner';
 
@@ -19,8 +20,7 @@ import { setActiveRequirementsTerminal } from '../execution/requirementsRunner';
  */
 function isInteractiveMode(config: RequirementsAIConfig | null | undefined): boolean {
   if (!config) return true;
-  if (config.provider === 'copilot') return config.permissionMode !== 'yolo';
-  return config.permissionMode !== 'dangerously-skip-permissions';
+  return !isBatchMode(resolveProviderDefinition(config), config.permissionMode);
 }
 
 const IDEALIZATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes

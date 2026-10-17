@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateDependencies, getExecutionOrder, getReadyToExecute, getDependencyChainDepth } from './dependencyResolver';
+import { validateDependencies, getExecutionOrder, getReadyToExecute, getDependencyChainDepth, getUnmetDependencies } from './dependencyResolver';
 import type { SpecData } from '../specs/types';
 
 function makeSpec(overrides: Partial<SpecData> & { spec_id: string }): SpecData {
@@ -236,5 +236,23 @@ describe('getDependencyChainDepth', () => {
     ];
     // Should complete without hanging; exact value doesn't matter
     expect(() => getDependencyChainDepth(specs)).not.toThrow();
+  });
+});
+
+describe('getUnmetDependencies', () => {
+  it('returns [] when all dependencies are done', () => {
+    const b = makeSpec({ spec_id: 'B', depends_on: ['A'] });
+    expect(getUnmetDependencies(b, [makeSpec({ spec_id: 'A', status: 'done' }), b])).toEqual([]);
+  });
+
+  it('returns dependencies that are not done', () => {
+    const c = makeSpec({ spec_id: 'C', depends_on: ['A', 'B'] });
+    const all = [makeSpec({ spec_id: 'A', status: 'done' }), makeSpec({ spec_id: 'B', status: 'review' }), c];
+    expect(getUnmetDependencies(c, all)).toEqual(['B']);
+  });
+
+  it('returns ids missing from the spec list', () => {
+    const b = makeSpec({ spec_id: 'B', depends_on: ['GHOST'] });
+    expect(getUnmetDependencies(b, [b])).toEqual(['GHOST']);
   });
 });

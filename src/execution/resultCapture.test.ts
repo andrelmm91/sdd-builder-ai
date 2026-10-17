@@ -16,11 +16,16 @@ vi.mock('../utils/frontmatter', () => ({
   parseFrontmatter: vi.fn(),
 }));
 
+vi.mock('./gitCheckpoint', () => ({
+  getChangesSince: vi.fn(),
+}));
+
+import { getChangesSince } from './gitCheckpoint';
 import { captureResults, getExecutionHistory, getLatestExecution } from './resultCapture';
 import { execCommand, isCommandAvailable } from '../utils/shell';
 import { writeWorkspaceFile, readWorkspaceFile, listFiles, getWorkspaceRoot } from '../utils/fileSystem';
 import { parseFrontmatter } from '../utils/frontmatter';
-import type { ExecutionResult } from './types';
+import type { ExecutionResult, GitCheckpoint } from './types';
 
 const mockExecCommand = vi.mocked(execCommand);
 const mockIsCommandAvailable = vi.mocked(isCommandAvailable);
@@ -105,6 +110,42 @@ describe('captureResults', () => {
     expect(jsonCall).toBeDefined();
     const parsed = JSON.parse(jsonCall![1]);
     expect(parsed.changedFiles).toEqual(['M src/foo.ts', 'A src/bar.ts']);
+  });
+
+  describe('with a checkpoint', () => {
+    const checkpoint: GitCheckpoint = {
+      headSha: 'head1', baseSha: 'base1', untrackedBefore: ['old.txt'], createdAt: '2026-10-15T00:00:00.000Z',
+    };
+
+    beforeEach(() => {
+      vi.mocked(getChangesSince).mockResolvedValue(['A src/new.ts', 'M src/foo.ts']);
+    });
+
+    it('uses getChangesSince instead of git diff', async () => {
+      const { changedFiles } = await captureResults('SDD-028', makeExecutionResult(), checkpoint);
+
+      expect(getChangesSince).toHaveBeenCalledWith(checkpoint, '/workspace');
+      expect(changedFiles).toEqual(['A src/new.ts', 'M src/foo.ts']);
+      expect(mockExecCommand).not.toHaveBeenCalledWith('git diff --name-status', expect.anything());
+    });
+
+    it('persists the checkpoint in the written JSON', async () => {
+      await captureResults('SDD-028', makeExecutionResult(), checkpoint);
+
+      const jsonCall = mockWriteWorkspaceFile.mock.calls.find(([p]) => p.endsWith('.json'));
+      const parsed = JSON.parse(jsonCall![1]);
+      expect(parsed.checkpoint).toEqual(checkpoint);
+      expect(parsed.changedFiles).toEqual(['A src/new.ts', 'M src/foo.ts']);
+    });
+  });
+
+  it('falls back to git diff and omits checkpoint when none is given', async () => {
+    const { changedFiles } = await captureResults('SDD-028', makeExecutionResult());
+
+    expect(getChangesSince).not.toHaveBeenCalled();
+    expect(changedFiles).toEqual(['M src/foo.ts', 'A src/bar.ts']);
+    const jsonCall = mockWriteWorkspaceFile.mock.calls.find(([p]) => p.endsWith('.json'));
+    expect(JSON.parse(jsonCall![1])).not.toHaveProperty('checkpoint');
   });
 
   it('detects scope violation when must_not_touch files are in changedFiles', async () => {

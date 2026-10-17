@@ -103,7 +103,7 @@ function makeUri(path: string): vscode.Uri {
 describe('createFeatureFile', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (vscode.workspace.fs as { createDirectory: ReturnType<typeof vi.fn> }).createDirectory =
+    (vscode.workspace.fs as unknown as { createDirectory: ReturnType<typeof vi.fn> }).createDirectory =
       vi.fn().mockResolvedValue(undefined);
     vi.mocked(vscode.workspace.fs.writeFile).mockResolvedValue(undefined);
   });
@@ -113,11 +113,13 @@ describe('createFeatureFile', () => {
       name: 'My Cool Feature',
       description: 'A description',
       acceptanceCriteria: 'Some criteria',
+      requirementType: 'new_feature',
     });
 
     const [, bytesArg] = vi.mocked(vscode.workspace.fs.writeFile).mock.calls[0];
     const written = new TextDecoder().decode(bytesArg as Uint8Array);
     expect(written).toContain('title: My Cool Feature');
+    expect(written).toContain('requirementType: new_feature');
   });
 
   it('sanitizes the folder/file name but preserves original title', async () => {
@@ -125,6 +127,7 @@ describe('createFeatureFile', () => {
       name: 'User Authentication (v2)',
       description: 'Auth feature',
       acceptanceCriteria: 'Login works',
+      requirementType: 'bug_fix',
     });
 
     const [, bytesArg] = vi.mocked(vscode.workspace.fs.writeFile).mock.calls[0];
@@ -139,25 +142,25 @@ describe('createFeatureFile', () => {
 describe('loadFeatureCards display rules', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory = vi.fn();
+    (vscode.workspace.fs as unknown as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory = vi.fn();
   });
 
   it('returns empty array when product folder does not exist', async () => {
-    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
+    (vscode.workspace.fs as unknown as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
       vi.fn().mockRejectedValue(new Error('not found'));
     const cards = await loadFeatureCards(makeUri('/workspace/.sdd/product'));
     expect(cards).toEqual([]);
   });
 
   it('ignores loose files (non-directory entries)', async () => {
-    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
+    (vscode.workspace.fs as unknown as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
       vi.fn().mockResolvedValue([['Idea_1.md', vscode.FileType.File]]);
     const cards = await loadFeatureCards(makeUri('/workspace/.sdd/product'));
     expect(cards).toEqual([]);
   });
 
   it('uses idealization.md status when it exists', async () => {
-    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
+    (vscode.workspace.fs as unknown as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
       vi.fn().mockResolvedValue([['my_feature', vscode.FileType.Directory]]);
 
     vi.mocked(vscode.workspace.fs.readFile)
@@ -174,7 +177,7 @@ describe('loadFeatureCards display rules', () => {
   });
 
   it('falls back to feature file when no idealization.md and status is New Requirement', async () => {
-    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
+    (vscode.workspace.fs as unknown as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
       vi.fn().mockResolvedValue([['my_feature', vscode.FileType.Directory]]);
 
     vi.mocked(vscode.workspace.fs.readFile)
@@ -190,7 +193,7 @@ describe('loadFeatureCards display rules', () => {
   });
 
   it('excludes feature card if no idealization and status is not New Requirement', async () => {
-    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
+    (vscode.workspace.fs as unknown as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
       vi.fn().mockResolvedValue([['my_feature', vscode.FileType.Directory]]);
 
     vi.mocked(vscode.workspace.fs.readFile)
@@ -202,7 +205,7 @@ describe('loadFeatureCards display rules', () => {
   });
 
   it('uses title from frontmatter when present', async () => {
-    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
+    (vscode.workspace.fs as unknown as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
       vi.fn().mockResolvedValue([['my_feature', vscode.FileType.Directory]]);
 
     vi.mocked(vscode.workspace.fs.readFile)
@@ -219,7 +222,7 @@ describe('loadFeatureCards display rules', () => {
   });
 
   it('falls back to folder name when title is absent from frontmatter', async () => {
-    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
+    (vscode.workspace.fs as unknown as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
       vi.fn().mockResolvedValue([['my_feature', vscode.FileType.Directory]]);
 
     vi.mocked(vscode.workspace.fs.readFile)
@@ -234,7 +237,7 @@ describe('loadFeatureCards display rules', () => {
 
   it('skips folder and warns when feature file is also missing', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    (vscode.workspace.fs as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
+    (vscode.workspace.fs as unknown as { readDirectory: ReturnType<typeof vi.fn> }).readDirectory =
       vi.fn().mockResolvedValue([['bad_feature', vscode.FileType.Directory]]);
 
     vi.mocked(vscode.workspace.fs.readFile)

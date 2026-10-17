@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SpecDocument } from '../specs/types';
+import type { AIConfig } from '../config/aiConfigTypes';
 
 vi.mock('../utils/fileSystem', () => ({
   readWorkspaceFile: vi.fn(),
 }));
 
-import { assembleExecutionContext } from './contextAssembler';
+import { buildExecutionPrompt, assembleExecutionContext } from './contextAssembler';
 import { readWorkspaceFile } from '../utils/fileSystem';
 
 const mockReadWorkspaceFile = vi.mocked(readWorkspaceFile);
@@ -36,47 +37,59 @@ function makeSpec(overrides: Partial<SpecDocument> = {}): SpecDocument {
   };
 }
 
+const REF = '@.specs/SDD-024.sdd.md';
+
+const baseAiConfig: AIConfig = {
+  provider: 'claude',
+  permissionMode: 'default',
+  model: 'sonnet',
+  tagSkillMappings: [],
+  prePromptTemplate: '',
+  commitCommand: '',
+  commitCommandEnabled: false,
+  prCommand: '',
+  prCommandEnabled: false,
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockReadWorkspaceFile.mockResolvedValue(undefined);
 });
 
-describe('assembleExecutionContext', () => {
-  it('includes a Spec section with full spec content', async () => {
-    const result = await assembleExecutionContext(makeSpec(), {});
+describe('buildExecutionPrompt', () => {
+  it('references the spec file without inlining its body', async () => {
+    const result = await buildExecutionPrompt(makeSpec(), { specFileRef: REF });
     expect(result).toContain('## Spec');
+    expect(result).toContain(REF);
+    expect(result).not.toContain('This spec defines execution types');
+  });
+
+  it('inlines the spec when no specFileRef is given (deprecated alias)', async () => {
+    const result = await assembleExecutionContext(makeSpec(), {});
     expect(result).toContain('SDD-024');
     expect(result).toContain('Define execution types and implement context assembler');
   });
 
-  it('includes Relevant Files section with file contents', async () => {
-    mockReadWorkspaceFile.mockImplementation(async (path: string) => {
-      if (path === 'src/execution/types.ts') {
-        return 'export interface ExecutionRecord {}';
-      }
-      if (path === 'src/execution/contextAssembler.ts') {
-        return 'export async function assembleExecutionContext() {}';
-      }
-      return undefined;
+  it('replaces {spec_file} in the pre-prompt with specFileRef', async () => {
+    const result = await buildExecutionPrompt(makeSpec(), {
+      specFileRef: REF,
+      aiConfig: { ...baseAiConfig, prePromptTemplate: 'Implement {spec_file} now' },
     });
-
-    const result = await assembleExecutionContext(makeSpec(), {});
-    expect(result).toContain('## Relevant Files');
-    expect(result).toContain('src/execution/types.ts');
-    expect(result).toContain('export interface ExecutionRecord {}');
-    expect(result).toContain('src/execution/contextAssembler.ts');
+    expect(result).toContain(`## Instructions\n\nImplement ${REF} now`);
   });
 
-  it('produces "File not found" note for missing relevant files instead of throwing', async () => {
-    mockReadWorkspaceFile.mockResolvedValue(undefined);
-
-    const result = await assembleExecutionContext(makeSpec(), {});
-    expect(result).toContain('File not found: src/execution/types.ts');
-    expect(result).toContain('File not found: src/execution/contextAssembler.ts');
+  it('lists relevant files as paths only', async () => {
+    mockReadWorkspaceFile.mockResolvedValue('FILE BODY');
+    const result = await buildExecutionPrompt(makeSpec(), { specFileRef: REF, conventions: '' });
+    expect(result).toContain('## Relevant Files');
+    expect(result).toContain('- src/execution/types.ts');
+    expect(result).toContain('- src/execution/contextAssembler.ts');
+    expect(result).not.toContain('FILE BODY');
   });
 
   it('includes Conventions section when conventions option is provided', async () => {
-    const result = await assembleExecutionContext(makeSpec(), {
+    const result = await buildExecutionPrompt(makeSpec(), {
+      specFileRef: REF,
       conventions: '# Conventions\n\nUse TypeScript strict mode.',
     });
     expect(result).toContain('## Conventions');
@@ -91,35 +104,37 @@ describe('assembleExecutionContext', () => {
       return undefined;
     });
 
-    const result = await assembleExecutionContext(makeSpec(), {});
+    const result = await buildExecutionPrompt(makeSpec(), { specFileRef: REF });
     expect(result).toContain('## Conventions');
     expect(result).toContain('Always write tests.');
   });
 
   it('skips Conventions section when no conventions are available', async () => {
     mockReadWorkspaceFile.mockResolvedValue(undefined);
-    const result = await assembleExecutionContext(makeSpec(), {});
+    const result = await buildExecutionPrompt(makeSpec(), { specFileRef: REF });
     expect(result).not.toContain('## Conventions');
   });
 
   it('includes Scope Constraints section listing must_not_touch files', async () => {
-    const result = await assembleExecutionContext(makeSpec(), {});
+    const result = await buildExecutionPrompt(makeSpec(), { specFileRef: REF });
     expect(result).toContain('## Scope Constraints');
     expect(result).toContain('Only modify files listed in relevant_files');
     expect(result).toContain('src/planning/planContextAssembler.ts');
+    expect(result).toContain('SDD verifies scope after the run');
   });
 
   it('includes Scope Constraints section without must_not_touch line when list is empty', async () => {
     const spec = makeSpec();
     spec.frontmatter.must_not_touch = [];
-    const result = await assembleExecutionContext(spec, {});
+    const result = await buildExecutionPrompt(spec, { specFileRef: REF });
     expect(result).toContain('## Scope Constraints');
     expect(result).toContain('Only modify files listed in relevant_files');
     expect(result).not.toContain('Do NOT modify:');
   });
 
   it('includes Previous Feedback section when feedback is provided', async () => {
-    const result = await assembleExecutionContext(makeSpec(), {
+    const result = await buildExecutionPrompt(makeSpec(), {
+      specFileRef: REF,
       feedback: 'Please add error handling.',
     });
     expect(result).toContain('## Previous Feedback');
@@ -127,7 +142,8 @@ describe('assembleExecutionContext', () => {
   });
 
   it('includes previous output in Feedback section when provided', async () => {
-    const result = await assembleExecutionContext(makeSpec(), {
+    const result = await buildExecutionPrompt(makeSpec(), {
+      specFileRef: REF,
       feedback: 'Add error handling.',
       previousOutput: 'The previous run produced this output.',
     });
@@ -137,12 +153,13 @@ describe('assembleExecutionContext', () => {
   });
 
   it('does not include Previous Feedback section when feedback is not provided', async () => {
-    const result = await assembleExecutionContext(makeSpec(), {});
+    const result = await buildExecutionPrompt(makeSpec(), { specFileRef: REF });
     expect(result).not.toContain('## Previous Feedback');
   });
 
   it('does not include previousOutput when feedback is not provided', async () => {
-    const result = await assembleExecutionContext(makeSpec(), {
+    const result = await buildExecutionPrompt(makeSpec(), {
+      specFileRef: REF,
       previousOutput: 'Some output',
     });
     expect(result).not.toContain('## Previous Feedback');
@@ -150,20 +167,35 @@ describe('assembleExecutionContext', () => {
   });
 
   it('returns a document under 100 KB', async () => {
-    const result = await assembleExecutionContext(makeSpec(), {});
+    const result = await buildExecutionPrompt(makeSpec(), { specFileRef: REF });
     expect(Buffer.byteLength(result, 'utf8')).toBeLessThanOrEqual(100 * 1024);
   });
 
   it('truncates the document to 100 KB when content exceeds the limit', async () => {
     const hugeContent = 'x'.repeat(110 * 1024);
-    const result = await assembleExecutionContext(makeSpec(), {
+    const result = await buildExecutionPrompt(makeSpec(), {
+      specFileRef: REF,
       conventions: hugeContent,
     });
     expect(Buffer.byteLength(result, 'utf8')).toBeLessThanOrEqual(100 * 1024);
+    expect(result.endsWith('\n\n[truncated by SDD]')).toBe(true);
+  });
+
+  it('truncates without splitting multi-byte characters', async () => {
+    for (const filler of ['', 'a', 'ab', 'abc']) {
+      const result = await buildExecutionPrompt(makeSpec(), {
+        specFileRef: REF,
+        conventions: filler + '😀'.repeat(30 * 1024),
+      });
+      expect(Buffer.byteLength(result, 'utf8')).toBeLessThanOrEqual(100 * 1024);
+      expect(result).not.toContain('�');
+      expect(Buffer.from(result, 'utf8').toString('utf8')).toBe(result);
+    }
   });
 
   it('includes Post-Execution Commands section with both commands when both are enabled', async () => {
-    const result = await assembleExecutionContext(makeSpec(), {
+    const result = await buildExecutionPrompt(makeSpec(), {
+      specFileRef: REF,
       aiConfig: {
         provider: 'claude',
         permissionMode: 'default',
@@ -182,7 +214,8 @@ describe('assembleExecutionContext', () => {
   });
 
   it('includes Post-Execution Commands section with only commit when only commitCommand is enabled', async () => {
-    const result = await assembleExecutionContext(makeSpec(), {
+    const result = await buildExecutionPrompt(makeSpec(), {
+      specFileRef: REF,
       aiConfig: {
         provider: 'claude',
         permissionMode: 'default',
@@ -201,7 +234,8 @@ describe('assembleExecutionContext', () => {
   });
 
   it('does not include Post-Execution Commands section when both commands are disabled', async () => {
-    const result = await assembleExecutionContext(makeSpec(), {
+    const result = await buildExecutionPrompt(makeSpec(), {
+      specFileRef: REF,
       aiConfig: {
         provider: 'claude',
         permissionMode: 'default',
@@ -217,26 +251,53 @@ describe('assembleExecutionContext', () => {
     expect(result).not.toContain('## Post-Execution Commands');
   });
 
-  it('includes all sections when all inputs are provided', async () => {
-    mockReadWorkspaceFile.mockImplementation(async (path: string) => {
-      if (path === 'src/execution/types.ts') {
-        return 'export interface ExecutionRecord {}';
-      }
-      return undefined;
+  it('includes skill paths and extra instructions', async () => {
+    const result = await buildExecutionPrompt(makeSpec(), {
+      specFileRef: REF,
+      skillPaths: ['.claude/skills/backend.md', '.claude/skills/ui.md'],
+      extraInstructions: 'Retry: fix the failing test.',
     });
+    expect(result).toContain('## Agent Skills');
+    expect(result).toContain('- .claude/skills/backend.md');
+    expect(result).toContain('- .claude/skills/ui.md');
+    expect(result).toContain('## Additional Instructions\n\nRetry: fix the failing test.');
+  });
 
-    const result = await assembleExecutionContext(makeSpec(), {
+  it('omits Agent Skills and Additional Instructions when not provided', async () => {
+    const result = await buildExecutionPrompt(makeSpec(), { specFileRef: REF, skillPaths: [] });
+    expect(result).not.toContain('## Agent Skills');
+    expect(result).not.toContain('## Additional Instructions');
+  });
+
+  it('orders sections as specified when all inputs are provided', async () => {
+    const result = await buildExecutionPrompt(makeSpec(), {
+      specFileRef: REF,
       conventions: '# Conventions',
-      skills: '# Skills',
+      skillPaths: ['skill.md'],
       feedback: 'Fix the types.',
       previousOutput: 'Previous run output.',
+      extraInstructions: 'Extra.',
+      aiConfig: {
+        ...baseAiConfig,
+        prePromptTemplate: 'Implement {spec_file}',
+        commitCommand: 'git commit -m "{spec_id}"',
+        commitCommandEnabled: true,
+      },
     });
 
-    expect(result).toContain('## Spec');
-    expect(result).toContain('## Relevant Files');
-    expect(result).toContain('## Conventions');
-    expect(result).toContain('## Agent Skills');
-    expect(result).toContain('## Scope Constraints');
-    expect(result).toContain('## Previous Feedback');
+    const headings = [
+      '## Instructions',
+      '## Spec',
+      '## Relevant Files',
+      '## Conventions',
+      '## Agent Skills',
+      '## Scope Constraints',
+      '## Post-Execution Commands',
+      '## Previous Feedback',
+      '## Additional Instructions',
+    ];
+    const positions = headings.map((h) => result.indexOf(h));
+    expect(positions.every((p) => p >= 0)).toBe(true);
+    expect([...positions].sort((x, y) => x - y)).toEqual(positions);
   });
 });

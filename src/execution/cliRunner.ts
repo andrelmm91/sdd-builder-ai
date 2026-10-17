@@ -7,22 +7,20 @@ import { isCommandAvailable } from '../utils/shell';
 import type { SpecDocument } from '../specs/types';
 import type { ExecutionConfig, ExecutionResult, ExecutionRunner } from './types';
 import type { AIConfig } from '../config/aiConfigTypes';
-import { DEFAULT_PRE_PROMPT } from '../config/aiConfigTypes';
+import { getProviderBinary, getCliNotFoundMessage } from '../config/extensionConfig';
 import { getSkillsPath } from './skillsLoader';
-import { SPECS_FOLDER } from '../utils/constants';
+import { EXECUTIONS_FOLDER, SPECS_FOLDER } from '../utils/constants';
+import { buildExecutionPrompt } from './contextAssembler';
+import { quoteBash, quoteForShell } from '../utils/shellQuote';
+import {
+  buildProviderCommand,
+  formatFileRef,
+  resolveProviderBinary,
+  resolveProviderDefinition,
+} from './providerCommand';
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const SENTINEL_POLL_MS = 500;
-
-/** Wraps a string in bash single quotes, escaping internal single quotes. */
-function sq(str: string): string {
-  return `'${str.replace(/'/g, "'\\''")}'`;
-}
-
-/** Wraps a string in PowerShell single quotes, escaping internal single quotes. */
-function psq(str: string): string {
-  return `'${str.replace(/'/g, "''")}'`;
-}
 
 export class CliRunner implements ExecutionRunner {
   private _running = false;
@@ -70,13 +68,11 @@ export class CliRunner implements ExecutionRunner {
     let scriptPath: string | null = null;
 
     try {
-      // Pre-flight: ensure claude CLI is available
-      const cliAvailable = await isCommandAvailable(config.claudeCliBinary);
+      // Pre-flight: ensure the provider's CLI is available
+      const providerBinary = getProviderBinary(aiConfig, config.claudeCliBinary);
+      const cliAvailable = await isCommandAvailable(providerBinary);
       if (!cliAvailable) {
-        return this._fail(
-          startTime,
-          `Claude CLI not found: "${config.claudeCliBinary}". Install it or update sdd.claudeCliBinary in settings.`,
-        );
+        return this._fail(startTime, getCliNotFoundMessage(aiConfig, providerBinary));
       }
 
       const root = getWorkspaceRoot();
@@ -84,7 +80,8 @@ export class CliRunner implements ExecutionRunner {
         return this._fail(startTime, 'No workspace folder is open');
       }
 
-      const { command, terminalInput, interactive } = await this._buildCommand(spec, config, aiConfig, specFilePath);
+      const promptFile = await this._writePromptFile(root, spec, aiConfig, specFilePath, ts);
+      const { command, terminalInput, interactive } = this._buildCommand(config, aiConfig, promptFile.fileRef);
 
       // Interactive commands stay in REPL — the user signals completion by closing
       // the terminal ("Complete & Close Terminal" button in the Kanban UI).
@@ -103,12 +100,12 @@ export class CliRunner implements ExecutionRunner {
         // WSL2/macOS and causes commands to exit 130/SIGINT).
         const wrappedCommand = interactive
           ? command
-          : `{ ${command}; echo $? > ${sq(sentinel)}; } 2>&1 | tee ${sq(logFile)}`;
+          : `{ ${command}; echo $? > ${quoteBash(sentinel)}; } 2>&1 | tee ${quoteBash(logFile)}`;
         let scriptContent = `#!/bin/bash\n${wrappedCommand}\n`;
         if (terminalInput !== undefined) {
           // Embed the prompt as stdin via a here-string so it reaches the CLI process
           // without any sendText timing dependency.
-          scriptContent = `#!/bin/bash\n${wrappedCommand} <<< ${sq(terminalInput)}\n`;
+          scriptContent = `#!/bin/bash\n${wrappedCommand} <<< ${quoteBash(terminalInput)}\n`;
         }
         scriptContent += `exec "\${SHELL:-bash}"\n`;
         scriptPath = path.join(os.tmpdir(), `sdd-${specId}-${ts}-cmd.sh`);
@@ -131,8 +128,8 @@ export class CliRunner implements ExecutionRunner {
           terminal.sendText(command);
         } else {
           terminal.sendText(
-            `${command} 2>&1 | Tee-Object -FilePath ${psq(logFile)}; ` +
-            `$LASTEXITCODE | Out-File -FilePath ${psq(sentinel)} -Encoding ascii`,
+            `${command} 2>&1 | Tee-Object -FilePath ${quoteForShell(logFile)}; ` +
+            `$LASTEXITCODE | Out-File -FilePath ${quoteForShell(sentinel)} -Encoding ascii`,
           );
         }
       }
@@ -140,8 +137,18 @@ export class CliRunner implements ExecutionRunner {
       if (interactive) {
         // Interactive modes: the caller is responsible for showing any
         // notification and calling completeInteractive() when done.
-        await this._waitForTerminalClose(config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-        return { success: true, output: '', duration: Date.now() - startTime };
+        const closeCode = await this._waitForTerminalClose(config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+        // A non-zero exit (e.g. Claude stopped on the untrusted-folder prompt) must not reach review.
+        if (closeCode && !this._aborted) {
+          return {
+            success: false,
+            output: '',
+            duration: Date.now() - startTime,
+            error: `Process exited with code ${closeCode}`,
+            promptFile: promptFile.relativePath,
+          };
+        }
+        return { success: true, output: '', duration: Date.now() - startTime, promptFile: promptFile.relativePath };
       }
 
       // Non-interactive: poll for sentinel file
@@ -171,10 +178,11 @@ export class CliRunner implements ExecutionRunner {
           output: logOutput,
           duration,
           error: `Process exited with code ${exitCode}`,
+          promptFile: promptFile.relativePath,
         };
       }
 
-      return { success: true, output: logOutput, duration };
+      return { success: true, output: logOutput, duration, promptFile: promptFile.relativePath };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return this._fail(startTime, message);
@@ -248,7 +256,7 @@ export class CliRunner implements ExecutionRunner {
    * Waits for the terminal to be closed by the user (interactive modes).
    * Resolves on terminal close or abort, rejects on timeout.
    */
-  private _waitForTerminalClose(timeoutMs: number): Promise<void> {
+  private _waitForTerminalClose(timeoutMs: number): Promise<number | undefined> {
     return new Promise((resolve, reject) => {
       let settled = false;
 
@@ -267,7 +275,7 @@ export class CliRunner implements ExecutionRunner {
 
       const abortPoll = setInterval(() => {
         if (this._aborted) {
-          settle(resolve);
+          settle(() => resolve(undefined));
         }
       }, SENTINEL_POLL_MS);
 
@@ -280,36 +288,32 @@ export class CliRunner implements ExecutionRunner {
 
       const terminalCloseDisposable = vscode.window.onDidCloseTerminal((closed) => {
         if (closed === this._terminal) {
-          settle(resolve);
+          settle(() => resolve(closed.exitStatus?.code));
         }
       });
     });
   }
 
-  private async _buildCommand(
+  /**
+   * Writes the full execution instructions document to
+   * `.sdd/executions/<specId>/prompt-<timestamp>.md` and returns its workspace-relative
+   * path plus the provider-specific file reference. The file is kept as an audit trail.
+   */
+  private async _writePromptFile(
+    root: string,
     spec: SpecDocument,
-    config: ExecutionConfig,
     aiConfig: Partial<AIConfig> | undefined,
-    specFilePath?: string,
-  ): Promise<{ command: string; terminalInput?: string; interactive?: boolean }> {
+    specFilePath: string | undefined,
+    ts: number,
+  ): Promise<{ relativePath: string; fileRef: string }> {
     const fm = spec.frontmatter;
-    const provider = aiConfig?.provider ?? 'claude';
+    const def = resolveProviderDefinition(aiConfig);
+    const toRef = (p: string) => formatFileRef(def, p);
 
     // Use the actual file path (with slug) if provided; fall back to ID-only name
-    const resolvedSpecPath = specFilePath ?? `${SPECS_FOLDER}/${fm.spec_id}.sdd.md`;
-    const fileRef = provider === 'copilot'
-      ? `#file:${resolvedSpecPath}`
-      : `@${resolvedSpecPath}`;
+    const resolvedSpecPath = (specFilePath ?? `${SPECS_FOLDER}/${fm.spec_id}.sdd.md`).split('\\').join('/');
 
-    // --- Build prompt ---
-    const promptParts: string[] = [];
-
-    // 1. Pre-prompt: {spec_file} resolves to the provider-appropriate file reference
-    const prePrompt = (aiConfig?.prePromptTemplate ?? DEFAULT_PRE_PROMPT)
-      .replace(/\{spec_file\}/g, fileRef);
-    promptParts.push(prePrompt);
-
-    // 2. Tag-skill mappings: only for tags present on this spec
+    const skillPaths: string[] = [];
     if (aiConfig?.tagSkillMappings?.length) {
       const specTags = new Set(fm.tags ?? []);
       const matchedSkills = [
@@ -321,64 +325,42 @@ export class CliRunner implements ExecutionRunner {
       ];
       for (const skillName of matchedSkills) {
         const skillPath = await getSkillsPath(skillName);
-        if (skillPath) {
-          promptParts.push(`Use skills in ${skillPath}`);
-        }
+        if (skillPath) skillPaths.push(skillPath);
       }
     }
 
-    // 3. Post-execution commands (only when enabled and non-empty)
-    if (aiConfig?.commitCommandEnabled && aiConfig.commitCommand) {
-      const cmd = aiConfig.commitCommand
-        .replace(/\{spec_id\}/g, fm.spec_id)
-        .replace(/\{title\}/g, fm.title);
-      promptParts.push(`After completion run: \`${cmd}\``);
-    }
-    if (aiConfig?.prCommandEnabled && aiConfig.prCommand) {
-      const cmd = aiConfig.prCommand
-        .replace(/\{spec_id\}/g, fm.spec_id)
-        .replace(/\{title\}/g, fm.title);
-      promptParts.push(`After completion run: \`${cmd}\``);
-    }
+    const document = await buildExecutionPrompt(spec, {
+      specFileRef: toRef(resolvedSpecPath),
+      skillPaths,
+      aiConfig: aiConfig as AIConfig | undefined,
+    });
 
-    // Normalize newlines to spaces so the shell argument never triggers readline's
-    // `quote>` continuation prompt when the command is sent to the terminal.
-    const prompt = promptParts.join(' ').replace(/\n+/g, ' ').trim();
+    const relativePath = `${EXECUTIONS_FOLDER}/${fm.spec_id}/prompt-${ts}.md`;
+    const absolutePath = path.join(root, ...relativePath.split('/'));
+    await fs.mkdir(path.dirname(absolutePath), { recursive: true });
+    await fs.writeFile(absolutePath, document, 'utf8');
 
-    // --- Build CLI command ---
+    return { relativePath, fileRef: toRef(relativePath) };
+  }
 
-    if (provider === 'copilot') {
-      const parts = ['gh', 'copilot'];
-      // Note: gh copilot does not support a --model flag; model selection is not available here.
+  private _buildCommand(
+    config: ExecutionConfig,
+    aiConfig: Partial<AIConfig> | undefined,
+    promptFileRef: string,
+  ): { command: string; terminalInput?: string; interactive?: boolean } {
+    const def = resolveProviderDefinition(aiConfig);
 
-      if (aiConfig?.permissionMode === 'yolo') {
-        // Yolo mode: pass prompt via -p flag for non-interactive batch execution.
-        parts.push('--yolo');
-        parts.push('-p', sq(prompt));
-        return { command: parts.join(' ') };
-      }
+    // The whole prompt lives in the instructions file; the CLI only gets this one line.
+    const prompt = `Read and follow all instructions in ${promptFileRef}.`;
 
-      // Default (ask) mode: interactive, analogous to Claude's ask/plan mode.
-      // Pass the prompt as a positional argument (not -p which is for batch/non-interactive).
-      // Without --yolo the agent will pause for permission on each tool use.
-      parts.push(sq(prompt));
-      return { command: parts.join(' '), interactive: true };
-    }
-
-    // Claude provider
-    const parts = [config.claudeCliBinary];
-    if (aiConfig?.model) parts.push('--model', aiConfig.model);
-    if (aiConfig?.permissionMode === 'dangerously-skip-permissions') {
-      // -p (print mode) makes Claude one-shot: execute and exit.
-      // Without it, Claude enters REPL mode and the sentinel never runs.
-      parts.push('-p', '--dangerously-skip-permissions');
-    }
-    parts.push(sq(prompt));
-
-    // Default and plan modes are interactive — Claude stays in REPL,
-    // user approves/denies tools. Sentinel won't work; use terminal close.
-    const interactive = aiConfig?.permissionMode !== 'dangerously-skip-permissions';
-    return { command: parts.join(' '), interactive };
+    // Batch modes are one-shot (the sentinel runs afterwards); interactive modes stay in
+    // the REPL and completion is signalled by closing the terminal.
+    return buildProviderCommand(def, {
+      permissionModeId: aiConfig?.permissionMode ?? 'default',
+      prompt,
+      model: aiConfig?.model,
+      binaryOverride: resolveProviderBinary(def, config.claudeCliBinary),
+    });
   }
 
   private _fail(startTime: number, error: string): ExecutionResult {

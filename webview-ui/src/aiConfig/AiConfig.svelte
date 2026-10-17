@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { onMessage, postMessage } from '../lib/vscode';
+  import type { ProviderOption, ProviderDefinition } from '../lib/types';
+  import ProviderEditor from './ProviderEditor.svelte';
 
-  type AIProvider = 'claude' | 'copilot';
-  type PermissionMode = 'default' | 'dangerously-skip-permissions' | 'plan' | 'yolo';
+  type AIProvider = string;
+  type PermissionMode = string;
 
   interface TagSkillMapping {
     tag: string;
@@ -17,6 +19,7 @@
     permissionMode: PermissionMode;
     model: string;
     effort: ClaudeEffort;
+    timeoutMultiplier: number;
     tagSkillMappings: TagSkillMapping[];
     prePromptTemplate: string;
     commitCommand: string;
@@ -34,43 +37,128 @@
     createSddCardsPromptTemplate: string;
   }
 
-  const DEFAULT_PRE_PROMPT = 'Implement {spec_file}. Update open tasks and its status to review after completion.';
+  const DEFAULT_PRE_PROMPT = 'Implement {spec_file}. Tick the acceptance criteria checkboxes you have verified. Do not modify the spec frontmatter; status is managed by SDD.';
   const DEFAULT_IDEALIZE_PROMPT = 'You are acting as a Senior Tech Lead and Software Architect. Follow the skill instructions in {file_prefix}.sdd/skills/idealize-requirements/SKILL.md. Analyze the feature description in {file_prefix}{feature_path} and produce a complete technical idealization. Create idealization.md in the same folder as the feature file, following the output format defined in the skill. The idealization must include: technical architecture, implementation plan with ordered phases, automated and manual acceptance criteria, technical risks with mitigations, concrete recommendations grounded in the existing codebase, and all open questions that must be resolved before implementation.';
   const DEFAULT_CREATE_SDD_PROMPT = 'Create new phases and SDDs in {file_prefix}{specs_folder}/ to fulfill the requirements in {file_prefix}{idealization_path} by using skills in {file_prefix}.sdd/skills/sdd-planner/SKILL.md. Add dependency from the other SDDs if needed.';
 
-  const PROVIDER_OPTIONS: { value: AIProvider; label: string }[] = [
-    { value: 'claude', label: 'Claude' },
-    { value: 'copilot', label: 'Copilot' },
-  ];
+  // Available providers (built-in + custom) with resolved models, sent in `configData`.
+  // Single state so a later refresh (e.g. after editing custom providers) updates every dropdown.
+  let providers = $state<ProviderOption[]>([]);
+  // Raw `ai.customProviders` and the built-in definitions (copy sources) for the provider editor.
+  let customProviders = $state<ProviderDefinition[]>([]);
+  let builtinProviders = $state<ProviderDefinition[]>([]);
 
-  const PERMISSION_MODES: Record<AIProvider, { value: PermissionMode; label: string }[]> = {
-    claude: [
-      { value: 'default', label: 'Default (ask)' },
-      { value: 'dangerously-skip-permissions', label: 'Full permissions (--dangerously-skip-permissions)' },
-      { value: 'plan', label: 'Plan mode (--plan)' },
-    ],
-    copilot: [
-      { value: 'default', label: 'Default (ask)' },
-      { value: 'yolo', label: 'Full permissions (--yolo)' },
-    ],
-  };
+  function modelsOf(id: string): string[] {
+    return providers.find((p) => p.id === id)?.models ?? [];
+  }
 
-  const MODELS: Record<AIProvider, string[]> = {
-    claude: ['opus', 'sonnet', 'haiku'],
-    copilot: [
-      'claude-sonnet-4.6', 'claude-sonnet-4.5', 'claude-haiku-4.5',
-      'claude-opus-4.6', 'claude-opus-4.6-fast', 'claude-opus-4.5', 'claude-sonnet-4',
-      'gemini-3-pro-preview',
-      'gpt-5.4', 'gpt-5.3-codex', 'gpt-5.2-codex', 'gpt-5.2',
-      'gpt-5.1-codex-max', 'gpt-5.1-codex', 'gpt-5.1', 'gpt-5.1-codex-mini',
-      'gpt-5-mini', 'gpt-4.1',
-    ],
-  };
+  function modesOf(id: string): ProviderOption['permissionModes'] {
+    return providers.find((p) => p.id === id)?.permissionModes ?? [];
+  }
+
+  /** Keep the saved model selectable even when it is in no list. */
+  function withSaved(list: string[], current: string): string[] {
+    return current && !list.includes(current) ? [...list, current] : list;
+  }
+
+  /** Keep the saved permission mode selectable even when the provider no longer offers it. */
+  function withSavedMode(list: ProviderOption['permissionModes'], current: string): ProviderOption['permissionModes'] {
+    return current && !list.some((m) => m.id === current) ? [...list, { id: current, label: current, mode: 'interactive' }] : list;
+  }
+
+  /** Same default as before: the first unattended (batch) mode, else the first mode. */
+  function defaultModeFor(id: string): string {
+    const modes = modesOf(id);
+    return (modes.find((m) => m.mode === 'batch') ?? modes[0])?.id ?? '';
+  }
+
+  // Keep in sync with MODEL_ID_PATTERN in src/config/aiConfigTypes.ts.
+  const MODEL_ID_PATTERN = /^[A-Za-z0-9._:@/[\]-]{1,100}$/;
+
+  // Model Lists editor: draft is null for a provider in built-in mode.
+  let builtinModels = $state<Record<string, string[]>>({});
+  let savedCustom = $state<Record<string, string[]>>({});
+  let draft = $state<Record<string, string[] | null>>({});
+  let newModel = $state<Record<string, string>>({});
+  let modelInputError = $state<Record<string, string>>({});
+  let modelsSaveMessage = $state('');
+  let modelsJustSaved = $state(false);
+
+  function draftFromCustom(custom: Record<string, string[]>): Record<string, string[] | null> {
+    return Object.fromEntries(providers.map((p) => [p.id, custom[p.id]?.length ? [...custom[p.id]] : null]));
+  }
+
+  function normalizedDraft(): Record<string, string[]> {
+    const out: Record<string, string[]> = {};
+    for (const p of providers) {
+      const list = draft[p.id];
+      if (list && list.length > 0) out[p.id] = [...list];
+    }
+    return out;
+  }
+
+  const modelsDirty = $derived(
+    JSON.stringify(normalizedDraft()) !== JSON.stringify(
+      Object.fromEntries(providers.filter((p) => savedCustom[p.id]?.length).map((p) => [p.id, savedCustom[p.id]])),
+    ),
+  );
+
+  function customize(p: string) {
+    draft[p] = [...(builtinModels[p] ?? [])];
+    modelsSaveMessage = '';
+  }
+
+  function resetToBuiltin(p: string) {
+    draft[p] = null;
+    modelInputError[p] = '';
+    modelsSaveMessage = '';
+  }
+
+  function addModel(p: string) {
+    const list = draft[p];
+    const value = (newModel[p] ?? '').trim();
+    if (!list || !value) return;
+    if (!MODEL_ID_PATTERN.test(value)) {
+      modelInputError[p] = 'Use 1–100 letters, digits or . _ : @ / [ ] - (no spaces or quotes).';
+      return;
+    }
+    if (list.includes(value)) {
+      modelInputError[p] = `"${value}" is already in the list.`;
+      return;
+    }
+    draft[p] = [...list, value];
+    newModel[p] = '';
+    modelInputError[p] = '';
+  }
+
+  function removeModel(p: string, index: number) {
+    draft[p] = (draft[p] ?? []).filter((_, i) => i !== index);
+  }
+
+  function moveModel(p: string, index: number, delta: number) {
+    const list = [...(draft[p] ?? [])];
+    const target = index + delta;
+    if (target < 0 || target >= list.length) return;
+    [list[index], list[target]] = [list[target], list[index]];
+    draft[p] = list;
+  }
+
+  function saveModels() {
+    modelsSaveMessage = '';
+    postMessage('saveModels', { models: JSON.parse(JSON.stringify(normalizedDraft())) });
+  }
+
+  function missingModelWarning(selected: string, p: string): string {
+    const list = modelsOf(p);
+    if (!selected || !list || list.length === 0 || list.includes(selected)) return '';
+    return `"${selected}" is not in the ${p} list; it will still be used.`;
+  }
 
   let provider = $state<AIProvider>('claude');
   let permissionMode = $state<PermissionMode>('default');
   let model = $state<string>('sonnet');
   let effort = $state<ClaudeEffort>('medium');
+  let timeoutMultiplier = $state<number>(1);
   let tagSkillMappings = $state<TagSkillMapping[]>([]);
   let prePromptTemplate = $state<string>('');
   let availableTags = $state<string[]>([]);
@@ -95,21 +183,46 @@
   let reqSaved = $state(false);
   let reqSaveError = $state(false);
 
-  const permissionOptions = $derived(PERMISSION_MODES[provider]);
-  const modelOptions = $derived(MODELS[provider]);
-  const reqPermissionOptions = $derived(PERMISSION_MODES[reqProvider]);
-  const reqModelOptions = $derived(MODELS[reqProvider]);
+  const providerOptions = $derived(withSavedProvider(provider));
+  const reqProviderOptions = $derived(withSavedProvider(reqProvider));
+  const permissionOptions = $derived(withSavedMode(modesOf(provider), permissionMode));
+  const modelSuggestions = $derived(modelsOf(provider));
+  // A <datalist> filters its options by the typed text, so a pre-filled model hid every other
+  // suggestion. Use a full <select> instead, with "Other…" revealing a free-text model id.
+  const OTHER_MODEL = '__other__';
+  let modelOtherChosen = $state(false);
+  const modelIsOther = $derived(
+    modelOtherChosen || modelSuggestions.length === 0 || (model !== '' && !modelSuggestions.includes(model)),
+  );
+
+  function onModelSelect(value: string) {
+    if (value === OTHER_MODEL) {
+      modelOtherChosen = true;
+      model = '';
+    } else {
+      modelOtherChosen = false;
+      model = value;
+    }
+  }
+  const reqPermissionOptions = $derived(withSavedMode(modesOf(reqProvider), reqPermissionMode));
+  const reqModelOptions = $derived(withSaved(modelsOf(reqProvider), reqModel));
+
+  /** Keep a saved provider selectable even if its definition is gone. */
+  function withSavedProvider(current: string): { id: string; label: string }[] {
+    return providers.some((p) => p.id === current) || !current ? providers : [...providers, { id: current, label: current }];
+  }
 
   function onProviderChange(newProvider: AIProvider) {
     provider = newProvider;
-    permissionMode = PERMISSION_MODES[newProvider][1].value;
-    model = MODELS[newProvider][0];
+    permissionMode = defaultModeFor(newProvider);
+    model = modelsOf(newProvider)[0] ?? '';
+    modelOtherChosen = false;
   }
 
   function onReqProviderChange(newProvider: AIProvider) {
     reqProvider = newProvider;
-    reqPermissionMode = PERMISSION_MODES[newProvider][1].value;
-    reqModel = MODELS[newProvider][0];
+    reqPermissionMode = defaultModeFor(newProvider);
+    reqModel = modelsOf(newProvider)[0] ?? '';
   }
 
   function addMapping() {
@@ -138,6 +251,7 @@
     // vscodeApi.postMessage cannot serialize Proxy objects.
     const config: AIConfig = JSON.parse(JSON.stringify({
       provider, permissionMode, model, effort, tagSkillMappings,
+      timeoutMultiplier: Number.isFinite(timeoutMultiplier) ? timeoutMultiplier : 1,
       prePromptTemplate, commitCommand, commitCommandEnabled,
       prCommand, prCommandEnabled,
     }));
@@ -172,13 +286,22 @@
         saveError = true;
         setTimeout(() => (saveError = false), 3000);
       } else if (msg.type === 'configData') {
-        const d = msg.data as { config: AIConfig; tags: string[]; skills: string[] };
+        const d = msg.data as {
+          config: AIConfig; tags: string[]; skills: string[];
+          providers: ProviderOption[];
+          customModels?: Record<string, string[]>;
+          builtinModels?: Record<string, string[]>;
+          customProviders?: ProviderDefinition[];
+          builtinProviders?: ProviderDefinition[];
+        };
         const c = d.config;
         notInitialized = false;
         provider = c.provider;
         permissionMode = c.permissionMode;
         model = c.model;
+        modelOtherChosen = false;
         effort = c.effort ?? 'medium';
+        timeoutMultiplier = c.timeoutMultiplier ?? 1;
         tagSkillMappings = c.tagSkillMappings;
         prePromptTemplate = c.prePromptTemplate;
         commitCommand = c.commitCommand;
@@ -187,6 +310,37 @@
         prCommandEnabled = c.prCommandEnabled;
         availableTags = d.tags;
         availableSkills = d.skills;
+        providers = d.providers ?? [];
+        customProviders = d.customProviders ?? [];
+        builtinProviders = d.builtinProviders ?? [];
+        builtinModels = d.builtinModels ?? {};
+        savedCustom = d.customModels ?? {};
+        draft = draftFromCustom(savedCustom);
+      } else if (msg.type === 'modelsSaved') {
+        const d = msg.data as { providers: ProviderOption[]; customModels: Record<string, string[]> };
+        providers = d.providers ?? providers;
+        savedCustom = d.customModels ?? {};
+        draft = draftFromCustom(savedCustom);
+        modelsSaveMessage = '';
+        modelsJustSaved = true;
+        setTimeout(() => (modelsJustSaved = false), 2000);
+      } else if (msg.type === 'providersSaved') {
+        const d = msg.data as {
+          providers: ProviderOption[];
+          customProviders: ProviderDefinition[];
+          customModels?: Record<string, string[]>;
+          builtinModels?: Record<string, string[]>;
+        };
+        // Keep unsaved Model Lists drafts for providers that still exist.
+        const previous = draft;
+        providers = d.providers ?? providers;
+        customProviders = d.customProviders ?? [];
+        builtinModels = d.builtinModels ?? builtinModels;
+        savedCustom = d.customModels ?? savedCustom;
+        const fresh = draftFromCustom(savedCustom);
+        draft = Object.fromEntries(providers.map((p) => [p.id, p.id in previous ? previous[p.id] : fresh[p.id]]));
+      } else if (msg.type === 'modelsSaveError') {
+        modelsSaveMessage = (msg.data as { message: string }).message;
       } else if (msg.type === 'requirementsConfigData') {
         const d = msg.data as { config: RequirementsAIConfig };
         const c = d.config;
@@ -225,7 +379,8 @@
   {/if}
 
   <div class="config-body" class:disabled={notInitialized}>
-    <div class="section-group-heading">SDD Execution</div>
+    <div class="group-box group-exec">
+      <div class="section-group-heading"><span class="group-icon" aria-hidden="true">⚙</span>SDD Execution</div>
 
     <section class="form-section">
       <label class="field-label" for="provider-select">AI Provider</label>
@@ -235,28 +390,54 @@
         value={provider}
         onchange={(e) => onProviderChange((e.currentTarget as HTMLSelectElement).value as AIProvider)}
       >
-        {#each PROVIDER_OPTIONS as opt}
-          <option value={opt.value}>{opt.label}</option>
+        {#each providerOptions as opt}
+          <option value={opt.id}>{opt.label}</option>
         {/each}
       </select>
+      <p class="field-hint">Add or edit custom providers in the "Custom Providers" section below.</p>
     </section>
 
     <section class="form-section">
       <label class="field-label" for="permission-select">Permission Mode</label>
       <select id="permission-select" class="form-select" bind:value={permissionMode}>
         {#each permissionOptions as opt}
-          <option value={opt.value}>{opt.label}</option>
+          <option value={opt.id}>{opt.label}</option>
         {/each}
       </select>
     </section>
 
     <section class="form-section">
       <label class="field-label" for="model-select">Model</label>
-      <select id="model-select" class="form-select" bind:value={model}>
-        {#each modelOptions as m}
-          <option value={m}>{m}</option>
-        {/each}
-      </select>
+      {#if modelSuggestions.length > 0}
+        <select
+          id="model-select"
+          class="form-select"
+          value={modelIsOther ? OTHER_MODEL : model}
+          onchange={(e) => onModelSelect((e.currentTarget as HTMLSelectElement).value)}
+        >
+          {#if model === '' && !modelIsOther}
+            <option value="">(no model selected)</option>
+          {/if}
+          {#each modelSuggestions as m (m)}
+            <option value={m}>{m}</option>
+          {/each}
+          <option value={OTHER_MODEL}>Other (type a model id)…</option>
+        </select>
+      {/if}
+      {#if modelIsOther}
+        <input
+          id={modelSuggestions.length > 0 ? 'model-other' : 'model-select'}
+          class="form-input model-other"
+          type="text"
+          placeholder="Model id, e.g. gpt-5.5"
+          aria-label="Model id"
+          bind:value={model}
+        />
+      {/if}
+      {#if !modelOtherChosen && missingModelWarning(model, provider)}
+        <p class="field-warning">{missingModelWarning(model, provider)}</p>
+      {/if}
+      <p class="field-hint">Manage models in Model Lists below.</p>
     </section>
 
     {#if provider === 'claude'}
@@ -270,6 +451,20 @@
       <p class="field-hint">Passed as <code>--effort</code> to the Claude CLI.</p>
     </section>
     {/if}
+
+    <section class="form-section">
+      <label class="field-label" for="timeout-multiplier-input">Execution timeout multiplier</label>
+      <input
+        id="timeout-multiplier-input"
+        class="form-input"
+        type="number"
+        min="0.25"
+        max="10"
+        step="0.25"
+        bind:value={timeoutMultiplier}
+      />
+      <p class="field-hint">Multiplies the complexity-based timeout (low 10 min, medium 20 min, high 30 min).</p>
+    </section>
 
     <section class="form-section">
       <div class="section-heading">Tag → Skill Mappings</div>
@@ -380,6 +575,7 @@
       <p class="field-hint">Use <code>{'{spec_file}'}</code> as a placeholder for the spec path.</p>
     </section>
 
+
     <section class="form-section">
       <div class="section-heading">Git Commands</div>
       <p class="field-hint">These commands are appended to the execution prompt so the AI agent handles git operations. Use <code>{'{spec_id}'}</code> and <code>{'{title}'}</code> as placeholders.</p>
@@ -417,8 +613,10 @@
       </button>
     </div>
 
-    <hr class="section-divider" />
-    <div class="section-group-heading">Requirements AI Config</div>
+    </div>
+
+    <div class="group-box group-req">
+      <div class="section-group-heading"><span class="group-icon" aria-hidden="true">✎</span>Requirements AI Config</div>
     <p class="field-hint">Used by <strong>Idealize Requirements</strong> and <strong>Create SDD Cards</strong> commands.</p>
 
     <section class="form-section">
@@ -429,8 +627,8 @@
         value={reqProvider}
         onchange={(e) => onReqProviderChange((e.currentTarget as HTMLSelectElement).value as AIProvider)}
       >
-        {#each PROVIDER_OPTIONS as opt}
-          <option value={opt.value}>{opt.label}</option>
+        {#each reqProviderOptions as opt}
+          <option value={opt.id}>{opt.label}</option>
         {/each}
       </select>
     </section>
@@ -439,7 +637,7 @@
       <label class="field-label" for="req-permission-select">Permission Mode</label>
       <select id="req-permission-select" class="form-select" bind:value={reqPermissionMode}>
         {#each reqPermissionOptions as opt}
-          <option value={opt.value}>{opt.label}</option>
+          <option value={opt.id}>{opt.label}</option>
         {/each}
       </select>
     </section>
@@ -451,6 +649,10 @@
           <option value={m}>{m}</option>
         {/each}
       </select>
+      {#if missingModelWarning(reqModel, reqProvider)}
+        <p class="field-warning">{missingModelWarning(reqModel, reqProvider)}</p>
+      {/if}
+      <p class="field-hint">Manage models in Model Lists below.</p>
     </section>
 
     {#if reqProvider === 'claude'}
@@ -500,6 +702,81 @@
       <button class="btn-save" class:btn-save-success={reqSaved} class:btn-save-error={reqSaveError} use:directClick={saveRequirementsConfig}>
         {reqSaved ? 'Saved!' : reqSaveError ? 'Error!' : 'Save Requirements Config'}
       </button>
+    </div>
+
+    </div>
+
+    <div class="group-box group-models">
+      <div class="section-group-heading"><span class="group-icon" aria-hidden="true">☰</span>Model Lists</div>
+    <p class="field-hint">Shared by the execution and requirements model dropdowns. A custom list replaces the built-in list for that provider; the first entry is the default when switching provider.</p>
+
+    {#each providers as p (p.id)}
+      {@const list = draft[p.id]}
+      <section class="model-card">
+        <div class="label-row">
+          <span class="field-label">{p.label}</span>
+          <span class="mode-badge" class:custom={list !== null && list !== undefined}>{list ? 'Custom' : 'Built-in'}</span>
+        </div>
+
+        {#if list}
+          <ul class="chip-list">
+            {#each list as m, i (m)}
+              <li class="chip">
+                <span class="chip-text">{m}</span>
+                <button class="chip-btn" aria-label="Move {m} up" disabled={i === 0} onclick={() => moveModel(p.id, i, -1)}>↑</button>
+                <button class="chip-btn" aria-label="Move {m} down" disabled={i === list.length - 1} onclick={() => moveModel(p.id, i, 1)}>↓</button>
+                <button class="chip-btn chip-remove" aria-label="Remove {m}" onclick={() => removeModel(p.id, i)}>×</button>
+              </li>
+            {/each}
+          </ul>
+          <div class="add-mapping-row">
+            <input
+              class="form-input"
+              type="text"
+              placeholder="Model id"
+              aria-label="New {p.label} model id"
+              bind:value={newModel[p.id]}
+              onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addModel(p.id); } }}
+            />
+            <button class="btn-add" onclick={() => addModel(p.id)} disabled={!(newModel[p.id] ?? '').trim()}>Add</button>
+            <button class="btn-reset" onclick={() => resetToBuiltin(p.id)}>Reset to built-in</button>
+          </div>
+          {#if modelInputError[p.id]}
+            <p class="field-error">{modelInputError[p.id]}</p>
+          {/if}
+        {:else}
+          <ul class="chip-list">
+            {#each builtinModels[p.id] ?? [] as m}
+              <li class="chip readonly"><span class="chip-text">{m}</span></li>
+            {/each}
+          </ul>
+          <div>
+            <button class="btn-reset" onclick={() => customize(p.id)}>Customize</button>
+          </div>
+        {/if}
+      </section>
+    {/each}
+
+    {#if modelsSaveMessage}
+      <p class="field-error">{modelsSaveMessage}</p>
+    {/if}
+    <div class="save-row models-save-row">
+      {#if modelsDirty}<span class="unsaved">Unsaved changes</span>{/if}
+      <button class="btn-save" class:btn-save-success={modelsJustSaved} disabled={!modelsDirty} onclick={saveModels}>
+        {modelsJustSaved && !modelsDirty ? 'Saved!' : 'Save model lists'}
+      </button>
+    </div>
+
+    </div>
+
+    <div class="group-box group-providers">
+      <div class="section-group-heading"><span class="group-icon" aria-hidden="true">⧉</span>Custom Providers</div>
+    <p class="field-hint">Define other agent CLIs, or override Claude or Copilot, in <code>ai.customProviders</code>. Providers are checked before they are saved.</p>
+    <ProviderEditor
+      saved={customProviders}
+      builtins={builtinProviders}
+      usedBy={{ 'ai.provider': provider, 'requirementsAi.provider': reqProvider }}
+    />
     </div>
   </div>
 </div>
@@ -584,6 +861,8 @@
     font-size: 0.9em;
     margin-bottom: 2px;
   }
+
+  .model-other { margin-top: 4px; }
 
   .form-select,
   .form-input {
@@ -747,17 +1026,52 @@
   .btn-save-success { background: #2ea043 !important; }
   .btn-save-error { background: var(--vscode-inputValidation-errorBackground, #be1100) !important; }
 
-  .section-divider {
-    border: none;
-    border-top: 1px solid var(--vscode-panel-border);
-    margin: 8px 0;
+  /* One tinted box per group. Accent colors come from the theme's chart palette,
+     so they adapt to light, dark and high-contrast themes. */
+  .group-box {
+    --group-accent: var(--vscode-focusBorder);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0 16px 16px;
+    border: 1px solid color-mix(in srgb, var(--group-accent) 35%, var(--vscode-panel-border));
+    border-left: 4px solid var(--group-accent);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--group-accent) 6%, var(--vscode-editor-background));
+    overflow: hidden;
+  }
+  .group-exec { --group-accent: var(--vscode-charts-blue, #3794ff); }
+  .group-req { --group-accent: var(--vscode-charts-purple, #b180d7); }
+  .group-models { --group-accent: var(--vscode-charts-green, #89d185); }
+  .group-providers { --group-accent: var(--vscode-charts-orange, #d18616); }
+
+  /* Cards inside a box sit on the plain editor background so they stand out from the tint. */
+  .group-box :global(.model-card) {
+    background: var(--vscode-editor-background);
   }
 
   .section-group-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 -16px;
+    padding: 10px 16px;
     font-weight: 700;
-    font-size: 1em;
+    font-size: 1.05em;
     color: var(--vscode-foreground);
-    margin-bottom: 4px;
+    background: color-mix(in srgb, var(--group-accent) 16%, var(--vscode-editor-background));
+    border-bottom: 1px solid color-mix(in srgb, var(--group-accent) 35%, transparent);
+  }
+  .group-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: var(--vscode-editor-background);
+    background: var(--group-accent);
   }
 
   .label-row {
@@ -783,4 +1097,80 @@
     background: var(--vscode-list-hoverBackground);
     color: var(--vscode-foreground);
   }
+
+  .field-warning {
+    font-size: 0.8em;
+    margin: 0;
+    color: var(--vscode-editorWarning-foreground, var(--vscode-charts-yellow));
+  }
+
+  .field-error {
+    font-size: 0.8em;
+    margin: 0;
+    color: var(--vscode-errorForeground);
+  }
+
+  .model-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 4px;
+  }
+
+  .mode-badge {
+    font-size: 0.75em;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+  }
+  .mode-badge.custom {
+    outline: 1px solid var(--vscode-focusBorder);
+  }
+
+  .chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 4px 2px 8px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 12px;
+    background: var(--vscode-input-background);
+    font-size: 0.85em;
+  }
+  .chip.readonly { padding-right: 8px; color: var(--vscode-descriptionForeground); }
+
+  .chip-btn {
+    background: none;
+    border: none;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: inherit;
+    border-radius: 3px;
+  }
+  .chip-btn:hover:not(:disabled) { background: var(--vscode-list-hoverBackground); }
+  .chip-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .chip-remove { color: var(--vscode-errorForeground); }
+
+  .models-save-row {
+    align-items: center;
+    gap: 12px;
+  }
+  .unsaved {
+    font-size: 0.85em;
+    color: var(--vscode-editorWarning-foreground, var(--vscode-charts-yellow));
+  }
+  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

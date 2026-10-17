@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { onMessage, postMessage } from '../lib/vscode';
   import type { BulkExecutionState } from '../lib/types';
+  import { getBulkDependencyWarnings } from '../lib/bulkWarnings';
 
   type SpecStatus = 'draft' | 'ready' | 'in_progress' | 'review' | 'done';
 
@@ -45,6 +46,20 @@
   let feedbackText = $state('');
   /** The spec currently executing interactively (single-spec, not bulk). */
   let interactiveSpecId = $state<string | null>(null);
+  /** Models for the Execute button's "run with model" menu (current provider in AI Config). */
+  let runModels = $state<{ providerLabel: string; defaultModel: string; models: string[] }>({
+    providerLabel: '',
+    defaultModel: '',
+    models: [],
+  });
+  /** Ready card whose "run with model" menu is open. */
+  let modelMenuSpecId = $state<string | null>(null);
+  /** Default model first, then the provider's other models. */
+  const runModelChoices = $derived(
+    runModels.defaultModel
+      ? [runModels.defaultModel, ...runModels.models.filter((m) => m !== runModels.defaultModel)]
+      : runModels.models,
+  );
 
   const filtered = $derived(
     filterText.trim() === ''
@@ -61,6 +76,18 @@
 
   const bulkSpecIdSet = $derived(new Set(bulkState.items.map((i) => i.specId)));
 
+  const bulkWarnings = $derived(
+    getBulkDependencyWarnings(
+      bulkState.items.map((i) => i.specId),
+      specs,
+    ),
+  );
+  const bulkWarningCount = $derived(Object.keys(bulkWarnings).length);
+
+  function warningTitle(specId: string): string {
+    return [...(bulkWarnings[specId] ?? []), 'Remove and re-add specs to change the order.'].join('\n');
+  }
+
   function cardsForColumn(status: SpecStatus): SpecCard[] {
     const cards = filtered.filter((s) => s.status === status);
     // Ready: exclude cards that are in the bulk queue (they appear in the bulk frame)
@@ -72,9 +99,14 @@
     postMessage('requestBulkState', {});
     onMessage((msg) => {
       if (msg.type === 'specList') {
-        const d = msg.data as { specs: SpecCard[]; isFullPermission: boolean };
+        const d = msg.data as {
+          specs: SpecCard[];
+          isFullPermission: boolean;
+          runModels?: { providerLabel: string; defaultModel: string; models: string[] };
+        };
         specs = d.specs ?? [];
         isFullPermission = d.isFullPermission ?? false;
+        if (d.runModels) runModels = d.runModels;
       } else if (msg.type === 'moveError') {
         const d = msg.data as { specId: string; message: string };
         showError(d.specId, d.message);
@@ -149,6 +181,23 @@
     postMessage('cardAction', { action, specId });
   }
 
+  function toggleModelMenu(specId: string) {
+    if (modelMenuSpecId === specId) {
+      modelMenuSpecId = null;
+      return;
+    }
+    modelMenuSpecId = specId;
+    // Pick up model changes made in AI Configuration since the board loaded.
+    postMessage('refresh', {});
+  }
+
+  function executeWithModel(specId: string, model: string) {
+    modelMenuSpecId = null;
+    // The default model needs no override; send a plain execute.
+    const payload = model === runModels.defaultModel ? { action: 'execute', specId } : { action: 'execute', specId, model };
+    postMessage('cardAction', payload);
+  }
+
   function addToBulk(specId: string) {
     postMessage('addToBulk', { specId });
   }
@@ -163,6 +212,10 @@
 
   function clearBulk() {
     postMessage('clearBulk', {});
+  }
+
+  function rejectSpec(specId: string) {
+    postMessage('rejectSpec', { specId });
   }
 
   function openModal(card: SpecCard) {
@@ -185,7 +238,10 @@
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') {
+      closeModal();
+      modelMenuSpecId = null;
+    }
   }
 
   function complexityColor(c: string) {
@@ -240,6 +296,9 @@
           <div class="bulk-frame">
             <div class="bulk-frame-header">
               <span class="bulk-frame-title">Bulk Queue ({bulkState.items.length})</span>
+              {#if bulkWarningCount > 0}
+                <span class="bulk-warning-summary">! {bulkWarningCount} with dependency warnings</span>
+              {/if}
               <div class="bulk-frame-actions">
                 <button
                   class="btn-action btn-execute-all"
@@ -251,10 +310,14 @@
                 <button class="btn-action btn-clear" onclick={clearBulk}>Clear</button>
               </div>
             </div>
-            {#each bulkState.items as item (item.specId)}
+            {#each bulkState.items as item, idx (item.specId)}
               {@const card = specs.find((s) => s.spec_id === item.specId)}
               {#if card}
-                <div class="bulk-item">
+                <div class="bulk-item" class:bulk-item-warning={bulkWarnings[item.specId]}>
+                  <span class="bulk-item-pos">{idx + 1}.</span>
+                  {#if bulkWarnings[item.specId]}
+                    <span class="bulk-warning-badge" title={warningTitle(item.specId)}>!</span>
+                  {/if}
                   <button class="link-btn bulk-item-id" onclick={() => openSpec(item.specId)}>
                     {item.specId}
                   </button>
@@ -272,9 +335,9 @@
             <div class="bulk-frame-header">
               <span class="bulk-frame-title">Bulk Execution</span>
             </div>
-            {#each bulkState.items as item (item.specId)}
+            {#each bulkState.items as item, idx (item.specId)}
               {@const card = specs.find((s) => s.spec_id === item.specId)}
-              <div class="bulk-item">
+              <div class="bulk-item" class:bulk-item-warning={bulkWarnings[item.specId]}>
                 <span
                   class="bulk-status-icon"
                   class:icon-executing={item.status === 'executing'}
@@ -291,6 +354,10 @@
                     ·
                   {/if}
                 </span>
+                <span class="bulk-item-pos">{idx + 1}.</span>
+                {#if bulkWarnings[item.specId]}
+                  <span class="bulk-warning-badge" title={warningTitle(item.specId)}>!</span>
+                {/if}
                 <button class="link-btn bulk-item-id" onclick={() => openSpec(item.specId)}>
                   {item.specId}
                 </button>
@@ -348,12 +415,51 @@
                     Mark Ready
                   </button>
                 {:else if card.status === 'ready'}
-                  <button class="btn-action" onclick={() => cardAction('execute', card.spec_id)}>
-                    Execute
-                  </button>
+                  <span class="split-btn">
+                    <button
+                      class="btn-action split-main"
+                      title={runModels.defaultModel ? `Execute with ${runModels.defaultModel} (AI Config)` : 'Execute'}
+                      onclick={() => cardAction('execute', card.spec_id)}
+                    >
+                      Execute
+                    </button>
+                    <button
+                      class="btn-action split-toggle"
+                      class:split-toggle-open={modelMenuSpecId === card.spec_id}
+                      title="Execute with a different model"
+                      aria-label="Execute with a different model"
+                      aria-expanded={modelMenuSpecId === card.spec_id}
+                      draggable={false}
+                      onclick={(e) => { e.stopPropagation(); toggleModelMenu(card.spec_id); }}
+                    >▾</button>
+                  </span>
                   <button class="btn-action btn-add-bulk" onclick={() => addToBulk(card.spec_id)}>
                     + Bulk
                   </button>
+                  {#if modelMenuSpecId === card.spec_id}
+                    <div class="model-menu" role="menu" aria-label="Run with model">
+                      <div class="model-menu-title">
+                        Run once with{runModels.providerLabel ? ` (${runModels.providerLabel})` : ''}:
+                      </div>
+                      <div class="model-list">
+                      {#each runModelChoices as m (m)}
+                        <button
+                          class="model-option"
+                          class:model-option-default={m === runModels.defaultModel}
+                          role="menuitem"
+                          draggable={false}
+                          onclick={(e) => { e.stopPropagation(); executeWithModel(card.spec_id, m); }}
+                        >
+                          <span class="model-name">{m}</span>
+                          {#if m === runModels.defaultModel}<span class="model-default">AI Config default</span>{/if}
+                        </button>
+                      {:else}
+                        <div class="model-menu-empty">No models listed for this provider. Add some in AI Configuration → Model Lists.</div>
+                      {/each}
+                      </div>
+                      <div class="model-menu-hint">Only this run uses the chosen model. Your AI Config is not changed.</div>
+                    </div>
+                  {/if}
                 {:else if card.status === 'in_progress' && interactiveSpecId === card.spec_id}
                   <button
                     class="btn-action btn-complete"
@@ -373,6 +479,14 @@
                   </button>
                   <button class="btn-action btn-changes" onclick={() => openModal(card)}>
                     Request Changes
+                  </button>
+                  <button
+                    class="btn-action btn-discard"
+                    draggable={false}
+                    title="Discard the AI's changes and move the spec back to Draft"
+                    onclick={(e) => { e.stopPropagation(); rejectSpec(card.spec_id); }}
+                  >
+                    Reject
                   </button>
                 {/if}
               </div>
@@ -598,6 +712,39 @@
     min-width: 0;
   }
 
+  .bulk-item-warning {
+    border-left: 3px solid var(--vscode-editorWarning-foreground);
+    padding-left: 4px;
+    background: var(--vscode-inputValidation-warningBackground, transparent);
+  }
+
+  .bulk-item-pos {
+    color: var(--vscode-descriptionForeground);
+    flex-shrink: 0;
+  }
+
+  .bulk-warning-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--vscode-errorForeground, #f14c4c);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: help;
+    flex-shrink: 0;
+  }
+
+  .bulk-warning-summary {
+    color: var(--vscode-editorWarning-foreground);
+    font-size: 0.75em;
+    font-weight: 600;
+  }
+
   .bulk-item-id {
     font-weight: 700;
     font-size: 0.85em;
@@ -747,6 +894,81 @@
 
   .card-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
 
+  /* Execute split button: main part runs with the AI Config model, the arrow opens the model menu. */
+  .split-btn { display: inline-flex; }
+  .split-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  /* `.btn-action.` prefix: `.btn-action` is declared later and would otherwise win. */
+  .btn-action.split-toggle {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: 1px solid color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 30%, transparent);
+    padding: 2px 6px;
+    /* Same blue tint as the model list box. */
+    background: color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 8%, var(--vscode-button-secondaryBackground));
+    color: #000;
+    font-weight: 700;
+    transition: background-color 0.15s ease;
+  }
+  .btn-action.split-toggle:hover,
+  .btn-action.split-toggle-open {
+    background: color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 22%, var(--vscode-button-secondaryHoverBackground));
+  }
+
+  /* Shown inside the card (not as a popup) so the column's scroll area never clips it. */
+  .model-menu {
+    flex-basis: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 4px;
+    padding: 6px;
+    border: 1px solid var(--vscode-focusBorder);
+    border-radius: 4px;
+    background: var(--vscode-dropdown-background, var(--vscode-editor-background));
+  }
+  .model-menu { animation: model-menu-in 0.15s ease-out; }
+  @keyframes model-menu-in {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .model-menu-title { font-size: 0.75em; font-weight: 600; color: var(--vscode-descriptionForeground); padding: 0 4px 2px; }
+  /* Tinted box that sets the model choices apart from the title and hint. */
+  .model-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 3px;
+    border: 1px solid color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 30%, transparent);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 8%, transparent);
+  }
+  .model-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 3px 6px;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
+    font-family: inherit;
+    font-size: 0.8em;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .model-option:hover, .model-option:focus-visible {
+    background: color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 22%, transparent);
+    outline: none;
+  }
+  .model-name { font-family: var(--vscode-editor-font-family, monospace); word-break: break-all; }
+  .model-default { flex-shrink: 0; font-size: 0.85em; color: var(--vscode-descriptionForeground); }
+  .model-option-default .model-name { font-weight: 600; }
+  .model-menu-empty, .model-menu-hint { font-size: 0.72em; color: var(--vscode-descriptionForeground); padding: 2px 4px; }
+  .model-menu-hint { border-top: 1px solid var(--vscode-panel-border); margin-top: 2px; padding-top: 4px; }
+
   .btn-action {
     background: var(--vscode-button-secondaryBackground);
     color: var(--vscode-button-secondaryForeground);
@@ -762,6 +984,12 @@
   .btn-approve:hover { background: var(--vscode-charts-green); opacity: 0.85; }
   .btn-changes  { background: var(--vscode-charts-orange); color: #fff; }
   .btn-changes:hover { background: var(--vscode-charts-orange); opacity: 0.85; }
+  .btn-discard {
+    background: transparent;
+    color: var(--vscode-errorForeground);
+    border: 1px solid var(--vscode-errorForeground);
+  }
+  .btn-discard:hover { background: var(--vscode-toolbar-hoverBackground); }
   .btn-execute-all { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
   .btn-execute-all:hover { background: var(--vscode-button-hoverBackground); }
   .btn-execute-all-disabled,

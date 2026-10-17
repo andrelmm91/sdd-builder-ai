@@ -45,7 +45,9 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function isValidDate(dateStr: string): boolean {
   if (!DATE_PATTERN.test(dateStr)) return false;
-  return !isNaN(new Date(dateStr).getTime());
+  const date = new Date(`${dateStr}T00:00:00Z`);
+  // Date rolls overflowing days forward (2026-02-30 → 2026-03-02), so require a round-trip match.
+  return !isNaN(date.getTime()) && date.toISOString().slice(0, 10) === dateStr;
 }
 
 function validateFrontmatterFields(fm: SpecDocument['frontmatter'], errors: ValidationError[]): void {

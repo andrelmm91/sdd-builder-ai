@@ -23,8 +23,11 @@ vi.mock('../utils/fileSystem', () => ({
   getWorkspaceRoot: vi.fn().mockReturnValue('/workspace'),
 }));
 
+import * as path from 'path';
+import * as vscode from 'vscode';
 import { DiffProvider } from './diffProvider';
 import { execCommand } from '../utils/shell';
+import { getWorkspaceRoot } from '../utils/fileSystem';
 
 const mockExecCommand = vi.mocked(execCommand);
 
@@ -155,5 +158,64 @@ describe('DiffProvider.getScopeViolations', () => {
     const violations = await provider.getScopeViolations([], []);
 
     expect(violations).toEqual([{ path: 'src/foo.ts', status: 'modified' }]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// openDiffForFile / openAllDiffs
+// ---------------------------------------------------------------------------
+
+describe('DiffProvider.openDiffForFile', () => {
+  it('opens a HEAD ↔ working tree diff using the git URI scheme', async () => {
+    mockExecCommand.mockResolvedValue({ stdout: '3\t1\tsrc/a.ts\n', stderr: '', exitCode: 0, success: true });
+    await new DiffProvider().openDiffForFile('src/a.ts');
+
+    const abs = path.join('/workspace', 'src/a.ts');
+    expect(mockExecCommand).toHaveBeenCalledWith('git diff --numstat HEAD -- "src/a.ts"', { cwd: '/workspace' });
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+      'vscode.diff',
+      { scheme: 'git', query: JSON.stringify({ path: abs, ref: 'HEAD' }), fsPath: abs },
+      expect.objectContaining({ fsPath: abs }),
+      'a.ts (HEAD ↔ Working Tree)'
+    );
+  });
+
+  it('opens binary files directly instead of diffing', async () => {
+    mockExecCommand.mockResolvedValue({ stdout: '-\t-\timg.png\n', stderr: '', exitCode: 0, success: true });
+    await new DiffProvider().openDiffForFile('img.png');
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('img.png: binary file — diff skipped');
+    expect(vscode.commands.executeCommand).toHaveBeenCalledOnce();
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('vscode.open', expect.objectContaining({ fsPath: path.join('/workspace', 'img.png') }));
+  });
+
+  it('still opens a diff when the numstat check fails', async () => {
+    mockExecCommand.mockResolvedValue({ stdout: '-\t-\tx', stderr: 'err', exitCode: 1, success: false });
+    await new DiffProvider().openDiffForFile('x');
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('vscode.diff', expect.anything(), expect.anything(), expect.any(String));
+  });
+
+  it('does nothing without a workspace', async () => {
+    vi.mocked(getWorkspaceRoot).mockReturnValueOnce(undefined);
+    await new DiffProvider().openDiffForFile('x');
+    expect(mockExecCommand).not.toHaveBeenCalled();
+    expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
+  });
+});
+
+describe('DiffProvider.openAllDiffs', () => {
+  it('opens one diff per changed file, in order', async () => {
+    const provider = new DiffProvider();
+    vi.spyOn(provider, 'getChangedFiles').mockResolvedValue([
+      { path: 'a.ts', status: 'modified' },
+      { path: 'b.ts', status: 'added' },
+    ]);
+    const open = vi.spyOn(provider, 'openDiffForFile').mockResolvedValue();
+    await provider.openAllDiffs();
+    expect(open.mock.calls).toEqual([['a.ts'], ['b.ts']]);
+  });
+
+  it('returns no changes without a workspace', async () => {
+    vi.mocked(getWorkspaceRoot).mockReturnValueOnce(undefined);
+    expect(await new DiffProvider().getChangedFiles()).toEqual([]);
   });
 });

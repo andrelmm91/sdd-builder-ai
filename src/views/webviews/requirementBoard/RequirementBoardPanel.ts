@@ -3,14 +3,14 @@ import { BaseWebviewPanel } from '../BaseWebviewPanel';
 import { loadFeatureCards, createFeatureFile } from './featureParser';
 import { readRequirementsAIConfig } from '../../../config/aiConfig';
 import { completeCurrentRequirementsExecution, cancelCurrentRequirementsExecution } from '../../../execution/requirementsRunner';
+import { isBatchMode, resolveProviderDefinition } from '../../../execution/providerCommand';
 import { PRODUCT_FOLDER } from '../../../utils/constants';
 import type { FeatureCard, FeatureFormData } from './types';
 import type { RequirementsAIConfig } from '../../../config/aiConfigTypes';
 
 function isInteractiveMode(config: RequirementsAIConfig | null | undefined): boolean {
   if (!config) return true;
-  if (config.provider === 'copilot') return config.permissionMode !== 'yolo';
-  return config.permissionMode !== 'dangerously-skip-permissions';
+  return !isBatchMode(resolveProviderDefinition(config), config.permissionMode);
 }
 
 export class RequirementBoardPanel extends BaseWebviewPanel {

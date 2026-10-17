@@ -6,8 +6,8 @@ export type TransitionResult =
 
 const VALID_TRANSITIONS: Record<SpecStatus, SpecStatus[]> = {
   draft: ['ready'],
-  ready: ['in_progress'],
-  in_progress: ['review'],
+  ready: ['in_progress', 'draft'],
+  in_progress: ['review', 'ready'],
   review: ['done', 'ready', 'draft'],
   done: ['draft'],
 };

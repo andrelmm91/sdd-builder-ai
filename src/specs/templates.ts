@@ -1,3 +1,4 @@
+import { stringify as yamlStringify } from 'yaml';
 import type { SpecTemplate } from './types';
 
 export interface TemplateOptions {
@@ -37,7 +38,7 @@ function featureBody(): string {
 
 ## Constraints
 - Adhere to project conventions in \`.sdd/conventions.md\`
-- Maximum 3 files to create/edit (excluding test files)
+- Maximum 4 files to create/edit (excluding test files)
 
 ## Examples
 
@@ -153,7 +154,8 @@ export function generateSpecFromTemplate(options: TemplateOptions): string {
   const frontmatter = [
     '---',
     `spec_id: ${specId}`,
-    `title: ${resolvedTitle}`,
+    // Quote via the YAML serializer so titles like "Fix: login" or "#123" stay valid YAML.
+    `title: ${yamlStringify(resolvedTitle).trimEnd()}`,
     `status: draft`,
     `priority: medium`,
     `complexity: medium`,

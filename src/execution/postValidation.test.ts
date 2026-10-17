@@ -66,6 +66,15 @@ describe('runPostValidation', () => {
     expect(mockExecCommand).not.toHaveBeenCalled();
   });
 
+  it('returns passed=false with "Invalid test command" for an unsafe base command', async () => {
+    const result = await runPostValidation(makeConfig({ testCommand: 'npm;echo test' }));
+
+    expect(result.passed).toBe(false);
+    expect(result.output).toBe('Invalid test command: "npm;echo"');
+    expect(mockIsCommandAvailable).not.toHaveBeenCalled();
+    expect(mockExecCommand).not.toHaveBeenCalled();
+  });
+
   it('returns passed=false with "Timeout" message when exit code is 124', async () => {
     mockExecCommand.mockResolvedValue({
       stdout: '',

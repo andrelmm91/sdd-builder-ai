@@ -34,6 +34,17 @@ vi.mock('../utils/frontmatter', () => ({
 const mockGetChangedFiles = vi.fn();
 const mockOpenAllDiffs = vi.fn();
 
+const mockGetLatestExecution = vi.fn();
+const mockDiscard = vi.fn();
+
+vi.mock('../execution/resultCapture', () => ({
+  getLatestExecution: (...a: unknown[]) => mockGetLatestExecution(...a),
+}));
+
+vi.mock('../commands/reviewCommands', () => ({
+  discardExecutionChanges: (...a: unknown[]) => mockDiscard(...a),
+}));
+
 vi.mock('./diffProvider', () => ({
   DiffProvider: class MockDiffProvider {
     getChangedFiles = mockGetChangedFiles;
@@ -190,45 +201,70 @@ describe('ReviewManager.submitDecision — request_changes', () => {
 // ---------------------------------------------------------------------------
 
 describe('ReviewManager.submitDecision — reject', () => {
-  it('transitions spec status to "draft" after confirmation', async () => {
-    mockShowWarningMessage.mockResolvedValueOnce('Reject & Revert' as never);
+  const withCheckpoint = {
+    checkpoint: { headSha: 'a', baseSha: 'a', untrackedBefore: [], createdAt: '' },
+    changedFiles: ['M src/foo.ts', 'A src/bar.ts'],
+  };
+
+  it('discards with confirm:false after a single confirmation, then moves to draft', async () => {
+    mockShowWarningMessage.mockResolvedValueOnce('Reject & Discard' as never);
+    mockGetLatestExecution.mockResolvedValue(withCheckpoint);
+    mockDiscard.mockResolvedValue(true);
     setupSpecLookup();
 
-    const manager = new ReviewManager();
-    await manager.submitDecision(SPEC_ID, 'reject');
+    await new ReviewManager().submitDecision(SPEC_ID, 'reject');
 
+    expect(mockShowWarningMessage).toHaveBeenCalledTimes(1);
+    expect(mockShowWarningMessage.mock.calls[0][0]).toBe(
+      `Reject ${SPEC_ID} and discard 2 file change(s) made by the AI? This cannot be undone.`
+    );
+    expect(mockDiscard).toHaveBeenCalledWith(SPEC_ID, { confirm: false });
     expect(mockSerializeFrontmatter).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'draft' }),
       expect.any(String)
     );
   });
 
-  it('reverts changed files via git checkout', async () => {
-    mockShowWarningMessage.mockResolvedValueOnce('Reject & Revert' as never);
-    mockGetChangedFiles.mockResolvedValueOnce([
-      { path: 'src/foo.ts', status: 'modified' },
-      { path: 'src/bar.ts', status: 'added' },
-    ]);
+  it('no longer runs git checkout HEAD', async () => {
+    mockShowWarningMessage.mockResolvedValueOnce('Reject & Discard' as never);
+    mockGetLatestExecution.mockResolvedValue(withCheckpoint);
     setupSpecLookup();
 
-    const manager = new ReviewManager();
-    await manager.submitDecision(SPEC_ID, 'reject');
+    await new ReviewManager().submitDecision(SPEC_ID, 'reject');
 
-    expect(mockExecCommand).toHaveBeenCalledWith(
-      expect.stringContaining('git checkout HEAD'),
-      expect.any(Object)
+    expect(mockExecCommand).not.toHaveBeenCalledWith(
+      expect.stringContaining('git checkout'),
+      expect.anything()
     );
   });
 
-  it('does not update spec when user cancels rejection', async () => {
+  it('does not discard or update spec when user cancels', async () => {
     mockShowWarningMessage.mockResolvedValueOnce(undefined as never);
+    mockGetLatestExecution.mockResolvedValue(withCheckpoint);
     setupSpecLookup();
 
-    const manager = new ReviewManager();
-    await manager.submitDecision(SPEC_ID, 'reject');
+    await new ReviewManager().submitDecision(SPEC_ID, 'reject');
 
+    expect(mockDiscard).not.toHaveBeenCalled();
     expect(mockSerializeFrontmatter).not.toHaveBeenCalled();
     expect(mockWriteWorkspaceFile).not.toHaveBeenCalled();
+  });
+
+  it('rejects without touching files when there is no checkpoint', async () => {
+    mockShowWarningMessage.mockResolvedValueOnce('Reject' as never);
+    mockGetLatestExecution.mockResolvedValue({ changedFiles: ['M src/foo.ts'] });
+    setupSpecLookup();
+
+    await new ReviewManager().submitDecision(SPEC_ID, 'reject');
+
+    expect(mockShowWarningMessage.mock.calls[0][0]).toBe(
+      `Reject ${SPEC_ID}? No checkpoint is available, so the AI's changes will be kept.`
+    );
+    expect(mockDiscard).not.toHaveBeenCalled();
+    expect(mockSerializeFrontmatter).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'draft' }),
+      expect.any(String)
+    );
   });
 });
 

@@ -2,7 +2,7 @@
   "name": "sdd-platform",
   "displayName": "SDD Builder AI",
   "description": "Spec-Driven Development for VS Code — AI-assisted structured development workflow",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "publisher": "CoeusAI",
   "license": "MIT",
   "repository": {
@@ -77,6 +77,10 @@
         "title": "SDD: Reject Spec"
       },
       {
+        "command": "sdd.discardChanges",
+        "title": "SDD: Discard AI Changes"
+      },
+      {
         "command": "sdd.openDashboard",
         "title": "SDD: Open Dashboard"
       },
@@ -111,6 +115,10 @@
       {
         "command": "sdd.openAiConfig",
         "title": "SDD: Open AI Configuration"
+      },
+      {
+        "command": "sdd.doctor",
+        "title": "SDD: Run Doctor"
       },
       {
         "command": "sdd.planFromRequirements",
@@ -289,7 +297,7 @@
           {
             "id": "reviewSpec",
             "title": "Review and ship",
-            "description": "Review the AI's changes in the diff view, then **Approve** to create a PR or **Request Changes** to send feedback back to the agent.\n\n[Review Spec](command:sdd.reviewSpec)",
+            "description": "Review the AI's changes in the diff view, then **Approve** to mark the spec Done, **Request Changes** to send feedback back to the agent, or **Reject** to undo the AI's changes and move the spec back to Draft.\n\n[Review Spec](command:sdd.reviewSpec)",
             "media": {
               "image": "media/logo.png",
               "altText": "Review and ship"
@@ -333,6 +341,7 @@
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "@vscode/vsce": "^3.0.0",
     "esbuild": "^0.20.0",
     "eslint": "^8.57.1",

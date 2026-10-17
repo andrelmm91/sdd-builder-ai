@@ -270,7 +270,7 @@ Output all specs in dependency order (specs with no dependencies first).
 
 - **Do not write code.** You write specifications, not implementations.
 - **Do not invent requirements.** If something is ambiguous, flag it in the spec's Context section as a decision for the builder.
-- **Do not create specs that modify more than 3 files.** Split them instead.
+- **Do not create specs that modify more than 4 files.** Split them instead.
 - **Do not create specs that would take more than two days.** Split them instead.
 - **Do not assume knowledge of the codebase** beyond what is provided in the project tree, conventions, and existing specs.
 - **Do not create circular dependencies.**

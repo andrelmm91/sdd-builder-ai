@@ -15,6 +15,12 @@ const BUDGET_BY_COMPLEXITY: Record<SpecComplexity, number> = {
   high: 150_000,
 };
 
+const TIMEOUT_MINUTES_BY_COMPLEXITY: Record<SpecComplexity, number> = {
+  low: 10,
+  medium: 20,
+  high: 30,
+};
+
 export function validateBudget(budget: number): BudgetValidation {
   if (budget < BUDGET_MIN) {
     return { valid: false, warning: `Budget ${budget} is below minimum of ${BUDGET_MIN}` };
@@ -46,4 +52,9 @@ export function formatTokenCount(tokens: number): string {
 
 export function getBudgetForComplexity(complexity: SpecComplexity): number {
   return BUDGET_BY_COMPLEXITY[complexity];
+}
+
+/** Execution timeout in milliseconds for a spec of the given complexity. */
+export function getTimeoutForComplexity(complexity: SpecComplexity): number {
+  return TIMEOUT_MINUTES_BY_COMPLEXITY[complexity] * 60_000;
 }

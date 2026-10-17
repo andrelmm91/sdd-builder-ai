@@ -5,8 +5,7 @@ import { fileExists, writeWorkspaceFile, createWorkspaceDirectory } from '../uti
 import { getDefaultProjectConfig, writeProjectConfig } from '../config/projectConfig';
 import { writeAIConfig, writeRequirementsAIConfig } from '../config/aiConfig';
 import { DEFAULT_AI_CONFIG, DEFAULT_REQUIREMENTS_AI_CONFIG } from '../config/aiConfigTypes';
-import { execCommand } from '../utils/shell';
-import { getClaudeCliBinary } from '../config/extensionConfig';
+import { runDoctor } from './doctor';
 import {
   SPECS_FOLDER,
   SDD_FOLDER,
@@ -77,19 +76,7 @@ export async function initProject(): Promise<void> {
     loadSkillContent('idealize-requirements', '# Idealize Requirements Skill\n\n<!-- Customize this file to adjust idealization behavior for your project. -->\n')
   );
 
-  // Run health checks in parallel
-  const claudeBinary = getClaudeCliBinary();
-  const [gitOk, claudeOk, ghOk] = await Promise.all([
-    execCommand('git --version').then((r) => r.success),
-    execCommand(`${claudeBinary} --version`).then((r) => r.success),
-    execCommand('gh --version').then((r) => r.success),
-  ]);
+  await runDoctor();
 
-  const gitStatus = gitOk ? '✓' : '✗';
-  const claudeStatus = claudeOk ? '✓' : '✗';
-  const ghStatus = ghOk ? '✓' : '✗ (optional)';
-
-  vscode.window.showInformationMessage(
-    `SDD project initialized. Health: Git ${gitStatus}, Claude CLI ${claudeStatus}, gh CLI ${ghStatus}`
-  );
+  vscode.window.showInformationMessage('SDD project initialized.');
 }

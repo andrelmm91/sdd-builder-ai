@@ -2,7 +2,8 @@ import { writeWorkspaceFile, readWorkspaceFile, listFiles, getWorkspaceRoot } fr
 import { execCommand, isCommandAvailable } from '../utils/shell';
 import { EXECUTIONS_FOLDER, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
 import { parseFrontmatter } from '../utils/frontmatter';
-import type { ExecutionRecord, ExecutionResult } from './types';
+import { getChangesSince } from './gitCheckpoint';
+import type { ExecutionRecord, ExecutionResult, GitCheckpoint } from './types';
 
 export type CaptureResult = {
   record: ExecutionRecord;
@@ -12,18 +13,22 @@ export type CaptureResult = {
 
 /**
  * Captures and stores execution results to `.sdd/executions/{specId}/exec-{NNN}.json` and `.log`.
+ * When a `checkpoint` is given, changed files are computed against it and the checkpoint is persisted.
  * Reads `must_not_touch` from the spec file to detect scope violations.
  */
 export async function captureResults(
   specId: string,
   executionResult: ExecutionResult,
+  checkpoint?: GitCheckpoint,
 ): Promise<CaptureResult> {
   const mustNotTouch = await loadMustNotTouch(specId);
-  const changedFiles: string[] = [];
+  let changedFiles: string[] = [];
 
   const root = getWorkspaceRoot();
   if (!root) {
     console.warn('[SDD] Skipping git diff: no workspace root available');
+  } else if (checkpoint) {
+    changedFiles = await getChangesSince(checkpoint, root);
   } else {
     const gitAvailable = await isCommandAvailable('git');
     if (!gitAvailable) {
@@ -66,6 +71,8 @@ export async function captureResults(
     testsPassed: null,
     prUrl: null,
     changedFiles,
+    ...(executionResult.promptFile ? { promptFile: executionResult.promptFile } : {}),
+    ...(checkpoint ? { checkpoint } : {}),
   };
 
   // Write record JSON

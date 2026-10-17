@@ -7,6 +7,12 @@ export interface ExecutionRecord {
   testsPassed: boolean | null;
   prUrl: string | null;
   changedFiles?: string[];
+  /** Workspace-relative path of the instructions file used for this run. */
+  promptFile?: string;
+  /** Git state before this execution; lets Discard restore it after a reload. */
+  checkpoint?: GitCheckpoint;
+  /** Set by Request Changes: the next run reuses `checkpoint` instead of creating a new one. */
+  reuseCheckpointOnNextRun?: boolean;
 }
 
 export interface ExecutionResult {
@@ -14,6 +20,8 @@ export interface ExecutionResult {
   output: string;
   duration: number;
   error?: string;
+  /** Workspace-relative path of the instructions file handed to the CLI. */
+  promptFile?: string;
 }
 
 export interface ExecutionRunner {
@@ -48,4 +56,24 @@ export interface BulkExecutionState {
   items: BulkExecutionItem[];
   isRunning: boolean;
   currentIndex: number;
+}
+
+export interface GitCheckpoint {
+  /** `git rev-parse HEAD` at checkpoint time. */
+  headSha: string;
+  /** Commit representing the full working tree at checkpoint time (stash sha when dirty, else headSha). */
+  baseSha: string;
+  /** Untracked, non-ignored files present at checkpoint time. */
+  untrackedBefore: string[];
+  createdAt: string;
+}
+
+export interface RestoreResult {
+  /** Paths restored to their content at `baseSha`. */
+  restored: string[];
+  /** Paths removed because they did not exist at `baseSha`. */
+  deleted: string[];
+  skipped: { path: string; reason: string }[];
+  /** True when HEAD moved since the checkpoint (the AI committed); commits are not reset. */
+  headMoved: boolean;
 }

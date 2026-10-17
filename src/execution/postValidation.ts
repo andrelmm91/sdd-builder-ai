@@ -10,11 +10,22 @@ export type ValidationResult = {
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
+// Mirrors the name validation in isCommandAvailable (minus spaces: the base is a single token).
+const VALID_BASE_COMMAND = /^[A-Za-z0-9._\-/\\:~]+$/;
+
 export async function runPostValidation(config: ExecutionConfig, cwd?: string): Promise<ValidationResult> {
   const command = config.testCommand;
   const startTime = Date.now();
 
   const baseCommand = command.trim().split(/\s+/)[0];
+  if (!baseCommand || !VALID_BASE_COMMAND.test(baseCommand)) {
+    return {
+      passed: false,
+      output: `Invalid test command: "${baseCommand}"`,
+      duration: Date.now() - startTime,
+      command,
+    };
+  }
   const available = await isCommandAvailable(baseCommand);
   if (!available) {
     return {

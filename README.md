@@ -1,6 +1,6 @@
 # SDD Builder AI — Govern AI Coding with Spec-Driven Development
 
-**v1.2.0** | **Stop losing control of AI-generated code. Ship with confidence.**
+**v2.0.0** | **Stop losing control of AI-generated code. Ship with confidence.**
 
 SDD Builder AI is a VS Code extension that brings **Spec-Driven Development** to your AI coding workflow. It sits between your ideas and your AI agent: creates specification documentation and breaks them into small, scoped, reviewable specs that keep every execution focused, traceable, and under your control.
 
@@ -46,6 +46,35 @@ SDD Builder AI does **not** manage API keys or subscriptions. It orchestrates th
 
 Install and authenticate with your own account. Your keys, your billing, your model choice — the extension assembles context and delegates execution. It never touches your credentials.
 
+**Other AI CLIs.** Open **AI Configuration → Custom Providers** and click **Add provider** to use any other agent CLI (Codex, Gemini CLI, Aider, OpenCode...). The form checks your input as you type and previews the exact command for each permission mode. Providers are saved in `.sdd/config.json`, for example:
+
+```json
+{
+  "ai": {
+    "customProviders": [
+      {
+        "id": "my-agent",
+        "label": "My Agent",
+        "binary": "my-agent",
+        "fileRefFormat": "@{path}",
+        "batch": { "args": ["--yes", "{prompt}"] },
+        "interactive": { "args": ["{prompt}"] },
+        "modelArgs": ["--model", "{model}"],
+        "models": ["fast", "smart"],
+        "permissionModes": [
+          { "id": "default", "label": "Default (ask)", "mode": "interactive" },
+          { "id": "auto", "label": "Auto", "mode": "batch" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Your own model lists.** In **AI Configuration → Model Lists** you can edit the models offered for each provider. They are stored in `ai.models` and replace the built-in suggestions for that provider.
+
+**One-off model.** Click the **▾** next to **Execute** on a Ready card to run that spec with a different model, without changing your configuration.
+
 ## Key Features
 
 ### Project Initialization
@@ -57,10 +86,10 @@ Run **SDD: Initialize Project** to scaffold the standard `.sdd/` folder structur
 ```
 .sdd/
   product_requirements/   # Feature requirements and idealizations
-  execution/              # Execution logs and audit records
+  executions/             # Execution logs, prompts and audit records
+  reviews/                # Review records
   skills/                 # Agent skill files (.md) per technology tag
-  ai-config.json          # AI provider and execution configuration
-  config.json             # Project settings
+  config.json             # Project settings and AI configuration (under "ai")
   conventions.md          # Your coding standards (optional but recommended)
 .specs/                   # All .sdd.md spec files
 ```
@@ -73,7 +102,8 @@ High-level view of your project's development health at a glance.
 - Spec counts by status (Draft, Ready, In Progress, Review, Done)
 - Completion percentage across all specs
 - SDD tags overview and recent activity feed
-- All execution logs saved in `.sdd/execution/` for full audit after development
+- **Readiness banner:** SDD Doctor checks your AI CLI, Git, conventions and permission mode on init and on VS Code start, and lists what to fix (re-run anytime with **SDD: Run Doctor**)
+- All execution logs saved in `.sdd/executions/` for full audit after development
 
 ![Dashboard](https://github.com/user-attachments/assets/4fc326fa-c668-408b-895d-2f66bdf62a02)
 
@@ -103,6 +133,12 @@ A five-column board where each spec moves from idea to shipped code.
 
 Drag and drop cards between columns. Every transition is validated — no skipping stages.
 
+Executing a single spec whose dependencies are not **Done** shows a warning first; choose **Execute Anyway** to proceed. Specs in a running bulk queue skip this check.
+
+Need a cheaper or faster model for a simple spec? Click the **▾** next to **Execute** on a Ready card and pick a model for that run only. Your AI Configuration is not changed, and clicking **Execute** itself always uses your configured model.
+
+If VS Code is closed or crashes during an execution, specs left in **In Progress** are detected on the next startup and you can reset them to **Ready** with one click (or drag the card back manually).
+
 ![SDD Kanban Board](https://github.com/user-attachments/assets/918b706c-361f-4944-a046-9578273d91bb)
 
 ![SDD execution](https://github.com/user-attachments/assets/bdd1ef83-239f-465e-857a-5f9332b867b9)
@@ -113,6 +149,7 @@ Drag and drop cards between columns. Every transition is validated — no skippi
 Select multiple **Ready** specs and execute them sequentially in one action.
 
 - Real-time progress tracking per card — spinner, checkmark, or failure indicator
+- Runs in the order you add specs, with numbered positions; a `!` badge warns when a dependency is queued later, not done, or missing
 - Stops automatically on failure so you can review before continuing
 - Only available in full-permission AI modes to prevent mid-execution interruptions
 
@@ -127,6 +164,21 @@ When a spec needs rework, your feedback is injected directly into the next execu
 - Approve to mark Done, or write feedback to request changes
 - Feedback is appended to the spec's context section and status resets to Ready
 - The AI receives your exact feedback in the next run — no context is lost
+- The AI's changes are kept, so the re-run builds on the existing work instead of starting over (fewer tokens)
+- **Reject** discards the AI's changes — see the Safety Net below
+
+---
+
+### Safety Net — Undo Any AI Run
+Before every execution, SDD takes a git checkpoint of your workspace, so you can always get back to where you were.
+
+- **Accurate change list** — review cards show exactly the files the AI changed, including new and committed files, and never your own edits
+- **Reject = undo** — after one confirmation, the AI's files go back to how they were before the run. Your unrelated work is left alone
+- **Covers every attempt** — after one or more Request Changes rounds, Reject still undoes all of them
+- **One click from the board** — the **Reject** button on review cards discards the changes and moves the card back to Draft. You can also run `SDD: Discard AI Changes` to only undo the files
+- If the AI made commits, the files are restored and you are told the commits remain
+
+Requires the workspace to be a git repository.
 
 ---
 
@@ -134,7 +186,7 @@ When a spec needs rework, your feedback is injected directly into the next execu
 
 Each spec enforces hard boundaries:
 
-- **3 files max** to create or edit (excluding tests) — no surprise rewrites
+- **4 files max** to create or edit (excluding tests) — no surprise rewrites
 - **`relevant_files`** gives the agent exactly the context it needs — zero context overflow
 - **`must_not_touch`** protects sensitive files — auth, config, database schemas stay safe
 - **`conventions.md`** injects your project's coding standards into every execution
@@ -142,13 +194,26 @@ Each spec enforces hard boundaries:
 
 ---
 
+### Instructions File — See Exactly What the AI Was Asked
+Every execution writes its full set of instructions to a Markdown file, and the AI CLI is simply told to read and follow it.
+
+- **No more broken commands** — long specs, quotes, apostrophes and multi-line text are never squeezed into a terminal command, so nothing gets mangled or cut off on macOS, Linux or Windows
+- **Leaner prompts** — the AI gets a reference to the spec and the paths of the relevant files instead of copies of their contents, keeping prompts short and saving tokens
+- **Full audit trail** — each run's instructions are kept in `.sdd/executions/<specId>/prompt-<timestamp>.md`, so you can open them later and see exactly what the AI received
+- Very large instructions are trimmed cleanly and marked with `[truncated by SDD]`
+
+---
+
 ### AI Configuration
 Separate configuration for requirements AI and execution AI.
 
-- Choose your AI provider: **Claude CLI** or **GitHub Copilot CLI**
+- Choose your AI provider: **Claude CLI**, **GitHub Copilot CLI**, or any custom provider
 - Set permission modes per provider
+- Add other agent CLIs in the **Custom Providers** section (see [Bring Your Own AI](#bring-your-own-ai-byok)); they work everywhere the built-in providers do
   - Full permission: a terminal is created and the AI CLI executes all commands. The watch sentinel monitors when the AI finishes and update the SDD card for review.
-  - Plan mode: a terminal opens and the AI CLI executes in plan mode. The user should press the complete button to move it to review phase. 
+  - Plan mode: a terminal opens and the AI CLI executes in plan mode. The user should press the complete button to move it to review phase. If no file changes were detected (e.g. you closed the terminal right away), SDD asks whether to send the spec to Review anyway or move it back to Ready.
+- Pick a model per provider. Manage the offered models in the **Model Lists** section of the AI Configuration panel (Customize, add, remove, reorder, Reset to built-in, then Save). They are stored in `.sdd/config.json`, e.g. `"ai": { "models": { "claude": ["fable", "opus"] } }`; a custom list replaces the built-in one for that provider.
+- Execution timeouts scale with spec complexity (low 10 min, medium 20 min, high 30 min). Adjust them all with the **Execution timeout multiplier** (0.25–10).
 - Tag-to-skill mappings with custom skill files. The skills are injected into the prompt when a spec with the corresponding tag is executed, giving you precise control over the agent's capabilities per task.
 - Prompt templates for idealization, spec generation, and execution phases — customize the instructions and context you give the AI at each step.
 - Configurable `git commit` and `git pull-request` commands into the prompt context.
@@ -161,7 +226,7 @@ Separate configuration for requirements AI and execution AI.
 
 | | Freeform Prompting | Spec-Driven Development |
 |---|---|---|
-| **Scope** | Unbounded — AI decides what to touch | Explicit — 3 files max, list of relevant files |
+| **Scope** | Unbounded — AI decides what to touch | Explicit — 4 files max, list of relevant files |
 | **Context** | Entire codebase or none | Precisely scoped — only what the agent needs |
 | **Review** | Massive, unstructured diff | Small, focused diff with acceptance criteria |
 | **Progress** | Not measurable | Tracked per spec — percentages, counts |
@@ -178,7 +243,7 @@ Separate configuration for requirements AI and execution AI.
 - **AI CLI (BYOK)** — one of the following, installed and authenticated:
   - [Claude CLI](https://docs.anthropic.com/en/docs/claude-code) (`npm install -g @anthropic-ai/claude-code`)
   - [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli) (`gh extension install github/gh-copilot`)
-- **Git** configured in the workspace
+- **Git** configured in the workspace (required for change tracking and discard)
 - **gh CLI** (optional, for PR automation) — [cli.github.com](https://cli.github.com)
 
 ---
@@ -188,12 +253,13 @@ Separate configuration for requirements AI and execution AI.
 1. Install the extension from the VS Code Marketplace
 2. Open a project folder in VS Code
 3. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and run **SDD: Initialize Project**
-4. Click the SDD icon in the Activity Bar to open the sidebar
-5. Click **Open Dashboard** to see the SDD Builder AI dashboard
-6. Go to the **Requirement Board** and add your first feature idea
-7. Click **Idealize** to let the AI structure your requirement
-8. Click **Create SDD Cards** to generate spec files
-9. Open the **Kanban Board**, move a spec to Ready, and execute
+4. Run **SDD: Run Doctor** to check that your AI CLI, Git and settings are ready (it also runs automatically on init and on VS Code start)
+5. Click the SDD icon in the Activity Bar to open the sidebar
+6. Click **Open Dashboard** to see the SDD Builder AI dashboard
+7. Go to the **Requirement Board** and add your first feature idea
+8. Click **Idealize** to let the AI structure your requirement
+9. Click **Create SDD Cards** to generate spec files
+10. Open the **Kanban Board**, move a spec to Ready, and execute
 
 ---
 
@@ -204,14 +270,14 @@ Separate configuration for requirements AI and execution AI.
 | Extension | TypeScript |
 | Webview UI | Svelte 5 + Vite |
 | Spec format | YAML frontmatter + Markdown |
-| AI execution | Claude CLI / GitHub Copilot CLI |
+| AI execution | Claude CLI / GitHub Copilot CLI / custom agent CLIs |
 | Version control | Git CLI + gh CLI |
 
 ---
 
 ## Feedback & Issues
 
-Report bugs and feature requests at [GitHub Issues](https://github.com/andrelmm91/sdd-agentic/issues).
+Report bugs and feature requests at [GitHub Issues](https://github.com/andrelmm91/sdd-builder-ai/issues).
 
 ---
 

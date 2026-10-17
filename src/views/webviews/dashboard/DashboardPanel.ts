@@ -6,6 +6,7 @@ import { loadFeatureCards } from '../requirementBoard/featureParser';
 import { SPECS_FOLDER, SPEC_FILE_EXTENSION, CONFIG_FILE, PRODUCT_FOLDER } from '../../../utils/constants';
 import { fileExists } from '../../../utils/fileSystem';
 import { initProject } from '../../../commands/initProject';
+import { runDoctor, getLastDoctorReport, onDoctorReport } from '../../../commands/doctor';
 import type { SpecData } from '../../../specs/types';
 import type { ExecutionRecord } from '../../../execution/types';
 import type { FeatureCard } from '../requirementBoard/types';
@@ -20,6 +21,7 @@ export class DashboardPanel extends BaseWebviewPanel {
   private static instance: DashboardPanel | undefined;
   private watcher: vscode.FileSystemWatcher | undefined;
   private reqWatcher: vscode.FileSystemWatcher | undefined;
+  private doctorSubscription: vscode.Disposable | undefined;
 
   static createOrShow(extensionUri: vscode.Uri): void {
     if (DashboardPanel.instance) {
@@ -32,7 +34,18 @@ export class DashboardPanel extends BaseWebviewPanel {
   private constructor(extensionUri: vscode.Uri) {
     super(extensionUri, 'sddDashboard', 'SDD Builder AI Dashboard', vscode.ViewColumn.One);
     this.setupWatcher();
+    this.doctorSubscription = onDoctorReport((report) => this.post('doctorReport', report));
     void this.sendData();
+    if (getLastDoctorReport()) {
+      this.sendLastDoctorReport();
+    } else {
+      void runDoctor();
+    }
+  }
+
+  private sendLastDoctorReport(): void {
+    const report = getLastDoctorReport();
+    if (report) this.post('doctorReport', report);
   }
 
   protected async handleMessage(message: { type: string; data: unknown }): Promise<void> {
@@ -50,6 +63,9 @@ export class DashboardPanel extends BaseWebviewPanel {
       await this.sendData();
     } else if (message.type === 'refresh') {
       await this.sendData();
+      this.sendLastDoctorReport();
+    } else if (message.type === 'runDoctor') {
+      await runDoctor();
     }
   }
 
@@ -57,6 +73,7 @@ export class DashboardPanel extends BaseWebviewPanel {
     DashboardPanel.instance = undefined;
     this.watcher?.dispose();
     this.reqWatcher?.dispose();
+    this.doctorSubscription?.dispose();
     super.dispose();
   }
 

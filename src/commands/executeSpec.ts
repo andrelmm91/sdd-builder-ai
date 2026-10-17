@@ -2,26 +2,95 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { parseSpec } from '../specs/parser';
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
-import { getWorkspaceRoot, writeWorkspaceFile, readWorkspaceFile } from '../utils/fileSystem';
+import { getWorkspaceRoot, writeWorkspaceFile, readWorkspaceFile, listFiles } from '../utils/fileSystem';
 import { isCommandAvailable } from '../utils/shell';
 import { getBudgetForComplexity } from '../execution/budgetEnforcer';
 import { CliRunner } from '../execution/cliRunner';
-import { captureResults } from '../execution/resultCapture';
+import { captureResults, getLatestExecution } from '../execution/resultCapture';
+import { createCheckpoint } from '../execution/gitCheckpoint';
 import { runPostValidation } from '../execution/postValidation';
-import { getClaudeCliBinary, getTestCommand, getAutoValidate } from '../config/extensionConfig';
+import { isBatchMode, resolveProviderDefinition } from '../execution/providerCommand';
+import { getClaudeCliBinary, getProviderBinary, getCliNotFoundMessage, getTestCommand, getAutoValidate } from '../config/extensionConfig';
 import { readAIConfig } from '../config/aiConfig';
-import { EXECUTIONS_FOLDER } from '../utils/constants';
+import { MODEL_ID_PATTERN, type AIConfig } from '../config/aiConfigTypes';
+import type { SpecData } from '../specs/types';
+import { getTimeoutForComplexity } from '../execution/budgetEnforcer';
+import { EXECUTIONS_FOLDER, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
+import { BulkExecutionManager } from '../execution/bulkExecution';
+import { getUnmetDependencies } from '../planning/dependencyResolver';
 import type { SpecTreeItem } from '../views/sidebar/specTreeItem';
-import type { ExecutionConfig } from '../execution/types';
+import type { ExecutionConfig, GitCheckpoint } from '../execution/types';
 
 // Singleton runner — only one spec executes at a time.
 const _runner = new CliRunner();
+
+let _noGitNoticeShown = false;
+
+/** Test helper: re-arms the one-time "no git repository" notice. */
+export function _resetNoGitNoticeForTesting(): void {
+  _noGitNoticeShown = false;
+}
+
+/**
+ * Returns the checkpoint to track this run against: the previous record's checkpoint when
+ * Request Changes asked for reuse, otherwise a fresh one. Undefined outside a git repository.
+ */
+async function resolveCheckpoint(specId: string, root: string | undefined): Promise<GitCheckpoint | undefined> {
+  const latest = await getLatestExecution(specId).catch(() => undefined);
+  if (latest?.reuseCheckpointOnNextRun && latest.checkpoint) {
+    return latest.checkpoint;
+  }
+
+  const checkpoint = root ? await createCheckpoint(root) : undefined;
+  if (!checkpoint && !_noGitNoticeShown) {
+    _noGitNoticeShown = true;
+    void vscode.window.showInformationMessage(
+      'Change tracking and discard are unavailable outside a git repository.'
+    );
+  }
+  return checkpoint;
+}
+
+/** Options for a single run, e.g. the Kanban "run with model" menu. Not saved anywhere. */
+export interface ExecuteOptions {
+  /** Model for this run only; replaces the AI Config model. */
+  model?: string;
+}
+
+/**
+ * Global AI config with this run's model override applied. Provider and permission mode stay global.
+ * Throws when the model id is not a valid model id.
+ */
+export function applyRunOverrides(base: AIConfig | undefined, options?: ExecuteOptions): AIConfig | undefined {
+  const model = options?.model?.trim();
+  if (!base || !model || model === base.model) return base;
+  if (!MODEL_ID_PATTERN.test(model)) {
+    throw new Error(`Invalid model id: "${model}"`);
+  }
+  return { ...base, model };
+}
+
+/** Timeout in ms: complexity-based, scaled by `ai.timeoutMultiplier`. */
+export function resolveTimeoutMs(fm: SpecData, aiConfig: AIConfig | undefined): number {
+  return Math.round(getTimeoutForComplexity(fm.complexity) * (aiConfig?.timeoutMultiplier ?? 1));
+}
+
+/** Replaces the runner's bare timeout error with one that names the limit and how to raise it. */
+function describeError(message: string, timeoutMs: number | undefined): string {
+  if (message !== 'Execution timed out' || !timeoutMs) return message;
+  const minutes = Math.round((timeoutMs / 60_000) * 100) / 100;
+  return `Execution timed out after ${minutes} minutes. Increase the execution timeout multiplier in AI Configuration.`;
+}
 
 /**
  * Core execution logic for a single spec. Called by both the direct Execute command
  * and the bulk queue manager.
  */
-export async function executeSingleSpec(filePath: string, refresh?: () => void): Promise<boolean> {
+export async function executeSingleSpec(
+  filePath: string,
+  refresh?: () => void,
+  options?: ExecuteOptions,
+): Promise<boolean> {
   const doRefresh = refresh ?? (() => { /* noop */ });
 
   // --- Parse spec ---
@@ -53,6 +122,20 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     return false;
   }
 
+  // --- Pre-flight: dependencies done (skipped inside a running bulk queue, where order is the builder's call) ---
+  const bulk = BulkExecutionManager.getInstance();
+  if (!(bulk.getQueue().isRunning && bulk.isInBulk(specId))) {
+    const unmet = getUnmetDependencies(spec.frontmatter, await loadAllSpecData());
+    if (unmet.length > 0) {
+      const choice = await vscode.window.showWarningMessage(
+        `${specId} depends on specs that are not done: ${unmet.join(', ')}. Execute anyway?`,
+        { modal: true },
+        'Execute Anyway',
+      );
+      if (choice !== 'Execute Anyway') return false;
+    }
+  }
+
   // --- Pre-flight: no other execution running ---
   if (_runner.isRunning()) {
     vscode.window.showErrorMessage(
@@ -61,21 +144,29 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     return false;
   }
 
-  // --- Pre-flight: Claude CLI available ---
+  // --- Read AI config ---
+  const baseAIConfig = await readAIConfig();
+  let aiConfig: AIConfig | undefined;
+  try {
+    aiConfig = applyRunOverrides(baseAIConfig, options);
+  } catch (err) {
+    vscode.window.showErrorMessage(`Cannot execute ${specId}: ${err instanceof Error ? err.message : String(err)}`);
+    return false;
+  }
+  // applyRunOverrides returns a new object only when the model really changed.
+  const modelOverridden = aiConfig !== baseAIConfig;
+
+  // --- Pre-flight: provider CLI available ---
   const claudeCliBinary = getClaudeCliBinary();
-  const cliAvailable = await isCommandAvailable(claudeCliBinary);
+  const providerBinary = getProviderBinary(aiConfig, claudeCliBinary);
+  const cliAvailable = await isCommandAvailable(providerBinary);
   if (!cliAvailable) {
-    vscode.window.showErrorMessage(
-      `Claude CLI not found: "${claudeCliBinary}". Install it or update sdd.claudeCliBinary in settings.`
-    );
+    vscode.window.showErrorMessage(getCliNotFoundMessage(aiConfig, providerBinary));
     return false;
   }
 
   // --- Derive budget from complexity ---
   const budget = getBudgetForComplexity(spec.frontmatter.complexity);
-
-  // --- Read AI config ---
-  const aiConfig = await readAIConfig();
 
   // --- Build execution config ---
   const testCommand = await getTestCommand();
@@ -85,6 +176,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     claudeCliBinary,
     testCommand,
     autoValidate,
+    timeoutMs: resolveTimeoutMs(spec.frontmatter, aiConfig),
   };
 
   const root = getWorkspaceRoot();
@@ -96,6 +188,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
   // withProgress cannot host custom buttons, so we use showInformationMessage
   // as the sole control point for the duration of the AI session.
   if (isInteractiveMode(aiConfig)) {
+    const checkpoint = await resolveCheckpoint(specId, root);
     try {
       await updateSpecStatus(uri, content, 'in_progress');
       doRefresh();
@@ -125,7 +218,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     try {
       executionResult = await executePromise;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = describeError(err instanceof Error ? err.message : String(err), config.timeoutMs);
       await updateSpecStatus(uri, content, 'ready').catch(() => {});
       doRefresh();
       vscode.window.showErrorMessage(`${specId} execution failed: ${message}`);
@@ -138,7 +231,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
           ...executionResult,
           success: false,
           error: executionResult.error ?? 'Cancelled by user',
-        });
+        }, checkpoint);
         await patchExecutionRecord(capture, { status: 'aborted' });
         await updateSpecStatus(uri, content, 'ready');
         doRefresh();
@@ -148,9 +241,23 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     }
 
     try {
-      const capture = await captureResults(specId, executionResult);
+      const capture = await captureResults(specId, executionResult, checkpoint);
       if (!executionResult.success) {
         throw new Error(executionResult.error ?? 'CLI execution failed');
+      }
+      if (!hasRelevantChanges(capture.changedFiles, relativeSpecPath)) {
+        const choice = await vscode.window.showWarningMessage(
+          `No file changes were detected for ${specId}. What would you like to do?`,
+          { modal: true },
+          'Send to Review',
+          'Back to Ready',
+        );
+        if (choice !== 'Send to Review') {
+          await patchExecutionRecord(capture, { status: 'aborted' });
+          await updateSpecStatus(uri, content, 'ready');
+          doRefresh();
+          return false;
+        }
       }
       if (autoValidate && testCommand) {
         const validation = await runPostValidation(config, root ?? undefined);
@@ -161,9 +268,9 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
       vscode.window.showInformationMessage(`${specId} execution complete — ready for review.`);
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = describeError(err instanceof Error ? err.message : String(err), config.timeoutMs);
       try {
-        await captureResults(specId, { ...executionResult, success: false, error: message });
+        await captureResults(specId, { ...executionResult, success: false, error: message }, checkpoint);
       } catch { /* best-effort */ }
       try {
         await updateSpecStatus(uri, content, 'ready');
@@ -180,10 +287,11 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
 
   // ── Non-interactive execution path (progress notification) ────────────────
   let success = false;
+  const checkpoint = await resolveCheckpoint(specId, root);
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: `Executing ${specId}`,
+      title: modelOverridden ? `Executing ${specId} (${aiConfig?.model})` : `Executing ${specId}`,
       cancellable: true,
     },
     async (progress, token) => {
@@ -213,7 +321,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
             ...executionResult,
             success: false,
             error: executionResult.error ?? 'Cancelled by user',
-          });
+          }, checkpoint);
           await patchExecutionRecord(capture, { status: 'aborted' });
 
           await updateSpecStatus(uri, content, 'ready');
@@ -224,7 +332,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
 
         // Capture results
         progress.report({ message: 'Capturing results…', increment: 20 });
-        const capture = await captureResults(specId, executionResult);
+        const capture = await captureResults(specId, executionResult, checkpoint);
 
         if (!executionResult.success) {
           throw new Error(executionResult.error ?? 'CLI execution failed');
@@ -248,7 +356,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
         if (token.isCancellationRequested) {
           return; // already handled above
         }
-        const message = err instanceof Error ? err.message : String(err);
+        const message = describeError(err instanceof Error ? err.message : String(err), config.timeoutMs);
 
         // Save partial results if execution ran
         if (executionResult) {
@@ -257,7 +365,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
               ...executionResult,
               success: false,
               error: message,
-            });
+            }, checkpoint);
           } catch {
             // best-effort capture
           }
@@ -282,7 +390,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
 }
 
 export function createExecuteSpecCommand(refresh: () => void) {
-  return async (item?: SpecTreeItem | string): Promise<void> => {
+  return async (item?: SpecTreeItem | string, options?: ExecuteOptions): Promise<void> => {
     // --- Resolve file path ---
     let filePath: string | undefined;
     if (typeof item === 'string') {
@@ -301,7 +409,7 @@ export function createExecuteSpecCommand(refresh: () => void) {
       return;
     }
 
-    await executeSingleSpec(filePath, refresh);
+    await executeSingleSpec(filePath, refresh, options);
   };
 }
 
@@ -309,9 +417,40 @@ export function createExecuteSpecCommand(refresh: () => void) {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * True when the run changed anything besides the spec file itself and `.sdd/`.
+ * Entries look like "M src/foo.ts" (status, then path; renames carry two tab-separated paths).
+ */
+function hasRelevantChanges(changedFiles: string[], relativeSpecPath: string): boolean {
+  const normalize = (p: string) => p.replace(/\\/g, '/');
+  const specPath = normalize(relativeSpecPath);
+  return changedFiles.some((entry) => {
+    const paths = entry.slice(entry.indexOf(' ') + 1).split('\t').map(normalize);
+    return paths.some((p) => p !== specPath && !p.startsWith('.sdd/'));
+  });
+}
+
+/** Frontmatter of every parseable spec in `.specs/`. */
+async function loadAllSpecData(): Promise<SpecData[]> {
+  const files = await listFiles(`${SPECS_FOLDER}/**/*${SPEC_FILE_EXTENSION}`);
+  const all: SpecData[] = [];
+  for (const file of files) {
+    const text = await readWorkspaceFile(file);
+    if (!text) continue;
+    const parsed = parseSpec(text);
+    if (parsed.success) all.push(parsed.data.frontmatter);
+  }
+  return all;
+}
+
 /** Programmatically completes an in-progress interactive spec execution (closes the terminal). */
 export function completeInteractiveSpec(): void {
   _runner.completeInteractive();
+}
+
+/** Returns true while a spec execution is running in this session. */
+export function isExecutionRunning(): boolean {
+  return _runner.isRunning();
 }
 
 /** Cancels the currently running spec execution. */
@@ -322,10 +461,7 @@ export function cancelCurrentSpec(): void {
 /** Returns true for modes where the AI runs in an interactive REPL (not one-shot). */
 export function isInteractiveMode(aiConfig: Awaited<ReturnType<typeof readAIConfig>>): boolean {
   if (!aiConfig) return true; // default to interactive if config is absent
-  if (aiConfig.provider === 'copilot') {
-    return aiConfig.permissionMode !== 'yolo';
-  }
-  return aiConfig.permissionMode !== 'dangerously-skip-permissions';
+  return !isBatchMode(resolveProviderDefinition(aiConfig), aiConfig.permissionMode);
 }
 
 /**
@@ -339,22 +475,17 @@ export function isInteractiveMode(aiConfig: Awaited<ReturnType<typeof readAIConf
 export async function requireFullPermissionForBulk(): Promise<boolean> {
   const aiConfig = await readAIConfig();
 
-  // Full-permission check
-  const isFullPermission = aiConfig
-    ? aiConfig.provider === 'copilot'
-      ? aiConfig.permissionMode === 'yolo'
-      : aiConfig.permissionMode === 'dangerously-skip-permissions'
-    : false;
+  const def = resolveProviderDefinition(aiConfig);
+  if (aiConfig && isBatchMode(def, aiConfig.permissionMode)) return true;
 
-  if (isFullPermission) return true;
-
-  const provider = aiConfig?.provider ?? 'claude';
   const permissionMode = aiConfig?.permissionMode ?? 'default';
-  const providerLabel = provider === 'copilot' ? 'Copilot' : 'Claude';
-  const fullPermLabel = provider === 'copilot' ? '"yolo"' : '"dangerously-skip-permissions"';
+  const batchLabel = def.permissionModes.find((m) => m.mode === 'batch')?.label;
+  const advice = batchLabel
+    ? `Switch to "${batchLabel}" in AI Settings to continue.`
+    : 'This provider has no unattended mode; choose a provider that does in AI Settings.';
 
   const selection = await vscode.window.showWarningMessage(
-    `Bulk execution requires full permission mode.\n\nCurrent: ${providerLabel} — ${permissionMode}\n\nIn interactive modes each tool use requires manual approval, making unattended bulk execution impossible. Switch to ${fullPermLabel} in AI Settings to continue.`,
+    `Bulk execution requires full permission mode.\n\nCurrent: ${def.label} — ${permissionMode}\n\nIn interactive modes each tool use requires manual approval, making unattended bulk execution impossible. ${advice}`,
     { modal: true },
     'Open AI Settings',
   );
