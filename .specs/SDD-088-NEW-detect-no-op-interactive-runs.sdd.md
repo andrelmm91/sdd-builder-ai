@@ -1,17 +1,22 @@
 ---
-spec_id: SDD-093-NEW
+spec_id: SDD-088-NEW
 title: Ask before moving interactive runs with no changes to review
-status: draft
+status: ready
 priority: medium
 complexity: low
-tags: [feature, phase-4, backend, rel-v2.0]
+tags:
+  - feature
+  - phase-4
+  - backend
+  - rel-v2.0
 relevant_files:
   - src/commands/executeSpec.ts
 must_not_touch:
   - src/extension.ts
   - src/execution/cliRunner.ts
   - src/execution/resultCapture.ts
-depends_on: [SDD-084-NEW]
+depends_on:
+  - SDD-084-NEW
 agent_skills: backend
 created: 2026-10-15
 ---

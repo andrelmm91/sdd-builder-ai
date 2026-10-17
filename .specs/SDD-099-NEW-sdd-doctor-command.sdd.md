@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-104-NEW
+spec_id: SDD-099-NEW
 title: Add SDD Doctor command to check the environment before executing
 status: draft
 priority: medium
@@ -12,7 +12,7 @@ relevant_files:
 must_not_touch:
   - src/commands/executeSpec.ts
   - src/execution/cliRunner.ts
-depends_on: [SDD-078-BUGFIX, SDD-088-NEW, SDD-097-NEW]
+depends_on: [SDD-078-BUGFIX, SDD-092-NEW]
 agent_skills: backend
 created: 2026-10-15
 ---
@@ -26,12 +26,11 @@ New users, especially vibe coders, hit setup problems at execution time: the AI 
 - `DoctorReport = { checks: { id: string; label: string; status: 'ok' | 'warn' | 'fail'; detail: string; fix?: string }[] }`.
 - Checks:
   1. `.sdd/config.json` exists and parses (fail).
-  2. The configured provider's binary is available, using `getProviderBinary` from SDD-078 or the provider definitions from SDD-097 (fail).
+  2. The configured provider's binary is available, using `getProviderBinary` from SDD-078 or the provider definitions from SDD-092 (fail).
   3. `git` is available and the workspace is a git repository (warn; detail explains that change tracking and discard are disabled).
   4. Working tree is clean (warn; detail lists the count of modified files).
-  5. At least one quality gate or test command is configured (warn).
-  6. `.sdd/conventions.md` has content beyond the template's comment lines (warn).
-  7. The permission mode is noted: a batch mode is required for bulk execution (info rendered as `ok` with detail).
+  5. `.sdd/conventions.md` has content beyond the template's comment lines (warn).
+  6. The permission mode is noted: a batch mode is required for bulk execution (info rendered as `ok` with detail).
 - `doctorCommand()` writes the report to an output channel named `SDD Doctor` with ✓/⚠/✗ prefixes and fix hints, opens it, and shows a summary notification (`SDD Doctor: N problem(s) found` or `SDD Doctor: all checks passed`).
 - Register the command `sdd.doctor` (title `SDD: Run Doctor`) in `package.json` and `src/extension.ts`.
 

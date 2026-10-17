@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-100-NEW
+spec_id: SDD-095-NEW
 title: Allow per-spec provider, model and timeout overrides
 status: draft
 priority: medium
@@ -13,7 +13,7 @@ relevant_files:
 must_not_touch:
   - src/extension.ts
   - src/execution/cliRunner.ts
-depends_on: [SDD-089-NEW, SDD-098-TECHDEBT, SDD-101-NEW]
+depends_on: [SDD-093-TECHDEBT, SDD-096-NEW]
 agent_skills: backend
 created: 2026-10-15
 ---
@@ -29,7 +29,7 @@ Every spec runs with the same global provider, model and 10-minute timeout. Simp
   - `timeout_minutes?: number`
 - Validator schema (`src/specs/validator.ts`): `provider` is a non-empty string, `model` is a non-empty string, `timeout_minutes` is an integer from 1 to 120. None are required. Add a warning when `provider` is not a known provider id (use `getAvailableProviders()` when a config is available; otherwise skip the check).
 - In `executeSingleSpec()`, build the effective AI config as the global `aiConfig` overridden by the spec's `provider`/`model`. When the spec overrides `provider` but not `model`, use the provider's first suggested model, or none.
-- Effective timeout: `timeout_minutes * 60_000` when set, otherwise the complexity-based timeout from SDD-101, passed as `ExecutionConfig.timeoutMs`.
+- Effective timeout: `timeout_minutes * 60_000` when set, otherwise the complexity-based timeout from SDD-096, passed as `ExecutionConfig.timeoutMs`.
 - The progress notification title shows overrides, for example `Executing SDD-042 (opus)`.
 
 ### Non-Functional

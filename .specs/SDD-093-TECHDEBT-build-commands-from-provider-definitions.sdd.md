@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-098-TECHDEBT
+spec_id: SDD-093-TECHDEBT
 title: Build CLI commands from provider definitions
 status: draft
 priority: medium
@@ -13,13 +13,13 @@ relevant_files:
 must_not_touch:
   - src/extension.ts
   - src/config/providerTypes.ts
-depends_on: [SDD-078-BUGFIX, SDD-095-NEW, SDD-097-NEW]
+depends_on: [SDD-078-BUGFIX, SDD-090-NEW, SDD-092-NEW]
 agent_skills: backend
 created: 2026-10-15
 ---
 
 ## Context
-SDD-096 and SDD-097 made providers data-driven, but `CliRunner._buildCommand()`, `buildCliCommand()` (used for the requirements AI) and `isInteractiveMode()`/`requireFullPermissionForBulk()` in `executeSpec.ts` still branch on `'claude'`/`'copilot'`. This spec replaces those branches with one generic builder so custom providers work end to end. Built-in providers must produce byte-identical commands to today.
+SDD-091 and SDD-092 made providers data-driven, but `CliRunner._buildCommand()`, `buildCliCommand()` (used for the requirements AI) and `isInteractiveMode()`/`requireFullPermissionForBulk()` in `executeSpec.ts` still branch on `'claude'`/`'copilot'`. This spec replaces those branches with one generic builder so custom providers work end to end. Built-in providers must produce byte-identical commands to today.
 
 ## Requirements
 ### Functional
@@ -42,7 +42,7 @@ SDD-096 and SDD-097 made providers data-driven, but `CliRunner._buildCommand()`,
 - [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
-- [ ] A custom provider configured as in the SDD-097 example appears in the terminal with the expected command.
+- [ ] A custom provider configured as in the SDD-092 example appears in the terminal with the expected command.
 
 ## Constraints
 - Do not change provider definitions or their loading.

@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-094-TECHDEBT
+spec_id: SDD-089-TECHDEBT
 title: Refactor contextAssembler into the execution prompt document builder
 status: draft
 priority: medium
@@ -21,7 +21,7 @@ created: 2026-10-15
 ## Context
 `assembleExecutionContext()` in `src/execution/contextAssembler.ts` is never called in production. The real prompt built in `CliRunner._buildCommand()` is a single line, `Implement @<spec file>` plus skill paths and post-execution commands. So `conventions.md` and the scope rules reach the AI only if it chooses to read them, which the README overstates.
 
-This spec reshapes the assembler into a builder for the execution instructions document that SDD-095 will hand to the CLI as a file. It also fixes the UTF-8-unsafe truncation (`Buffer.slice` can cut a multi-byte character in half). No behavior changes until SDD-095 wires it in.
+This spec reshapes the assembler into a builder for the execution instructions document that SDD-090 will hand to the CLI as a file. It also fixes the UTF-8-unsafe truncation (`Buffer.slice` can cut a multi-byte character in half). No behavior changes until SDD-090 wires it in.
 
 ## Requirements
 ### Functional
@@ -46,5 +46,5 @@ This spec reshapes the assembler into a builder for the execution instructions d
 - [ ] None.
 
 ## Constraints
-- Do not call the builder from `cliRunner.ts` or `executeSpec.ts` (SDD-095).
+- Do not call the builder from `cliRunner.ts` or `executeSpec.ts` (SDD-090).
 - Do not change the default pre-prompt text.

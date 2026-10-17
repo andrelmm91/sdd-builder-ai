@@ -1,5 +1,5 @@
 ---
-spec_id: SDD-108-NEW
+spec_id: SDD-103-NEW
 title: Edit and save per-provider model lists from the AI Config UI
 status: done
 priority: high
@@ -20,13 +20,13 @@ must_not_touch:
   - src/execution/cliCommandBuilder.ts
   - webview-ui/src/lib/vscode.ts
 depends_on:
-  - SDD-107-BUGFIX
+  - SDD-102-BUGFIX
 agent_skills: frontend
 created: 2026-10-16
 ---
 
 ## Context
-SDD-107 added user-defined model lists per provider, stored under `ai.models` in `.sdd/config.json`. A non-empty list replaces the built-in list for that provider, and `getModelsForProvider()` in `src/config/aiConfig.ts` applies that rule. The UI only shows a hint telling the builder to edit `config.json` by hand. This spec lets the builder edit, save and immediately use their model lists from the AI Configuration webview.
+SDD-102 added user-defined model lists per provider, stored under `ai.models` in `.sdd/config.json`. A non-empty list replaces the built-in list for that provider, and `getModelsForProvider()` in `src/config/aiConfig.ts` applies that rule. The UI only shows a hint telling the builder to edit `config.json` by hand. This spec lets the builder edit, save and immediately use their model lists from the AI Configuration webview.
 
 Facts about the current implementation that this spec relies on:
 - `AiConfigPanel` (`src/views/webviews/aiConfig/AiConfigPanel.ts`) answers `requestConfig` with `configData { config, tags, skills, models }`, where `models` holds the lists already resolved for each provider.
@@ -64,7 +64,7 @@ Facts about the current implementation that this spec relies on:
   - Replace `models` and the custom-list state with the received values, so the execution and requirements model dropdowns refresh immediately without reopening the panel.
   - The currently selected models are not changed. If a selected model is no longer in its provider's list, show the inline warning `"<model>" is not in the <provider> list; it will still be used.` under that dropdown (`withSaved` keeps it selectable).
 - On `modelsSaveError`, show the message inline in the Model Lists group and keep the unsaved edits.
-- Replace the SDD-107 hint under each model dropdown with `Manage models in Model Lists below.`
+- Replace the SDD-102 hint under each model dropdown with `Manage models in Model Lists below.`
 
 ### Non-Functional
 - Uses only VS Code theme variables, readable in light, dark and high-contrast themes, and all controls are keyboard reachable (chips' remove and move buttons have `aria-label`s).
@@ -99,6 +99,6 @@ Resulting `.sdd/config.json` fragment after customizing Claude only:
 
 ## Constraints
 - Do not change how models are passed to the CLI.
-- Do not add model lists for custom providers here; SDD-099 builds the provider-driven UI on top of this editor.
-- Do not convert the execution and requirements model `<select>` fields into free-text inputs; SDD-099 does that.
+- Do not add model lists for custom providers here; SDD-094 builds the provider-driven UI on top of this editor.
+- Do not convert the execution and requirements model `<select>` fields into free-text inputs; SDD-094 does that.
 - Do not add new dependencies.
