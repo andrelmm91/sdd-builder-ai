@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-093-TECHDEBT
 title: Build CLI commands from provider definitions
-status: review
+status: done
 priority: medium
 complexity: high
 tags:

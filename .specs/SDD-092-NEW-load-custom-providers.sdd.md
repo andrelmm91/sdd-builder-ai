@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-092-NEW
 title: Load custom provider definitions from project config
-status: review
+status: done
 priority: medium
 complexity: low
 tags:

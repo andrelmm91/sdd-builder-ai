@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-091-NEW
 title: Define data-driven AI provider definitions with built-in Claude and Copilot
-status: review
+status: done
 priority: medium
 complexity: medium
 tags:

@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-094-NEW
 title: List custom providers and their modes in the AI Config webview
-status: review
+status: done
 priority: low
 complexity: medium
 tags:

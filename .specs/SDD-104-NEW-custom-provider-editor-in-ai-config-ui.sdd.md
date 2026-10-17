@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-104-NEW
 title: Create, edit and delete custom providers from the AI Config UI
-status: review
+status: done
 priority: medium
 complexity: high
 tags:
