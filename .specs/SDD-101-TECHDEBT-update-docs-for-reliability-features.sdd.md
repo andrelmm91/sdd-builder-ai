@@ -13,7 +13,7 @@ relevant_files:
 must_not_touch:
   - src/extension.ts
   - package.json
-depends_on: [SDD-087-NEW, SDD-088-NEW, SDD-094-NEW, SDD-095-NEW, SDD-098-NEW, SDD-099-NEW, SDD-100-TECHDEBT]
+depends_on: [SDD-087-NEW, SDD-088-NEW, SDD-094-NEW, SDD-104-NEW, SDD-095-NEW, SDD-098-NEW, SDD-099-NEW, SDD-100-TECHDEBT]
 agent_skills: docs
 created: 2026-10-15
 ---
@@ -25,10 +25,10 @@ SDD-078 to SDD-100 change how execution, review and configuration behave. Parts 
 ### Functional
 - `README.md`:
   - Add a "Safety net" section covering git checkpoints, the Discard AI Changes command and button, and recovery of stale in-progress specs. Explain that Reject discards the AI's changes, while Request Changes keeps them so the next run builds on them, and a later Reject still discards every attempt.
-  - "Bring Your Own AI": document `customProviders` with one example, user-defined model lists edited from the "Model Lists" section of AI Configuration and stored in `ai.models` (which replace the built-in suggestions per provider), and per-spec `provider`/`model` overrides.
+  - "Bring Your Own AI": document creating custom providers from the "Custom Providers" section of AI Configuration (with live validation and command preview), show the resulting `customProviders` JSON as one example, user-defined model lists edited from the "Model Lists" section of AI Configuration and stored in `ai.models` (which replace the built-in suggestions per provider), and per-spec `provider`/`model` overrides.
   - Mention the `SDD: Run Doctor` command in getting started.
   - Note that git is required for change tracking and discard.
-- `HOW-TO.md`: add step-by-step guides for adding a custom provider and discarding an execution.
+- `HOW-TO.md`: add step-by-step guides for adding a custom provider through the AI Configuration editor and for discarding an execution.
 - `resources/skills/sdd-planner/SKILL.md`: add `provider`, `model` and `timeout_minutes` to the frontmatter reference table as optional fields. Also fix the inconsistency between "Maximum 4 files" and "Do not create specs that modify more than 3 files" by standardizing on 4.
 - `CHANGELOG.md`: add an "Unreleased" entry summarizing the changes.
 

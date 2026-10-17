@@ -9,13 +9,13 @@ import { SPECS_FOLDER, SPEC_FILE_EXTENSION, IDEALIZATION_FILENAME, PRODUCT_FOLDE
 import { updateFeatureStatus } from '../views/webviews/requirementBoard/featureParser';
 import { isCommandAvailable } from '../utils/shell';
 import { buildCliCommand } from '../execution/cliCommandBuilder';
+import { isBatchMode, resolveProviderDefinition } from '../execution/providerCommand';
 import { runInTerminal } from '../execution/processSpawner';
 import { setActiveRequirementsTerminal } from '../execution/requirementsRunner';
 
 function isInteractiveMode(config: RequirementsAIConfig | null | undefined): boolean {
   if (!config) return true;
-  if (config.provider === 'copilot') return config.permissionMode !== 'yolo';
-  return config.permissionMode !== 'dangerously-skip-permissions';
+  return !isBatchMode(resolveProviderDefinition(config), config.permissionMode);
 }
 
 const SDD_CARDS_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes

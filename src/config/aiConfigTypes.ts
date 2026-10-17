@@ -1,4 +1,9 @@
-export type AIProvider = 'claude' | 'copilot';
+import type { ProviderDefinition } from './providerTypes';
+
+/** Provider id: a built-in (`BUILTIN_PROVIDER_IDS`) or a custom provider's id. */
+export type AIProvider = string;
+
+export const BUILTIN_PROVIDER_IDS = ['claude', 'copilot'] as const;
 
 export type ClaudeEffort = 'low' | 'medium' | 'high';
 export type ClaudePermissionMode = 'default' | 'dangerously-skip-permissions' | 'plan';
@@ -23,6 +28,8 @@ export interface AIConfig {
   prCommandEnabled?: boolean;
   /** User-defined model lists keyed by provider id; replaces the built-in list for that provider. */
   models?: Record<string, string[]>;
+  /** User-defined agent CLIs; override built-ins by `id`. Owned by `writeCustomProviders()`. */
+  customProviders?: ProviderDefinition[];
 }
 
 export const CLAUDE_MODELS = ['opus', 'sonnet', 'haiku', 'fable', 'opusplan', 'opus[1m]', 'sonnet[1m]'] as const;

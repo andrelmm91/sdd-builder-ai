@@ -9,6 +9,7 @@ import { CliRunner } from '../execution/cliRunner';
 import { captureResults, getLatestExecution } from '../execution/resultCapture';
 import { createCheckpoint } from '../execution/gitCheckpoint';
 import { runPostValidation } from '../execution/postValidation';
+import { isBatchMode, resolveProviderDefinition } from '../execution/providerCommand';
 import { getClaudeCliBinary, getProviderBinary, getCliNotFoundMessage, getTestCommand, getAutoValidate } from '../config/extensionConfig';
 import { readAIConfig } from '../config/aiConfig';
 import { EXECUTIONS_FOLDER } from '../utils/constants';
@@ -383,10 +384,7 @@ export function cancelCurrentSpec(): void {
 /** Returns true for modes where the AI runs in an interactive REPL (not one-shot). */
 export function isInteractiveMode(aiConfig: Awaited<ReturnType<typeof readAIConfig>>): boolean {
   if (!aiConfig) return true; // default to interactive if config is absent
-  if (aiConfig.provider === 'copilot') {
-    return aiConfig.permissionMode !== 'yolo';
-  }
-  return aiConfig.permissionMode !== 'dangerously-skip-permissions';
+  return !isBatchMode(resolveProviderDefinition(aiConfig), aiConfig.permissionMode);
 }
 
 /**
@@ -400,22 +398,17 @@ export function isInteractiveMode(aiConfig: Awaited<ReturnType<typeof readAIConf
 export async function requireFullPermissionForBulk(): Promise<boolean> {
   const aiConfig = await readAIConfig();
 
-  // Full-permission check
-  const isFullPermission = aiConfig
-    ? aiConfig.provider === 'copilot'
-      ? aiConfig.permissionMode === 'yolo'
-      : aiConfig.permissionMode === 'dangerously-skip-permissions'
-    : false;
+  const def = resolveProviderDefinition(aiConfig);
+  if (aiConfig && isBatchMode(def, aiConfig.permissionMode)) return true;
 
-  if (isFullPermission) return true;
-
-  const provider = aiConfig?.provider ?? 'claude';
   const permissionMode = aiConfig?.permissionMode ?? 'default';
-  const providerLabel = provider === 'copilot' ? 'Copilot' : 'Claude';
-  const fullPermLabel = provider === 'copilot' ? '"yolo"' : '"dangerously-skip-permissions"';
+  const batchLabel = def.permissionModes.find((m) => m.mode === 'batch')?.label;
+  const advice = batchLabel
+    ? `Switch to "${batchLabel}" in AI Settings to continue.`
+    : 'This provider has no unattended mode; choose a provider that does in AI Settings.';
 
   const selection = await vscode.window.showWarningMessage(
-    `Bulk execution requires full permission mode.\n\nCurrent: ${providerLabel} — ${permissionMode}\n\nIn interactive modes each tool use requires manual approval, making unattended bulk execution impossible. Switch to ${fullPermLabel} in AI Settings to continue.`,
+    `Bulk execution requires full permission mode.\n\nCurrent: ${def.label} — ${permissionMode}\n\nIn interactive modes each tool use requires manual approval, making unattended bulk execution impossible. ${advice}`,
     { modal: true },
     'Open AI Settings',
   );
