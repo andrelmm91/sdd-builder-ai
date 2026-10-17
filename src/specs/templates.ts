@@ -38,7 +38,7 @@ function featureBody(): string {
 
 ## Constraints
 - Adhere to project conventions in \`.sdd/conventions.md\`
-- Maximum 3 files to create/edit (excluding test files)
+- Maximum 4 files to create/edit (excluding test files)
 
 ## Examples
 
