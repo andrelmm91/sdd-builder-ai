@@ -26,6 +26,8 @@ export interface AIConfig {
   commitCommandEnabled?: boolean;
   prCommand?: string;
   prCommandEnabled?: boolean;
+  /** Scales the complexity-based execution timeout (clamped to 0.25–10, default 1). */
+  timeoutMultiplier?: number;
   /** User-defined model lists keyed by provider id; replaces the built-in list for that provider. */
   models?: Record<string, string[]>;
   /** User-defined agent CLIs; override built-ins by `id`. Owned by `writeCustomProviders()`. */
@@ -83,6 +85,7 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   commitCommandEnabled: false,
   prCommand: DEFAULT_PR_COMMAND,
   prCommandEnabled: false,
+  timeoutMultiplier: 1,
 };
 
 export interface RequirementsAIConfig {

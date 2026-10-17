@@ -4,6 +4,7 @@ import {
   checkBudgetExceeded,
   formatTokenCount,
   getBudgetForComplexity,
+  getTimeoutForComplexity,
 } from './budgetEnforcer';
 
 describe('validateBudget', () => {
@@ -94,5 +95,19 @@ describe('getBudgetForComplexity', () => {
 
   it('returns 150000 for high complexity', () => {
     expect(getBudgetForComplexity('high')).toBe(150_000);
+  });
+});
+
+describe('getTimeoutForComplexity', () => {
+  it('returns 10 minutes for low complexity', () => {
+    expect(getTimeoutForComplexity('low')).toBe(10 * 60_000);
+  });
+
+  it('returns 20 minutes for medium complexity', () => {
+    expect(getTimeoutForComplexity('medium')).toBe(20 * 60_000);
+  });
+
+  it('returns 30 minutes for high complexity', () => {
+    expect(getTimeoutForComplexity('high')).toBe(30 * 60_000);
   });
 });

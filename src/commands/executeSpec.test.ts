@@ -90,7 +90,7 @@ import { captureResults, getLatestExecution } from '../execution/resultCapture';
 import { createCheckpoint } from '../execution/gitCheckpoint';
 import type { GitCheckpoint } from '../execution/types';
 
-function makeSpecContent(status: string): string {
+function makeSpecContent(status: string, extraFrontmatter = ''): string {
   return `---
 spec_id: SDD-030
 title: Wire spec execution command to VS Code UI
@@ -104,7 +104,7 @@ must_not_touch: []
 depends_on: []
 agent_skills: frontend-dev
 created: 2026-03-05
----
+${extraFrontmatter}---
 
 ## Context
 
@@ -233,6 +233,76 @@ describe('createExecuteSpecCommand', () => {
       expect.objectContaining({ cancellable: true, title: 'Executing SDD-030' }),
       expect.any(Function)
     );
+  });
+
+  describe('run options and timeout', () => {
+    async function run(options?: { model?: string }) {
+      vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(
+        Buffer.from(makeSpecContent('ready')) as unknown as Uint8Array
+      );
+      vi.mocked(vscode.window.withProgress).mockImplementation(async (_o, task) =>
+        task({ report: vi.fn() } as never, { onCancellationRequested: vi.fn(), isCancellationRequested: false } as never)
+      );
+      mockRunnerExecute.mockResolvedValue({ success: true, output: '', duration: 1 });
+      await command({ kind: 'spec' as const, filePath: '/ws/.specs/SDD-030.sdd.md' } as never, options);
+      return {
+        title: (vi.mocked(vscode.window.withProgress).mock.calls[0]?.[0] as { title: string } | undefined)?.title,
+        config: mockRunnerExecute.mock.calls[0]?.[1] as { timeoutMs?: number } | undefined,
+        aiConfig: mockRunnerExecute.mock.calls[0]?.[2] as { provider: string; model: string; permissionMode: string } | undefined,
+      };
+    }
+
+    beforeEach(() => {
+      vi.mocked(readAIConfig).mockResolvedValue(
+        { permissionMode: 'dangerously-skip-permissions', provider: 'claude', model: 'sonnet' } as never
+      );
+    });
+
+    it('runs with the chosen model for this run only and shows it in the title', async () => {
+      const r = await run({ model: 'haiku' });
+      expect(r.aiConfig).toMatchObject({ provider: 'claude', model: 'haiku', permissionMode: 'dangerously-skip-permissions' });
+      expect(r.title).toBe('Executing SDD-030 (haiku)');
+    });
+
+    it('treats the AI Config model as no override', async () => {
+      const r = await run({ model: 'sonnet' });
+      expect(r.aiConfig).toMatchObject({ model: 'sonnet' });
+      expect(r.title).toBe('Executing SDD-030');
+    });
+
+    it('rejects an invalid model id without running', async () => {
+      await run({ model: 'bad model; rm -rf' });
+      expect(mockRunnerExecute).not.toHaveBeenCalled();
+      expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('Invalid model id'));
+    });
+
+    it('derives timeoutMs from complexity and applies the multiplier', async () => {
+      vi.mocked(readAIConfig).mockResolvedValue(
+        { permissionMode: 'default', provider: 'claude', model: 'sonnet', timeoutMultiplier: 2 } as never
+      );
+      expect((await run()).config?.timeoutMs).toBe(40 * 60_000);
+    });
+
+    it('reports the limit when the runner times out', async () => {
+      vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(
+        Buffer.from(makeSpecContent('ready')) as unknown as Uint8Array
+      );
+      vi.mocked(vscode.window.withProgress).mockImplementation(async (_o, task) =>
+        task({ report: vi.fn() } as never, { onCancellationRequested: vi.fn(), isCancellationRequested: false } as never)
+      );
+      mockRunnerExecute.mockRejectedValue(new Error('Execution timed out'));
+      await command({ kind: 'spec' as const, filePath: '/ws/.specs/SDD-030.sdd.md' } as never);
+      expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+        expect.stringContaining('Execution timed out after 20 minutes. Increase the execution timeout multiplier in AI Configuration.')
+      );
+    });
+
+    it('changes nothing without options', async () => {
+      const r = await run();
+      expect(r.aiConfig).toMatchObject({ provider: 'claude', model: 'sonnet', permissionMode: 'dangerously-skip-permissions' });
+      expect(r.config?.timeoutMs).toBe(20 * 60_000); // medium complexity
+      expect(r.title).toBe('Executing SDD-030');
+    });
   });
 
   it('uses active editor when no tree item is provided', async () => {

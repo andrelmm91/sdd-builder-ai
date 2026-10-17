@@ -12,6 +12,16 @@ import {
 import type { ProviderDefinition } from './providerTypes';
 import { listAvailableSkills } from '../execution/skillsLoader';
 
+const TIMEOUT_MULTIPLIER_MIN = 0.25;
+const TIMEOUT_MULTIPLIER_MAX = 10;
+
+function sanitizeTimeoutMultiplier(raw: unknown): number {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+    return 1;
+  }
+  return Math.min(TIMEOUT_MULTIPLIER_MAX, Math.max(TIMEOUT_MULTIPLIER_MIN, raw));
+}
+
 function sanitizeModels(raw: unknown): Record<string, string[]> | undefined {
   if (raw === undefined || raw === null) {
     return undefined;
@@ -107,6 +117,7 @@ export async function readAIConfig(): Promise<AIConfig | undefined> {
       commitCommandEnabled: ai.commitCommandEnabled ?? DEFAULT_AI_CONFIG.commitCommandEnabled,
       prCommand: ai.prCommand ?? DEFAULT_AI_CONFIG.prCommand,
       prCommandEnabled: ai.prCommandEnabled ?? DEFAULT_AI_CONFIG.prCommandEnabled,
+      timeoutMultiplier: sanitizeTimeoutMultiplier(ai.timeoutMultiplier),
       ...(models ? { models } : {}),
       ...(customProviders ? { customProviders } : {}),
     };

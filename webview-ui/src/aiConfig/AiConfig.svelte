@@ -19,6 +19,7 @@
     permissionMode: PermissionMode;
     model: string;
     effort: ClaudeEffort;
+    timeoutMultiplier: number;
     tagSkillMappings: TagSkillMapping[];
     prePromptTemplate: string;
     commitCommand: string;
@@ -157,6 +158,7 @@
   let permissionMode = $state<PermissionMode>('default');
   let model = $state<string>('sonnet');
   let effort = $state<ClaudeEffort>('medium');
+  let timeoutMultiplier = $state<number>(1);
   let tagSkillMappings = $state<TagSkillMapping[]>([]);
   let prePromptTemplate = $state<string>('');
   let availableTags = $state<string[]>([]);
@@ -249,6 +251,7 @@
     // vscodeApi.postMessage cannot serialize Proxy objects.
     const config: AIConfig = JSON.parse(JSON.stringify({
       provider, permissionMode, model, effort, tagSkillMappings,
+      timeoutMultiplier: Number.isFinite(timeoutMultiplier) ? timeoutMultiplier : 1,
       prePromptTemplate, commitCommand, commitCommandEnabled,
       prCommand, prCommandEnabled,
     }));
@@ -298,6 +301,7 @@
         model = c.model;
         modelOtherChosen = false;
         effort = c.effort ?? 'medium';
+        timeoutMultiplier = c.timeoutMultiplier ?? 1;
         tagSkillMappings = c.tagSkillMappings;
         prePromptTemplate = c.prePromptTemplate;
         commitCommand = c.commitCommand;
@@ -447,6 +451,20 @@
       <p class="field-hint">Passed as <code>--effort</code> to the Claude CLI.</p>
     </section>
     {/if}
+
+    <section class="form-section">
+      <label class="field-label" for="timeout-multiplier-input">Execution timeout multiplier</label>
+      <input
+        id="timeout-multiplier-input"
+        class="form-input"
+        type="number"
+        min="0.25"
+        max="10"
+        step="0.25"
+        bind:value={timeoutMultiplier}
+      />
+      <p class="field-hint">Multiplies the complexity-based timeout (low 10 min, medium 20 min, high 30 min).</p>
+    </section>
 
     <section class="form-section">
       <div class="section-heading">Tag → Skill Mappings</div>

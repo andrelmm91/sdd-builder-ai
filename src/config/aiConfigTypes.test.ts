@@ -78,6 +78,7 @@ describe('aiConfigTypes', () => {
       commitCommandEnabled: false,
       prCommand: 'gh pr create --title "feat: {title} ({spec_id})" --body "Implements {spec_id}"',
       prCommandEnabled: false,
+      timeoutMultiplier: 1,
     });
   });
 

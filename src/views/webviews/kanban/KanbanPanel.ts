@@ -15,11 +15,13 @@ import {
 import { getLatestExecution } from '../../../execution/resultCapture';
 import { applyRequestChanges } from '../../../commands/reviewCommands';
 import type { SpecData, SpecStatus } from '../../../specs/types';
-import { readAIConfig } from '../../../config/aiConfig';
+import { readAIConfig, getAvailableProviders } from '../../../config/aiConfig';
 
 interface CardActionMessage {
   action: 'markReady' | 'execute' | 'approve' | 'requestChanges';
   specId: string;
+  /** `execute` only: model for this run, chosen from the card's "run with model" menu. */
+  model?: string;
 }
 
 interface KanbanMoveMessage {
@@ -168,7 +170,14 @@ export class KanbanPanel extends BaseWebviewPanel {
         ? aiConfig.permissionMode === 'yolo'
         : aiConfig.permissionMode === 'dangerously-skip-permissions'
       : false;
-    this.post('specList', { specs, isFullPermission });
+    // Models offered by the Execute button's "run with model" menu: the current provider's list.
+    const provider = aiConfig ? getAvailableProviders(aiConfig).find((p) => p.id === aiConfig.provider) : undefined;
+    const runModels = {
+      providerLabel: provider?.label ?? aiConfig?.provider ?? '',
+      defaultModel: aiConfig?.model ?? '',
+      models: provider?.models ?? [],
+    };
+    this.post('specList', { specs, isFullPermission, runModels });
   }
 
   private async loadSpecs(): Promise<Array<SpecData & { changedFiles?: string[]; automatedCriteria?: string; manualCriteria?: string }>> {
@@ -250,7 +259,8 @@ export class KanbanPanel extends BaseWebviewPanel {
         this.post('interactiveExecution', { specId: msg.specId });
       }
       try {
-        await vscode.commands.executeCommand(ACTION_COMMAND_MAP['execute'], filePath);
+        const options = msg.model ? { model: msg.model } : undefined;
+        await vscode.commands.executeCommand(ACTION_COMMAND_MAP['execute'], filePath, options);
       } finally {
         if (interactive) {
           this.post('interactiveExecution', { specId: null });

@@ -4,6 +4,10 @@ All notable changes to the SDD Platform extension will be documented in this fil
 
 ## [2.0.0] - 2026-10-18
 
+- **Smarter execution timeouts** (NEW) — Bigger specs now get more time to finish, so the AI is no longer stopped halfway through a hard task. Low-complexity specs get 10 minutes, medium get 20 and high get 30.
+  - **Adjust it to your project:** in **AI Configuration → SDD Execution**, set the **Execution timeout multiplier** to give every spec more time (e.g. `2` doubles it) or less (e.g. `0.5` halves it).
+  - **Clear message when time runs out:** a timed-out run tells you how long the limit was and where to raise it.
+- **Run a spec with a different model** (NEW) — The **Execute** button on Ready cards in the Kanban board now has a small **▾** next to it. Click it to pick another model for that run only, for example a cheaper, faster model for a simple spec. Your AI Configuration stays as it is, so the next run goes back to your usual model. The menu lists the models of your current provider, with your default marked, and the progress message shows which model is running (`Executing SDD-042 (haiku)`). Clicking **Execute** itself works exactly as before.
 - **Bring your own AI CLI** (NEW) — You're no longer limited to Claude and Copilot. Any agent CLI, such as Codex, Gemini CLI, Aider or OpenCode, can now run your specs and power the requirements AI.
   - **Add providers directly to the Config UI:** open **AI Configuration → Custom Providers** and click **Add provider**. Start from a blank form or from a copy of Claude or Copilot, then fill in the command, its arguments, permission modes and suggested models.
   - **See mistakes before you save:** the form checks your input as you type and shows each problem next to the field. It also shows the exact command each permission mode will run, and warns you if the CLI isn't installed. Save stays disabled until everything is valid.

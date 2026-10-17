@@ -12,6 +12,9 @@ import { runPostValidation } from '../execution/postValidation';
 import { isBatchMode, resolveProviderDefinition } from '../execution/providerCommand';
 import { getClaudeCliBinary, getProviderBinary, getCliNotFoundMessage, getTestCommand, getAutoValidate } from '../config/extensionConfig';
 import { readAIConfig } from '../config/aiConfig';
+import { MODEL_ID_PATTERN, type AIConfig } from '../config/aiConfigTypes';
+import type { SpecData } from '../specs/types';
+import { getTimeoutForComplexity } from '../execution/budgetEnforcer';
 import { EXECUTIONS_FOLDER } from '../utils/constants';
 import type { SpecTreeItem } from '../views/sidebar/specTreeItem';
 import type { ExecutionConfig, GitCheckpoint } from '../execution/types';
@@ -46,11 +49,46 @@ async function resolveCheckpoint(specId: string, root: string | undefined): Prom
   return checkpoint;
 }
 
+/** Options for a single run, e.g. the Kanban "run with model" menu. Not saved anywhere. */
+export interface ExecuteOptions {
+  /** Model for this run only; replaces the AI Config model. */
+  model?: string;
+}
+
+/**
+ * Global AI config with this run's model override applied. Provider and permission mode stay global.
+ * Throws when the model id is not a valid model id.
+ */
+export function applyRunOverrides(base: AIConfig | undefined, options?: ExecuteOptions): AIConfig | undefined {
+  const model = options?.model?.trim();
+  if (!base || !model || model === base.model) return base;
+  if (!MODEL_ID_PATTERN.test(model)) {
+    throw new Error(`Invalid model id: "${model}"`);
+  }
+  return { ...base, model };
+}
+
+/** Timeout in ms: complexity-based, scaled by `ai.timeoutMultiplier`. */
+export function resolveTimeoutMs(fm: SpecData, aiConfig: AIConfig | undefined): number {
+  return Math.round(getTimeoutForComplexity(fm.complexity) * (aiConfig?.timeoutMultiplier ?? 1));
+}
+
+/** Replaces the runner's bare timeout error with one that names the limit and how to raise it. */
+function describeError(message: string, timeoutMs: number | undefined): string {
+  if (message !== 'Execution timed out' || !timeoutMs) return message;
+  const minutes = Math.round((timeoutMs / 60_000) * 100) / 100;
+  return `Execution timed out after ${minutes} minutes. Increase the execution timeout multiplier in AI Configuration.`;
+}
+
 /**
  * Core execution logic for a single spec. Called by both the direct Execute command
  * and the bulk queue manager.
  */
-export async function executeSingleSpec(filePath: string, refresh?: () => void): Promise<boolean> {
+export async function executeSingleSpec(
+  filePath: string,
+  refresh?: () => void,
+  options?: ExecuteOptions,
+): Promise<boolean> {
   const doRefresh = refresh ?? (() => { /* noop */ });
 
   // --- Parse spec ---
@@ -91,7 +129,16 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
   }
 
   // --- Read AI config ---
-  const aiConfig = await readAIConfig();
+  const baseAIConfig = await readAIConfig();
+  let aiConfig: AIConfig | undefined;
+  try {
+    aiConfig = applyRunOverrides(baseAIConfig, options);
+  } catch (err) {
+    vscode.window.showErrorMessage(`Cannot execute ${specId}: ${err instanceof Error ? err.message : String(err)}`);
+    return false;
+  }
+  // applyRunOverrides returns a new object only when the model really changed.
+  const modelOverridden = aiConfig !== baseAIConfig;
 
   // --- Pre-flight: provider CLI available ---
   const claudeCliBinary = getClaudeCliBinary();
@@ -113,6 +160,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     claudeCliBinary,
     testCommand,
     autoValidate,
+    timeoutMs: resolveTimeoutMs(spec.frontmatter, aiConfig),
   };
 
   const root = getWorkspaceRoot();
@@ -154,7 +202,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
     try {
       executionResult = await executePromise;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = describeError(err instanceof Error ? err.message : String(err), config.timeoutMs);
       await updateSpecStatus(uri, content, 'ready').catch(() => {});
       doRefresh();
       vscode.window.showErrorMessage(`${specId} execution failed: ${message}`);
@@ -204,7 +252,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
       vscode.window.showInformationMessage(`${specId} execution complete — ready for review.`);
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = describeError(err instanceof Error ? err.message : String(err), config.timeoutMs);
       try {
         await captureResults(specId, { ...executionResult, success: false, error: message }, checkpoint);
       } catch { /* best-effort */ }
@@ -227,7 +275,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: `Executing ${specId}`,
+      title: modelOverridden ? `Executing ${specId} (${aiConfig?.model})` : `Executing ${specId}`,
       cancellable: true,
     },
     async (progress, token) => {
@@ -292,7 +340,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
         if (token.isCancellationRequested) {
           return; // already handled above
         }
-        const message = err instanceof Error ? err.message : String(err);
+        const message = describeError(err instanceof Error ? err.message : String(err), config.timeoutMs);
 
         // Save partial results if execution ran
         if (executionResult) {
@@ -326,7 +374,7 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
 }
 
 export function createExecuteSpecCommand(refresh: () => void) {
-  return async (item?: SpecTreeItem | string): Promise<void> => {
+  return async (item?: SpecTreeItem | string, options?: ExecuteOptions): Promise<void> => {
     // --- Resolve file path ---
     let filePath: string | undefined;
     if (typeof item === 'string') {
@@ -345,7 +393,7 @@ export function createExecuteSpecCommand(refresh: () => void) {
       return;
     }
 
-    await executeSingleSpec(filePath, refresh);
+    await executeSingleSpec(filePath, refresh, options);
   };
 }
 

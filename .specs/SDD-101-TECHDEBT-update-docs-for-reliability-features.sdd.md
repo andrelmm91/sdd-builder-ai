@@ -19,17 +19,17 @@ created: 2026-10-15
 ---
 
 ## Context
-SDD-078 to SDD-100 change how execution, review and configuration behave. Parts of the README currently promise behavior that was not enforced before these specs (for example "AI that respects your architecture"), and the planner skill does not know about the new `provider`, `model` and `timeout_minutes` frontmatter fields. The documentation must describe the product as it now works.
+SDD-078 to SDD-100 change how execution, review and configuration behave. Parts of the README currently promise behavior that was not enforced before these specs (for example "AI that respects your architecture"), and the Kanban board now lets the builder run a single spec with a different model (SDD-095). The documentation must describe the product as it now works.
 
 ## Requirements
 ### Functional
 - `README.md`:
   - Add a "Safety net" section covering git checkpoints, the Discard AI Changes command and button, and recovery of stale in-progress specs. Explain that Reject discards the AI's changes, while Request Changes keeps them so the next run builds on them, and a later Reject still discards every attempt.
-  - "Bring Your Own AI": document creating custom providers from the "Custom Providers" section of AI Configuration (with live validation and command preview), show the resulting `customProviders` JSON as one example, user-defined model lists edited from the "Model Lists" section of AI Configuration and stored in `ai.models` (which replace the built-in suggestions per provider), and per-spec `provider`/`model` overrides.
+  - "Bring Your Own AI": document creating custom providers from the "Custom Providers" section of AI Configuration (with live validation and command preview), show the resulting `customProviders` JSON as one example, user-defined model lists edited from the "Model Lists" section of AI Configuration and stored in `ai.models` (which replace the built-in suggestions per provider), and running one spec with a different model from the Kanban Execute button's ▾ menu (SDD-095).
   - Mention the `SDD: Run Doctor` command in getting started.
   - Note that git is required for change tracking and discard.
 - `HOW-TO.md`: add step-by-step guides for adding a custom provider through the AI Configuration editor and for discarding an execution.
-- `resources/skills/sdd-planner/SKILL.md`: add `provider`, `model` and `timeout_minutes` to the frontmatter reference table as optional fields. Also fix the inconsistency between "Maximum 4 files" and "Do not create specs that modify more than 3 files" by standardizing on 4.
+- `resources/skills/sdd-planner/SKILL.md`: fix the inconsistency between "Maximum 4 files" and "Do not create specs that modify more than 3 files" by standardizing on 4.
 - `CHANGELOG.md`: add an "Unreleased" entry summarizing the changes.
 
 ### Non-Functional
@@ -38,7 +38,6 @@ SDD-078 to SDD-100 change how execution, review and configuration behave. Parts 
 ## Acceptance Criteria
 ### Automated
 - [ ] `npm test` passes (no code changes expected).
-- [ ] `grep -n "timeout_minutes" resources/skills/sdd-planner/SKILL.md` returns at least one match in the frontmatter reference table.
 
 ### Manual
 - [ ] Every feature described in the README can be found in the extension.

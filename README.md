@@ -103,6 +103,8 @@ A five-column board where each spec moves from idea to shipped code.
 
 Drag and drop cards between columns. Every transition is validated — no skipping stages.
 
+Need a cheaper or faster model for a simple spec? Click the **▾** next to **Execute** on a Ready card and pick a model for that run only. Your AI Configuration is not changed, and clicking **Execute** itself always uses your configured model.
+
 If VS Code is closed or crashes during an execution, specs left in **In Progress** are detected on the next startup and you can reset them to **Ready** with one click (or drag the card back manually).
 
 ![SDD Kanban Board](https://github.com/user-attachments/assets/918b706c-361f-4944-a046-9578273d91bb)
@@ -178,6 +180,7 @@ Separate configuration for requirements AI and execution AI.
   - Full permission: a terminal is created and the AI CLI executes all commands. The watch sentinel monitors when the AI finishes and update the SDD card for review.
   - Plan mode: a terminal opens and the AI CLI executes in plan mode. The user should press the complete button to move it to review phase. If no file changes were detected (e.g. you closed the terminal right away), SDD asks whether to send the spec to Review anyway or move it back to Ready.
 - Pick a model per provider. Manage the offered models in the **Model Lists** section of the AI Configuration panel (Customize, add, remove, reorder, Reset to built-in, then Save). They are stored in `.sdd/config.json`, e.g. `"ai": { "models": { "claude": ["fable", "opus"] } }`; a custom list replaces the built-in one for that provider.
+- Execution timeouts scale with spec complexity (low 10 min, medium 20 min, high 30 min). Adjust them all with the **Execution timeout multiplier** (0.25–10).
 - Tag-to-skill mappings with custom skill files. The skills are injected into the prompt when a spec with the corresponding tag is executed, giving you precise control over the agent's capabilities per task.
 - Prompt templates for idealization, spec generation, and execution phases — customize the instructions and context you give the AI at each step.
 - Configurable `git commit` and `git pull-request` commands into the prompt context.

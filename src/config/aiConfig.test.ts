@@ -79,10 +79,34 @@ describe('readAIConfig', () => {
       commitCommandEnabled: true,
       prCommand: 'gh pr create --title "feat: {title} ({spec_id})" --body "Implements {spec_id}"',
       prCommandEnabled: false,
+      timeoutMultiplier: 2,
     };
     mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ ai: fullConfig }));
     const config = await readAIConfig();
     expect(config).toEqual(fullConfig);
+  });
+});
+
+describe('ai.timeoutMultiplier', () => {
+  async function read(ai: Record<string, unknown>) {
+    mockReadWorkspaceFile.mockResolvedValue(JSON.stringify({ ai }));
+    return (await readAIConfig())!.timeoutMultiplier;
+  }
+
+  it('reads a valid value', async () => {
+    expect(await read({ timeoutMultiplier: 2.5 })).toBe(2.5);
+  });
+
+  it('defaults to 1 when missing or non-numeric', async () => {
+    expect(await read({})).toBe(1);
+    expect(await read({ timeoutMultiplier: '3' })).toBe(1);
+    expect(await read({ timeoutMultiplier: null })).toBe(1);
+  });
+
+  it('clamps to 0.25–10', async () => {
+    expect(await read({ timeoutMultiplier: 0.01 })).toBe(0.25);
+    expect(await read({ timeoutMultiplier: -4 })).toBe(0.25);
+    expect(await read({ timeoutMultiplier: 99 })).toBe(10);
   });
 });
 

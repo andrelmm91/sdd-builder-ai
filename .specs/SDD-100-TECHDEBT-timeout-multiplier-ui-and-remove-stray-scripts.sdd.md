@@ -1,10 +1,14 @@
 ---
 spec_id: SDD-100-TECHDEBT
 title: Timeout multiplier in AI Configuration UI and remove stray scripts
-status: draft
+status: review
 priority: low
 complexity: low
-tags: [techdebt, phase-6, infra, rel-v2.0]
+tags:
+  - techdebt
+  - phase-6
+  - infra
+  - rel-v2.0
 relevant_files:
   - webview-ui/src/aiConfig/AiConfig.svelte
   - test-parse.mjs
@@ -13,7 +17,8 @@ must_not_touch:
   - src/extension.ts
   - src/commands/executeSpec.ts
   - package.json
-depends_on: [SDD-096-NEW]
+depends_on:
+  - SDD-096-NEW
 agent_skills: infra
 created: 2026-10-15
 ---
@@ -31,10 +36,10 @@ SDD settings live in `.sdd/config.json` and are edited through the AI Configurat
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `npm test`, `npm run type-check`, `npm run lint` and `npm run build:all` pass.
+- [x] `npm test`, `npm run type-check`, `npm run lint` and `npm run build:all` pass.
 
 ### Manual
-- [ ] The timeout multiplier field appears in the AI Configuration panel, and saving writes `ai.timeoutMultiplier` to `.sdd/config.json`.
+- [x] The timeout multiplier field appears in the AI Configuration panel, and saving writes `ai.timeoutMultiplier` to `.sdd/config.json`.
 
 ## Constraints
 - Do not change existing settings.
