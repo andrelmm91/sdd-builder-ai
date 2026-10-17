@@ -375,7 +375,8 @@
   {/if}
 
   <div class="config-body" class:disabled={notInitialized}>
-    <div class="section-group-heading">SDD Execution</div>
+    <div class="group-box group-exec">
+      <div class="section-group-heading"><span class="group-icon" aria-hidden="true">⚙</span>SDD Execution</div>
 
     <section class="form-section">
       <label class="field-label" for="provider-select">AI Provider</label>
@@ -594,8 +595,10 @@
       </button>
     </div>
 
-    <hr class="section-divider" />
-    <div class="section-group-heading">Requirements AI Config</div>
+    </div>
+
+    <div class="group-box group-req">
+      <div class="section-group-heading"><span class="group-icon" aria-hidden="true">✎</span>Requirements AI Config</div>
     <p class="field-hint">Used by <strong>Idealize Requirements</strong> and <strong>Create SDD Cards</strong> commands.</p>
 
     <section class="form-section">
@@ -683,8 +686,10 @@
       </button>
     </div>
 
-    <hr class="section-divider" />
-    <div class="section-group-heading">Model Lists</div>
+    </div>
+
+    <div class="group-box group-models">
+      <div class="section-group-heading"><span class="group-icon" aria-hidden="true">☰</span>Model Lists</div>
     <p class="field-hint">Shared by the execution and requirements model dropdowns. A custom list replaces the built-in list for that provider; the first entry is the default when switching provider.</p>
 
     {#each providers as p (p.id)}
@@ -744,14 +749,17 @@
       </button>
     </div>
 
-    <hr class="section-divider" />
-    <div class="section-group-heading">Custom Providers</div>
+    </div>
+
+    <div class="group-box group-providers">
+      <div class="section-group-heading"><span class="group-icon" aria-hidden="true">⧉</span>Custom Providers</div>
     <p class="field-hint">Define other agent CLIs, or override Claude or Copilot, in <code>ai.customProviders</code>. Providers are checked before they are saved.</p>
     <ProviderEditor
       saved={customProviders}
       builtins={builtinProviders}
       usedBy={{ 'ai.provider': provider, 'requirementsAi.provider': reqProvider }}
     />
+    </div>
   </div>
 </div>
 
@@ -1000,17 +1008,52 @@
   .btn-save-success { background: #2ea043 !important; }
   .btn-save-error { background: var(--vscode-inputValidation-errorBackground, #be1100) !important; }
 
-  .section-divider {
-    border: none;
-    border-top: 1px solid var(--vscode-panel-border);
-    margin: 8px 0;
+  /* One tinted box per group. Accent colors come from the theme's chart palette,
+     so they adapt to light, dark and high-contrast themes. */
+  .group-box {
+    --group-accent: var(--vscode-focusBorder);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0 16px 16px;
+    border: 1px solid color-mix(in srgb, var(--group-accent) 35%, var(--vscode-panel-border));
+    border-left: 4px solid var(--group-accent);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--group-accent) 6%, var(--vscode-editor-background));
+    overflow: hidden;
+  }
+  .group-exec { --group-accent: var(--vscode-charts-blue, #3794ff); }
+  .group-req { --group-accent: var(--vscode-charts-purple, #b180d7); }
+  .group-models { --group-accent: var(--vscode-charts-green, #89d185); }
+  .group-providers { --group-accent: var(--vscode-charts-orange, #d18616); }
+
+  /* Cards inside a box sit on the plain editor background so they stand out from the tint. */
+  .group-box :global(.model-card) {
+    background: var(--vscode-editor-background);
   }
 
   .section-group-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 -16px;
+    padding: 10px 16px;
     font-weight: 700;
-    font-size: 1em;
+    font-size: 1.05em;
     color: var(--vscode-foreground);
-    margin-bottom: 4px;
+    background: color-mix(in srgb, var(--group-accent) 16%, var(--vscode-editor-background));
+    border-bottom: 1px solid color-mix(in srgb, var(--group-accent) 35%, transparent);
+  }
+  .group-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: var(--vscode-editor-background);
+    background: var(--group-accent);
   }
 
   .label-row {
