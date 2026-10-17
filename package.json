@@ -117,6 +117,10 @@
         "title": "SDD: Open AI Configuration"
       },
       {
+        "command": "sdd.doctor",
+        "title": "SDD: Run Doctor"
+      },
+      {
         "command": "sdd.planFromRequirements",
         "title": "SDD: Plan Specs from Requirements"
       },

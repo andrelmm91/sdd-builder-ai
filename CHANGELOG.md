@@ -4,6 +4,7 @@ All notable changes to the SDD Platform extension will be documented in this fil
 
 ## [2.0.0] - 2026-10-18
 
+- **Readiness check on the Dashboard** (NEW) — SDD now checks your setup automatically after you initialize a project and whenever you open VS Code, and shows any problems in a banner at the top of the Dashboard. It looks at your AI CLI (installed?), Git (is this a repository, any uncommitted changes?), your `conventions.md` (still the empty template?) and whether your permission mode allows bulk execution. Each problem comes with a plain-language fix. Click **Re-check** after fixing it; the banner disappears once everything passes. You can also run it any time with **SDD: Run Doctor**. The old `Health: Git ✓, Claude CLI ✓` message after init is gone.
 - **Warning for unfinished dependencies** (NEW) — Running a spec whose dependencies aren't done yet now asks you first. Click **Execute Anyway** to run it anyway.
 - **Dependency warnings in the bulk queue** (NEW) — A red **!** badge now marks a queued spec that depends on another spec that isn't done yet, is later in the queue, or doesn't exist. These specs may run before the work they rely on. Hover over the **!** to see which dependency is the problem.
 - **Smarter execution timeouts** (NEW) — Bigger specs now get more time to finish, so the AI is no longer stopped halfway through a hard task. Low-complexity specs get 10 minutes, medium get 20 and high get 30.

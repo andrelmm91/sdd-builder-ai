@@ -39,30 +39,19 @@ vi.mock('../config/projectConfig', () => ({
   writeProjectConfig: vi.fn(),
 }));
 
-vi.mock('../utils/shell', () => ({
-  execCommand: vi.fn(),
-}));
-
-vi.mock('../config/extensionConfig', () => ({
-  getClaudeCliBinary: vi.fn(() => 'claude'),
+vi.mock('./doctor', () => ({
+  runDoctor: vi.fn().mockResolvedValue({ checks: [], ranAt: '', ready: true }),
 }));
 
 import * as vscode from 'vscode';
 import * as fileSystem from '../utils/fileSystem';
 import * as projectConfig from '../config/projectConfig';
-import * as shell from '../utils/shell';
+import { runDoctor } from './doctor';
 import { initProject } from './initProject';
 
 describe('initProject', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default: all health checks succeed
-    vi.mocked(shell.execCommand).mockResolvedValue({
-      stdout: 'version output',
-      stderr: '',
-      exitCode: 0,
-      success: true,
-    });
   });
 
   it('creates expected directory structure on fresh init', async () => {
@@ -124,26 +113,7 @@ describe('initProject', () => {
     expect(projectConfig.writeProjectConfig).toHaveBeenCalled();
   });
 
-  it('shows health check results in information message', async () => {
-    vi.mocked(fileSystem.fileExists).mockResolvedValue(false);
-    vi.mocked(fileSystem.createWorkspaceDirectory).mockResolvedValue(undefined);
-    vi.mocked(fileSystem.writeWorkspaceFile).mockResolvedValue(undefined);
-    vi.mocked(projectConfig.writeProjectConfig).mockResolvedValue(undefined);
-
-    // Git and Claude succeed, gh fails
-    vi.mocked(shell.execCommand)
-      .mockResolvedValueOnce({ stdout: 'git version 2.x', stderr: '', exitCode: 0, success: true })
-      .mockResolvedValueOnce({ stdout: '', stderr: 'not found', exitCode: 1, success: false })
-      .mockResolvedValueOnce({ stdout: '', stderr: 'not found', exitCode: 1, success: false });
-
-    await initProject();
-
-    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-      expect.stringMatching(/Git ✓.*Claude CLI ✗.*gh CLI ✗/)
-    );
-  });
-
-  it('health check correctly detects all tools available', async () => {
+  it('runs the doctor after scaffolding and shows a simple notification', async () => {
     vi.mocked(fileSystem.fileExists).mockResolvedValue(false);
     vi.mocked(fileSystem.createWorkspaceDirectory).mockResolvedValue(undefined);
     vi.mocked(fileSystem.writeWorkspaceFile).mockResolvedValue(undefined);
@@ -151,8 +121,11 @@ describe('initProject', () => {
 
     await initProject();
 
-    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-      'SDD project initialized. Health: Git ✓, Claude CLI ✓, gh CLI ✓'
-    );
+    expect(runDoctor).toHaveBeenCalledTimes(1);
+    const doctorOrder = vi.mocked(runDoctor).mock.invocationCallOrder[0];
+    const lastWriteOrder = Math.max(...vi.mocked(fileSystem.writeWorkspaceFile).mock.invocationCallOrder);
+    expect(doctorOrder).toBeGreaterThan(lastWriteOrder);
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('SDD project initialized.');
+    expect(vscode.window.showInformationMessage).not.toHaveBeenCalledWith(expect.stringContaining('Health:'));
   });
 });

@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-099-NEW
 title: Add SDD Doctor environment check with a readiness banner on the Dashboard
-status: ready
+status: review
 priority: medium
 complexity: high
 tags:
@@ -78,12 +78,12 @@ Today `initProject()` ends with its own health check toast hard-coded to the Cla
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/commands/doctor.test.ts` covers each check's ok, warn and fail paths with mocked shell and file system.
-- [ ] A test asserts `ready` is `true` with only warnings and `false` when any check fails.
-- [ ] A test asserts concurrent `runDoctor()` calls share one run, and `onDoctorReport` fires with the result.
-- [ ] `src/commands/initProject.test.ts` asserts `runDoctor` is called after scaffolding and the old `Health:` toast is gone.
-- [ ] A test asserts `sdd.doctor` is declared in `package.json`.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] `src/commands/doctor.test.ts` covers each check's ok, warn and fail paths with mocked shell and file system.
+- [x] A test asserts `ready` is `true` with only warnings and `false` when any check fails.
+- [x] A test asserts concurrent `runDoctor()` calls share one run, and `onDoctorReport` fires with the result.
+- [x] `src/commands/initProject.test.ts` asserts `runDoctor` is called after scaffolding and the old `Health:` toast is gone.
+- [x] A test asserts `sdd.doctor` is declared in `package.json`.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
 - [ ] Initializing SDD in a fresh, non-git folder shows the Dashboard banner with the git warning and a fix hint below the title and "Open SDD Kanban".

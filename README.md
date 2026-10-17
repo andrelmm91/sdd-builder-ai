@@ -73,6 +73,7 @@ High-level view of your project's development health at a glance.
 - Spec counts by status (Draft, Ready, In Progress, Review, Done)
 - Completion percentage across all specs
 - SDD tags overview and recent activity feed
+- **Readiness banner:** SDD Doctor checks your AI CLI, Git, conventions and permission mode on init and on VS Code start, and lists what to fix (re-run anytime with **SDD: Run Doctor**)
 - All execution logs saved in `.sdd/execution/` for full audit after development
 
 ![Dashboard](https://github.com/user-attachments/assets/4fc326fa-c668-408b-895d-2f66bdf62a02)

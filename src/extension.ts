@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { fileExists } from "./utils/fileSystem";
 import { CONFIG_FILE } from "./utils/constants";
 import { initProject } from "./commands/initProject";
+import { runDoctor } from "./commands/doctor";
 import { newSpec } from "./commands/newSpec";
 import { createMarkReadyCommand } from "./commands/markReady";
 import { createValidateSpecCommand } from "./commands/validateSpec";
@@ -49,6 +50,10 @@ export function activate(context: vscode.ExtensionContext): void {
       specTreeProvider.refresh()
     ),
     vscode.commands.registerCommand("sdd.initProject", initProject),
+    vscode.commands.registerCommand("sdd.doctor", async () => {
+      await runDoctor();
+      DashboardPanel.createOrShow(context.extensionUri);
+    }),
     vscode.commands.registerCommand("sdd.newSpec", newSpec),
     vscode.commands.registerCommand(
       "sdd.markReady",
@@ -153,7 +158,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Auto-init prompt on first activation
   fileExists(CONFIG_FILE).then(async (initialized) => {
-    if (!initialized) {
+    if (initialized) {
+      void runDoctor();
+    } else {
       const answer = await vscode.window.showInformationMessage(
         'SDD: No project found in this workspace. Initialize now?',
         'Initialize',

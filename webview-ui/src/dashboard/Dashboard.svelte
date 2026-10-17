@@ -34,6 +34,25 @@
   let features: FeatureCard[] = $state([]);
   let notInitialized = $state(false);
 
+  interface DoctorCheck {
+    id: string;
+    label: string;
+    status: 'ok' | 'warn' | 'fail';
+    detail: string;
+    fix?: string;
+  }
+  interface DoctorReport {
+    checks: DoctorCheck[];
+    ranAt: string;
+    ready: boolean;
+  }
+
+  let doctorReport: DoctorReport | undefined = $state();
+  let rechecking = $state(false);
+
+  const problems = $derived((doctorReport?.checks ?? []).filter((c) => c.status !== 'ok'));
+  const failCount = $derived(problems.filter((c) => c.status === 'fail').length);
+
   const STATUS_ORDER = ['draft', 'ready', 'in_progress', 'review', 'done'];
   const REQUIREMENT_STATUS_ORDER = ['New Requirement', 'Idealization In Review', 'SDD Created'];
 
@@ -86,6 +105,9 @@
         features = d.features ?? [];
       } else if (msg.type === 'notInitialized') {
         notInitialized = true;
+      } else if (msg.type === 'doctorReport') {
+        doctorReport = msg.data as DoctorReport;
+        rechecking = false;
       }
     });
     postMessage('refresh', {});
@@ -107,6 +129,11 @@
     postMessage('initProject', {});
   }
 
+  function recheck() {
+    rechecking = true;
+    postMessage('runDoctor', {});
+  }
+
   function formatDate(iso: string) {
     return new Date(iso).toLocaleString();
   }
@@ -121,6 +148,34 @@
       <button class="kanban-btn" onclick={openRequirementBoard}>Open Requirement Board</button>
     </div>
   </div>
+
+  {#if !notInitialized && doctorReport && problems.length > 0}
+    <section class="card doctor-banner" class:doctor-error={!doctorReport.ready} class:doctor-warning={doctorReport.ready}>
+      <div class="doctor-header">
+        <strong>
+          {#if doctorReport.ready}
+            Ready to execute, with {problems.length} warning(s)
+          {:else}
+            Not ready to execute: {failCount} blocking problem(s)
+          {/if}
+        </strong>
+        <button class="kanban-btn" onclick={recheck} disabled={rechecking}>
+          {#if rechecking}<span class="spinner"></span>{/if}Re-check
+        </button>
+      </div>
+      <ul class="doctor-list">
+        {#each problems as check (check.id)}
+          <li>
+            <span class="doctor-icon" class:fail={check.status === 'fail'}>{check.status === 'fail' ? '✗' : '⚠'}</span>
+            <div>
+              <div><strong>{check.label}</strong>: {check.detail}</div>
+              {#if check.fix}<div class="doctor-fix">{check.fix}</div>{/if}
+            </div>
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
 
   {#if notInitialized}
     <section class="card init-card">
@@ -274,6 +329,27 @@
     display: flex;
     gap: 8px;
   }
+
+  .doctor-error { border-color: var(--vscode-inputValidation-errorBorder); }
+  .doctor-warning { border-color: var(--vscode-inputValidation-warningBorder); }
+  .doctor-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .doctor-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .doctor-list li { display: flex; gap: 8px; }
+  .doctor-icon { color: var(--vscode-editorWarning-foreground); }
+  .doctor-icon.fail { color: var(--vscode-errorForeground); }
+  .doctor-fix { color: var(--vscode-descriptionForeground); font-size: 0.9em; }
+  .kanban-btn:disabled { opacity: 0.6; cursor: default; }
+  .spinner {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 6px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .init-card {
     text-align: center;
