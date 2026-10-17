@@ -246,6 +246,20 @@ describe('BulkExecutionManager', () => {
       expect(order).toEqual(['SDD-001', 'SDD-002']);
     });
 
+    it('runs specs in the order added, not numerically', async () => {
+      await addReadySpec('SDD-3');
+      await addReadySpec('SDD-1');
+      await addReadySpec('SDD-2');
+
+      const order: string[] = [];
+      await BulkExecutionManager.getInstance().executeAll(async (specId) => {
+        order.push(specId);
+        return true;
+      });
+
+      expect(order).toEqual(['SDD-3', 'SDD-1', 'SDD-2']);
+    });
+
     it('stops after first failure', async () => {
       await addReadySpec('SDD-001');
       await addReadySpec('SDD-002');
@@ -301,38 +315,6 @@ describe('BulkExecutionManager', () => {
 
       // cancel() sets flag after first spec — second spec never executes
       expect(executeFn).toHaveBeenCalledTimes(1);
-    });
-
-    it('runs specs in ascending numerical order regardless of insertion order', async () => {
-      await addReadySpec('SDD-003');
-      await addReadySpec('SDD-001');
-      await addReadySpec('SDD-002');
-
-      const order: string[] = [];
-      const executeFn = vi.fn(async (specId: string) => {
-        order.push(specId);
-        return true;
-      });
-
-      await BulkExecutionManager.getInstance().executeAll(executeFn);
-
-      expect(order).toEqual(['SDD-001', 'SDD-002', 'SDD-003']);
-    });
-
-    it('sorts alpha suffix after numeric when numeric parts are equal', async () => {
-      await addReadySpec('SDD-001b');
-      await addReadySpec('SDD-001a');
-      await addReadySpec('SDD-002');
-
-      const order: string[] = [];
-      const executeFn = vi.fn(async (specId: string) => {
-        order.push(specId);
-        return true;
-      });
-
-      await BulkExecutionManager.getInstance().executeAll(executeFn);
-
-      expect(order).toEqual(['SDD-001a', 'SDD-001b', 'SDD-002']);
     });
 
     it('does not start if already running', async () => {

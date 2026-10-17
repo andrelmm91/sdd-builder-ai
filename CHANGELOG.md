@@ -4,6 +4,8 @@ All notable changes to the SDD Platform extension will be documented in this fil
 
 ## [2.0.0] - 2026-10-18
 
+- **Warning for unfinished dependencies** (NEW) — Running a spec whose dependencies aren't done yet now asks you first. Click **Execute Anyway** to run it anyway.
+- **Dependency warnings in the bulk queue** (NEW) — A red **!** badge now marks a queued spec that depends on another spec that isn't done yet, is later in the queue, or doesn't exist. These specs may run before the work they rely on. Hover over the **!** to see which dependency is the problem.
 - **Smarter execution timeouts** (NEW) — Bigger specs now get more time to finish, so the AI is no longer stopped halfway through a hard task. Low-complexity specs get 10 minutes, medium get 20 and high get 30.
   - **Adjust it to your project:** in **AI Configuration → SDD Execution**, set the **Execution timeout multiplier** to give every spec more time (e.g. `2` doubles it) or less (e.g. `0.5` halves it).
   - **Clear message when time runs out:** a timed-out run tells you how long the limit was and where to raise it.

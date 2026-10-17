@@ -76,7 +76,19 @@ vi.mock('../execution/postValidation', () => ({
   runPostValidation: vi.fn().mockResolvedValue({ passed: true, output: '', duration: 10, command: 'npm test' }),
 }));
 
+const mockBulkIsRunning = vi.fn().mockReturnValue(false);
+const mockBulkIsInBulk = vi.fn().mockReturnValue(false);
+vi.mock('../execution/bulkExecution', () => ({
+  BulkExecutionManager: {
+    getInstance: () => ({
+      getQueue: () => ({ items: [], isRunning: mockBulkIsRunning(), currentIndex: -1 }),
+      isInBulk: (id: string) => mockBulkIsInBulk(id),
+    }),
+  },
+}));
+
 vi.mock('../utils/fileSystem', () => ({
+  listFiles: vi.fn().mockResolvedValue([]),
   getWorkspaceRoot: vi.fn().mockReturnValue('/workspace'),
   readWorkspaceFile: vi.fn().mockResolvedValue(undefined),
   writeWorkspaceFile: vi.fn().mockResolvedValue(undefined),
@@ -86,6 +98,7 @@ import * as vscode from 'vscode';
 import { createExecuteSpecCommand, _resetNoGitNoticeForTesting } from './executeSpec';
 import { isCommandAvailable } from '../utils/shell';
 import { readAIConfig } from '../config/aiConfig';
+import { listFiles, readWorkspaceFile } from '../utils/fileSystem';
 import { captureResults, getLatestExecution } from '../execution/resultCapture';
 import { createCheckpoint } from '../execution/gitCheckpoint';
 import type { GitCheckpoint } from '../execution/types';
@@ -145,6 +158,10 @@ describe('createExecuteSpecCommand', () => {
     refresh = vi.fn();
     command = createExecuteSpecCommand(refresh);
     mockRunnerIsRunning.mockReturnValue(false);
+    mockBulkIsRunning.mockReturnValue(false);
+    mockBulkIsInBulk.mockReturnValue(false);
+    vi.mocked(listFiles).mockResolvedValue([]);
+    vi.mocked(readWorkspaceFile).mockResolvedValue(undefined);
     vi.mocked(isCommandAvailable).mockResolvedValue(true);
     (vscode.window as Record<string, unknown>)['activeTextEditor'] = undefined;
   });
@@ -233,6 +250,60 @@ describe('createExecuteSpecCommand', () => {
       expect.objectContaining({ cancellable: true, title: 'Executing SDD-030' }),
       expect.any(Function)
     );
+  });
+
+  describe('dependency pre-flight', () => {
+    const item = { kind: 'spec' as const, filePath: '/ws/.specs/SDD-030.sdd.md' };
+
+    function setup(depStatus: string | undefined) {
+      vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(
+        Buffer.from(makeSpecContent('ready').replace('depends_on: []', 'depends_on: [SDD-029]')) as unknown as Uint8Array
+      );
+      vi.mocked(vscode.window.withProgress).mockResolvedValue(undefined);
+      if (depStatus) {
+        vi.mocked(listFiles).mockResolvedValue(['.specs/SDD-029.sdd.md']);
+        vi.mocked(readWorkspaceFile).mockResolvedValue(
+          makeSpecContent(depStatus).replace('SDD-030', 'SDD-029')
+        );
+      }
+    }
+
+    it('does not prompt when dependencies are done', async () => {
+      setup('done');
+      await command(item as never);
+      expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+      expect(vscode.window.withProgress).toHaveBeenCalled();
+    });
+
+    it('executes after "Execute Anyway"', async () => {
+      setup('draft');
+      vi.mocked(vscode.window.showWarningMessage).mockResolvedValue('Execute Anyway' as never);
+      await command(item as never);
+      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+        'SDD-030 depends on specs that are not done: SDD-029. Execute anyway?',
+        { modal: true },
+        'Execute Anyway',
+      );
+      expect(vscode.window.withProgress).toHaveBeenCalled();
+    });
+
+    it('aborts without touching the spec when dismissed', async () => {
+      setup(undefined);
+      vi.mocked(vscode.window.showWarningMessage).mockResolvedValue(undefined as never);
+      await command(item as never);
+      expect(vscode.window.withProgress).not.toHaveBeenCalled();
+      expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+    });
+
+    it('skips the check and the scan for a spec in a running bulk queue', async () => {
+      setup('review');
+      mockBulkIsRunning.mockReturnValue(true);
+      mockBulkIsInBulk.mockReturnValue(true);
+      await command(item as never);
+      expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+      expect(listFiles).not.toHaveBeenCalled();
+      expect(vscode.window.withProgress).toHaveBeenCalled();
+    });
   });
 
   describe('run options and timeout', () => {

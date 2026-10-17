@@ -103,6 +103,8 @@ A five-column board where each spec moves from idea to shipped code.
 
 Drag and drop cards between columns. Every transition is validated — no skipping stages.
 
+Executing a single spec whose dependencies are not **Done** shows a warning first; choose **Execute Anyway** to proceed. Specs in a running bulk queue skip this check.
+
 Need a cheaper or faster model for a simple spec? Click the **▾** next to **Execute** on a Ready card and pick a model for that run only. Your AI Configuration is not changed, and clicking **Execute** itself always uses your configured model.
 
 If VS Code is closed or crashes during an execution, specs left in **In Progress** are detected on the next startup and you can reset them to **Ready** with one click (or drag the card back manually).
@@ -117,6 +119,7 @@ If VS Code is closed or crashes during an execution, specs left in **In Progress
 Select multiple **Ready** specs and execute them sequentially in one action.
 
 - Real-time progress tracking per card — spinner, checkmark, or failure indicator
+- Runs in the order you add specs, with numbered positions; a `!` badge warns when a dependency is queued later, not done, or missing
 - Stops automatically on failure so you can review before continuing
 - Only available in full-permission AI modes to prevent mid-execution interruptions
 

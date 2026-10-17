@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { parseSpec } from '../specs/parser';
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter';
-import { getWorkspaceRoot, writeWorkspaceFile, readWorkspaceFile } from '../utils/fileSystem';
+import { getWorkspaceRoot, writeWorkspaceFile, readWorkspaceFile, listFiles } from '../utils/fileSystem';
 import { isCommandAvailable } from '../utils/shell';
 import { getBudgetForComplexity } from '../execution/budgetEnforcer';
 import { CliRunner } from '../execution/cliRunner';
@@ -15,7 +15,9 @@ import { readAIConfig } from '../config/aiConfig';
 import { MODEL_ID_PATTERN, type AIConfig } from '../config/aiConfigTypes';
 import type { SpecData } from '../specs/types';
 import { getTimeoutForComplexity } from '../execution/budgetEnforcer';
-import { EXECUTIONS_FOLDER } from '../utils/constants';
+import { EXECUTIONS_FOLDER, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
+import { BulkExecutionManager } from '../execution/bulkExecution';
+import { getUnmetDependencies } from '../planning/dependencyResolver';
 import type { SpecTreeItem } from '../views/sidebar/specTreeItem';
 import type { ExecutionConfig, GitCheckpoint } from '../execution/types';
 
@@ -118,6 +120,20 @@ export async function executeSingleSpec(
       `Cannot execute ${specId}: spec must be in "ready" status (current: "${spec.frontmatter.status}").`
     );
     return false;
+  }
+
+  // --- Pre-flight: dependencies done (skipped inside a running bulk queue, where order is the builder's call) ---
+  const bulk = BulkExecutionManager.getInstance();
+  if (!(bulk.getQueue().isRunning && bulk.isInBulk(specId))) {
+    const unmet = getUnmetDependencies(spec.frontmatter, await loadAllSpecData());
+    if (unmet.length > 0) {
+      const choice = await vscode.window.showWarningMessage(
+        `${specId} depends on specs that are not done: ${unmet.join(', ')}. Execute anyway?`,
+        { modal: true },
+        'Execute Anyway',
+      );
+      if (choice !== 'Execute Anyway') return false;
+    }
   }
 
   // --- Pre-flight: no other execution running ---
@@ -412,6 +428,19 @@ function hasRelevantChanges(changedFiles: string[], relativeSpecPath: string): b
     const paths = entry.slice(entry.indexOf(' ') + 1).split('\t').map(normalize);
     return paths.some((p) => p !== specPath && !p.startsWith('.sdd/'));
   });
+}
+
+/** Frontmatter of every parseable spec in `.specs/`. */
+async function loadAllSpecData(): Promise<SpecData[]> {
+  const files = await listFiles(`${SPECS_FOLDER}/**/*${SPEC_FILE_EXTENSION}`);
+  const all: SpecData[] = [];
+  for (const file of files) {
+    const text = await readWorkspaceFile(file);
+    if (!text) continue;
+    const parsed = parseSpec(text);
+    if (parsed.success) all.push(parsed.data.frontmatter);
+  }
+  return all;
 }
 
 /** Programmatically completes an in-progress interactive spec execution (closes the terminal). */

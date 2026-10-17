@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { onMessage, postMessage } from '../lib/vscode';
   import type { BulkExecutionState } from '../lib/types';
+  import { getBulkDependencyWarnings } from '../lib/bulkWarnings';
 
   type SpecStatus = 'draft' | 'ready' | 'in_progress' | 'review' | 'done';
 
@@ -74,6 +75,18 @@
   );
 
   const bulkSpecIdSet = $derived(new Set(bulkState.items.map((i) => i.specId)));
+
+  const bulkWarnings = $derived(
+    getBulkDependencyWarnings(
+      bulkState.items.map((i) => i.specId),
+      specs,
+    ),
+  );
+  const bulkWarningCount = $derived(Object.keys(bulkWarnings).length);
+
+  function warningTitle(specId: string): string {
+    return [...(bulkWarnings[specId] ?? []), 'Remove and re-add specs to change the order.'].join('\n');
+  }
 
   function cardsForColumn(status: SpecStatus): SpecCard[] {
     const cards = filtered.filter((s) => s.status === status);
@@ -283,6 +296,9 @@
           <div class="bulk-frame">
             <div class="bulk-frame-header">
               <span class="bulk-frame-title">Bulk Queue ({bulkState.items.length})</span>
+              {#if bulkWarningCount > 0}
+                <span class="bulk-warning-summary">! {bulkWarningCount} with dependency warnings</span>
+              {/if}
               <div class="bulk-frame-actions">
                 <button
                   class="btn-action btn-execute-all"
@@ -294,10 +310,14 @@
                 <button class="btn-action btn-clear" onclick={clearBulk}>Clear</button>
               </div>
             </div>
-            {#each bulkState.items as item (item.specId)}
+            {#each bulkState.items as item, idx (item.specId)}
               {@const card = specs.find((s) => s.spec_id === item.specId)}
               {#if card}
-                <div class="bulk-item">
+                <div class="bulk-item" class:bulk-item-warning={bulkWarnings[item.specId]}>
+                  <span class="bulk-item-pos">{idx + 1}.</span>
+                  {#if bulkWarnings[item.specId]}
+                    <span class="bulk-warning-badge" title={warningTitle(item.specId)}>!</span>
+                  {/if}
                   <button class="link-btn bulk-item-id" onclick={() => openSpec(item.specId)}>
                     {item.specId}
                   </button>
@@ -315,9 +335,9 @@
             <div class="bulk-frame-header">
               <span class="bulk-frame-title">Bulk Execution</span>
             </div>
-            {#each bulkState.items as item (item.specId)}
+            {#each bulkState.items as item, idx (item.specId)}
               {@const card = specs.find((s) => s.spec_id === item.specId)}
-              <div class="bulk-item">
+              <div class="bulk-item" class:bulk-item-warning={bulkWarnings[item.specId]}>
                 <span
                   class="bulk-status-icon"
                   class:icon-executing={item.status === 'executing'}
@@ -334,6 +354,10 @@
                     ·
                   {/if}
                 </span>
+                <span class="bulk-item-pos">{idx + 1}.</span>
+                {#if bulkWarnings[item.specId]}
+                  <span class="bulk-warning-badge" title={warningTitle(item.specId)}>!</span>
+                {/if}
                 <button class="link-btn bulk-item-id" onclick={() => openSpec(item.specId)}>
                   {item.specId}
                 </button>
@@ -417,6 +441,7 @@
                       <div class="model-menu-title">
                         Run once with{runModels.providerLabel ? ` (${runModels.providerLabel})` : ''}:
                       </div>
+                      <div class="model-list">
                       {#each runModelChoices as m (m)}
                         <button
                           class="model-option"
@@ -431,6 +456,7 @@
                       {:else}
                         <div class="model-menu-empty">No models listed for this provider. Add some in AI Configuration → Model Lists.</div>
                       {/each}
+                      </div>
                       <div class="model-menu-hint">Only this run uses the chosen model. Your AI Config is not changed.</div>
                     </div>
                   {/if}
@@ -686,6 +712,39 @@
     min-width: 0;
   }
 
+  .bulk-item-warning {
+    border-left: 3px solid var(--vscode-editorWarning-foreground);
+    padding-left: 4px;
+    background: var(--vscode-inputValidation-warningBackground, transparent);
+  }
+
+  .bulk-item-pos {
+    color: var(--vscode-descriptionForeground);
+    flex-shrink: 0;
+  }
+
+  .bulk-warning-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--vscode-errorForeground, #f14c4c);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: help;
+    flex-shrink: 0;
+  }
+
+  .bulk-warning-summary {
+    color: var(--vscode-editorWarning-foreground);
+    font-size: 0.75em;
+    font-weight: 600;
+  }
+
   .bulk-item-id {
     font-weight: 700;
     font-size: 0.85em;
@@ -838,13 +897,22 @@
   /* Execute split button: main part runs with the AI Config model, the arrow opens the model menu. */
   .split-btn { display: inline-flex; }
   .split-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-  .split-toggle {
+  /* `.btn-action.` prefix: `.btn-action` is declared later and would otherwise win. */
+  .btn-action.split-toggle {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
-    border-left: 1px solid color-mix(in srgb, var(--vscode-button-secondaryForeground) 25%, transparent);
-    padding: 2px 5px;
+    border-left: 1px solid color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 30%, transparent);
+    padding: 2px 6px;
+    /* Same blue tint as the model list box. */
+    background: color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 8%, var(--vscode-button-secondaryBackground));
+    color: #000;
+    font-weight: 700;
+    transition: background-color 0.15s ease;
   }
-  .split-toggle-open { background: var(--vscode-button-secondaryHoverBackground); }
+  .btn-action.split-toggle:hover,
+  .btn-action.split-toggle-open {
+    background: color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 22%, var(--vscode-button-secondaryHoverBackground));
+  }
 
   /* Shown inside the card (not as a popup) so the column's scroll area never clips it. */
   .model-menu {
@@ -858,7 +926,22 @@
     border-radius: 4px;
     background: var(--vscode-dropdown-background, var(--vscode-editor-background));
   }
+  .model-menu { animation: model-menu-in 0.15s ease-out; }
+  @keyframes model-menu-in {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
   .model-menu-title { font-size: 0.75em; font-weight: 600; color: var(--vscode-descriptionForeground); padding: 0 4px 2px; }
+  /* Tinted box that sets the model choices apart from the title and hint. */
+  .model-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 3px;
+    border: 1px solid color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 30%, transparent);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 8%, transparent);
+  }
   .model-option {
     display: flex;
     align-items: center;
@@ -874,9 +957,10 @@
     font-size: 0.8em;
     text-align: left;
     cursor: pointer;
+    transition: background-color 0.15s ease;
   }
   .model-option:hover, .model-option:focus-visible {
-    background: var(--vscode-list-hoverBackground);
+    background: color-mix(in srgb, var(--vscode-charts-blue, #4aa0ff) 22%, transparent);
     outline: none;
   }
   .model-name { font-family: var(--vscode-editor-font-family, monospace); word-break: break-all; }

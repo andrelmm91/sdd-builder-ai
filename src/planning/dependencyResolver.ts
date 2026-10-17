@@ -127,6 +127,12 @@ export function getReadyToExecute(specs: SpecData[]): string[] {
     .sort();
 }
 
+/** Ids in `spec.depends_on` that are missing from `all` or not in status `done`. */
+export function getUnmetDependencies(spec: SpecData, all: SpecData[]): string[] {
+  const doneIds = new Set(all.filter((s) => s.status === 'done').map((s) => s.spec_id));
+  return spec.depends_on.filter((dep) => !doneIds.has(dep));
+}
+
 export function getDependencyChainDepth(specs: SpecData[]): number {
   const specIds = new Set(specs.map((s) => s.spec_id));
   const adjacency = new Map<string, string[]>();
