@@ -31,7 +31,12 @@ With `ProviderDefinition` from SDD-091, builders can declare their own agent CLI
 ### Functional
 - Add an optional `customProviders?: ProviderDefinition[]` to `AIConfig`.
 - `readAIConfig()` reads `ai.customProviders`, keeps only entries for which `validateProviderDefinition` returns no errors, and logs invalid entries with `console.warn` along with their errors.
-- `writeAIConfig()` preserves `customProviders` when saving.
+- `ai.customProviders` is owned by a new `writeCustomProviders()`. Like `ai.models` (SDD-103), `writeAIConfig()` ignores any `customProviders` in its payload and always keeps what is on disk, so saving the execution form can never write a stale provider list back.
+- Export `writeCustomProviders(defs: ProviderDefinition[]): Promise<void>`, which replaces only `ai.customProviders`:
+  - Runs `validateProviderList(defs)` and throws an error listing every `path: message` when any error is found. Nothing is written on failure.
+  - Trims string fields, drops empty optional arrays (`models`, `modelArgs`, `extraArgs`), and removes the key when the list is empty.
+  - Throws when a provider id that the current file references in `ai.provider` or `requirementsAi.provider` would disappear (it is neither in `defs` nor a built-in), naming the referencing setting.
+  - When a provider is removed, also removes its entry from `ai.models`.
 - Export `getAvailableProviders(aiConfig?: AIConfig): ProviderDefinition[]`, returning the built-ins merged with valid custom providers (custom overrides by `id`). Each returned definition's `models` is set to `resolveProviderModels(def, aiConfig.models)`, so the precedence is `ai.models[id]`, then the custom provider's `models`, then the built-in list.
 - Reimplement `getModelsForProvider` (from SDD-102) on top of `getAvailableProviders`, so a custom provider's models also appear in the AI Config form.
 - When `ai.provider` refers to an unknown id, `readAIConfig()` falls back to `claude` and logs a warning.
@@ -41,7 +46,7 @@ With `ProviderDefinition` from SDD-091, builders can declare their own agent CLI
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/config/aiConfig.test.ts` covers: no custom providers, a valid custom provider, `ai.models` overriding a custom provider's `models`, an invalid one filtered out, a custom override of `claude`, an unknown provider id falling back, and `writeAIConfig` round-tripping `customProviders`.
+- [ ] `src/config/aiConfig.test.ts` covers: no custom providers, a valid custom provider, `ai.models` overriding a custom provider's `models`, an invalid one filtered out, a custom override of `claude`, an unknown provider id falling back, `writeAIConfig` keeping on-disk `customProviders` even when the payload carries a different list, and `writeCustomProviders` for: a valid save, a rejected invalid list (file unchanged), a rejected duplicate id, a rejected removal of the provider used by `ai.provider` or `requirementsAi.provider`, removal pruning `ai.models[id]`, and an empty list deleting the key.
 - [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual

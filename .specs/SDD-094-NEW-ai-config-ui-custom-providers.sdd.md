@@ -37,8 +37,8 @@ The AI Config webview (`AiConfig.svelte`) hard-codes the provider dropdown (Clau
 - `AiConfig.svelte` builds the provider dropdown, permission-mode dropdown and model list from `providers`, replacing the separate `models` map introduced in SDD-102. Each provider's `models` is already resolved with the user's `ai.models` precedence. The model input becomes a text field with a datalist of suggestions, so any model id can be typed.
 - Extend the "Model Lists" editor from SDD-103 so it shows one card per available provider, including custom providers, instead of only `claude` and `copilot`. For custom providers, "built-in" means the `models` from their definition. Saving still goes through `saveModels` / `writeAIModels`.
 - Changing the provider resets the permission mode to that provider's first mode and the model to its first suggested model, or empty when it has none (preserving today's behavior).
-- Show a small read-only note under the provider dropdown: `Custom providers are defined in .sdd/config.json under ai.customProviders.`
-- Saving does not drop `customProviders`; the panel merges the saved form into the existing config.
+- Show a small read-only note under the provider dropdown: `Add or edit custom providers in the "Custom Providers" section below.` (that section is added by SDD-104).
+- Saving does not drop `customProviders`; `writeAIConfig()` keeps the on-disk list (SDD-092).
 
 ### Non-Functional
 - With no custom providers, the form looks and behaves exactly as today.
@@ -52,5 +52,5 @@ The AI Config webview (`AiConfig.svelte`) hard-codes the provider dropdown (Clau
 - [ ] Adding a custom provider to `.sdd/config.json` and reopening AI Config shows it in the dropdown with its modes, and saving keeps the `customProviders` block intact.
 
 ## Constraints
-- Do not build an editor for custom provider definitions.
+- Do not build the editor for custom provider definitions here; that is SDD-104. Keep the provider list in a single `$state` that SDD-104 can refresh after a save.
 - Do not change the requirements AI section of the form.
