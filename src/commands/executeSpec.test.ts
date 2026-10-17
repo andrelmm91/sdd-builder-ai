@@ -321,6 +321,74 @@ describe('createExecuteSpecCommand', () => {
     });
   });
 
+  describe('interactive mode with no detected changes', () => {
+    const item = { kind: 'spec' as const, filePath: '/workspace/.specs/SDD-030.sdd.md' };
+    const record = { specId: 'SDD-030', executionNumber: 1 };
+
+    function mockCapture(changedFiles: string[]) {
+      vi.mocked(captureResults).mockResolvedValue({ record, logPath: 'x.log', changedFiles } as never);
+    }
+    function writtenStatuses(): string[] {
+      return vi.mocked(vscode.workspace.fs.writeFile).mock.calls.map(
+        (c) => /status: (\w+)/.exec(Buffer.from(c[1] as Uint8Array).toString('utf8'))?.[1] ?? ''
+      );
+    }
+
+    beforeEach(() => {
+      vi.mocked(readAIConfig).mockResolvedValue({ permissionMode: 'default', provider: 'claude' } as never);
+      vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(
+        Buffer.from(makeSpecContent('ready')) as unknown as Uint8Array
+      );
+      vi.mocked(vscode.window.showInformationMessage).mockResolvedValue(undefined as never);
+      mockRunnerExecute.mockResolvedValue({ success: true, output: 'ok', duration: 1 });
+      vi.mocked(createCheckpoint).mockResolvedValue(undefined);
+      vi.mocked(getLatestExecution).mockResolvedValue(undefined);
+    });
+
+    it('does not prompt and moves to review when changes are detected', async () => {
+      mockCapture(['M src/foo.ts']);
+      await command(item as never);
+      expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+      expect(writtenStatuses().at(-1)).toBe('review');
+    });
+
+    it('moves to review when the user chooses Send to Review', async () => {
+      mockCapture([]);
+      vi.mocked(vscode.window.showWarningMessage).mockResolvedValue('Send to Review' as never);
+      await command(item as never);
+      expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+        'No file changes were detected for SDD-030. What would you like to do?',
+        { modal: true },
+        'Send to Review',
+        'Back to Ready',
+      );
+      expect(writtenStatuses().at(-1)).toBe('review');
+    });
+
+    it('aborts the record and returns to ready on Back to Ready', async () => {
+      mockCapture([]);
+      vi.mocked(vscode.window.showWarningMessage).mockResolvedValue('Back to Ready' as never);
+      await command(item as never);
+      expect(writtenStatuses().at(-1)).toBe('ready');
+      expect(writtenStatuses()).not.toContain('review');
+    });
+
+    it('treats a dismissed dialog as Back to Ready', async () => {
+      mockCapture([]);
+      vi.mocked(vscode.window.showWarningMessage).mockResolvedValue(undefined as never);
+      await command(item as never);
+      expect(writtenStatuses().at(-1)).toBe('ready');
+    });
+
+    it('treats changes to only the spec file and .sdd/ as no changes', async () => {
+      mockCapture(['M .specs/SDD-030.sdd.md', 'A .sdd/executions/SDD-030/exec-001.log']);
+      vi.mocked(vscode.window.showWarningMessage).mockResolvedValue('Back to Ready' as never);
+      await command(item as never);
+      expect(vscode.window.showWarningMessage).toHaveBeenCalled();
+      expect(writtenStatuses().at(-1)).toBe('ready');
+    });
+  });
+
   it('shows error on parse failure', async () => {
     vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(
       Buffer.from('not valid frontmatter') as unknown as Uint8Array

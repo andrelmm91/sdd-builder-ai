@@ -180,6 +180,20 @@ export async function executeSingleSpec(filePath: string, refresh?: () => void):
       if (!executionResult.success) {
         throw new Error(executionResult.error ?? 'CLI execution failed');
       }
+      if (!hasRelevantChanges(capture.changedFiles, relativeSpecPath)) {
+        const choice = await vscode.window.showWarningMessage(
+          `No file changes were detected for ${specId}. What would you like to do?`,
+          { modal: true },
+          'Send to Review',
+          'Back to Ready',
+        );
+        if (choice !== 'Send to Review') {
+          await patchExecutionRecord(capture, { status: 'aborted' });
+          await updateSpecStatus(uri, content, 'ready');
+          doRefresh();
+          return false;
+        }
+      }
       if (autoValidate && testCommand) {
         const validation = await runPostValidation(config, root ?? undefined);
         await patchExecutionRecord(capture, { testsPassed: validation.passed });
@@ -337,6 +351,19 @@ export function createExecuteSpecCommand(refresh: () => void) {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * True when the run changed anything besides the spec file itself and `.sdd/`.
+ * Entries look like "M src/foo.ts" (status, then path; renames carry two tab-separated paths).
+ */
+function hasRelevantChanges(changedFiles: string[], relativeSpecPath: string): boolean {
+  const normalize = (p: string) => p.replace(/\\/g, '/');
+  const specPath = normalize(relativeSpecPath);
+  return changedFiles.some((entry) => {
+    const paths = entry.slice(entry.indexOf(' ') + 1).split('\t').map(normalize);
+    return paths.some((p) => p !== specPath && !p.startsWith('.sdd/'));
+  });
+}
 
 /** Programmatically completes an in-progress interactive spec execution (closes the terminal). */
 export function completeInteractiveSpec(): void {

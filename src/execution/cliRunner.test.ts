@@ -419,7 +419,7 @@ describe('CliRunner.execute — terminal commands (Windows)', () => {
 
     const sent = mockSendText.mock.calls[0][0] as string;
     expect(sent).toContain("Fix user''s profile");
-    expect(sent).not.toContain("'\''");
+    expect(sent).not.toContain("'\\''");
     expect(sent).toContain('\\"SDD-026: Fix');
   });
 

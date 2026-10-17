@@ -165,7 +165,7 @@ Separate configuration for requirements AI and execution AI.
 - Choose your AI provider: **Claude CLI** or **GitHub Copilot CLI**
 - Set permission modes per provider
   - Full permission: a terminal is created and the AI CLI executes all commands. The watch sentinel monitors when the AI finishes and update the SDD card for review.
-  - Plan mode: a terminal opens and the AI CLI executes in plan mode. The user should press the complete button to move it to review phase. 
+  - Plan mode: a terminal opens and the AI CLI executes in plan mode. The user should press the complete button to move it to review phase. If no file changes were detected (e.g. you closed the terminal right away), SDD asks whether to send the spec to Review anyway or move it back to Ready.
 - Pick a model per provider. Manage the offered models in the **Model Lists** section of the AI Configuration panel (Customize, add, remove, reorder, Reset to built-in, then Save). They are stored in `.sdd/config.json`, e.g. `"ai": { "models": { "claude": ["fable", "opus"] } }`; a custom list replaces the built-in one for that provider.
 - Tag-to-skill mappings with custom skill files. The skills are injected into the prompt when a spec with the corresponding tag is executed, giving you precise control over the agent's capabilities per task.
 - Prompt templates for idealization, spec generation, and execution phases — customize the instructions and context you give the AI at each step.
