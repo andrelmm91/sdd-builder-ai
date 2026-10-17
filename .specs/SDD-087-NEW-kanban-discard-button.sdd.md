@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-087-NEW
 title: Add Discard Changes button to review cards on the Kanban board
-status: review
+status: done
 priority: medium
 complexity: low
 tags:
