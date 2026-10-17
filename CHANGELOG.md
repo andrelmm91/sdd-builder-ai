@@ -4,6 +4,7 @@ All notable changes to the SDD Platform extension will be documented in this fil
 
 ## [2.0.0] - 2026-10-18
 
+- **AI-provider definition** (NEW) — 
 - **Instructions are handed to the AI as a file** (NEW) — Instead of pasting one huge command into the terminal, SDD now saves the full instructions for each run (your pre-prompt, the spec, relevant files, skills, scope rules and commit/PR commands) to a Markdown file and simply tells the AI CLI to read it. Long specs, special characters and multi-line text no longer break or get cut off, on any platform. Each file is kept in `.sdd/executions/<specId>/`, so you can open it at any time and see exactly what the AI was asked to do.
 - **Leaner, smarter prompts** (TECHDEBT) — The way SDD builds the execution prompt has been reworked. The AI now gets a reference to the spec file and the paths of the relevant files rather than copies of their contents, which keeps prompts short and saves tokens. The prompt also tells the AI that SDD checks the scope after the run. Very large prompts are trimmed cleanly (no broken characters) and marked with `[truncated by SDD]` so you know when it happened.
 - **Warn about interactive runs with no changes** (NEW) — When an interactive session ends and no files changed (ignoring the spec file and `.sdd/`), SDD asks `Send to Review` or `Back to Ready` instead of silently moving the card to Review. Back to Ready (or dismissing) marks the execution as aborted and returns the spec to Ready.

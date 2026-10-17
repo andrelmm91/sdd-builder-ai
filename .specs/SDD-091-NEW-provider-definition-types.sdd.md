@@ -1,10 +1,14 @@
 ---
 spec_id: SDD-091-NEW
 title: Define data-driven AI provider definitions with built-in Claude and Copilot
-status: draft
+status: ready
 priority: medium
 complexity: medium
-tags: [feature, phase-5, backend, rel-v2.0]
+tags:
+  - feature
+  - phase-5
+  - backend
+  - rel-v2.0
 relevant_files:
   - src/config/providerTypes.ts
   - src/config/aiConfigTypes.ts
@@ -12,10 +16,13 @@ must_not_touch:
   - src/extension.ts
   - src/execution/cliRunner.ts
   - src/execution/cliCommandBuilder.ts
-depends_on: [SDD-102-BUGFIX]
+depends_on:
+  - SDD-102-BUGFIX
 agent_skills: backend
 created: 2026-10-15
 ---
+
+
 
 ## Context
 Providers are hard-coded as `'claude' | 'copilot'`, with `if (provider === 'copilot')` branches in `cliRunner.ts`, `cliCommandBuilder.ts` and `executeSpec.ts`. Supporting another agent CLI (Codex, Gemini CLI, Cursor agent, Aider, OpenCode and so on) requires code changes and a release.

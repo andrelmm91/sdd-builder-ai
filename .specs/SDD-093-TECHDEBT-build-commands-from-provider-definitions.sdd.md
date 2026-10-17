@@ -1,10 +1,14 @@
 ---
 spec_id: SDD-093-TECHDEBT
 title: Build CLI commands from provider definitions
-status: draft
+status: ready
 priority: medium
 complexity: high
-tags: [techdebt, phase-5, backend, rel-v2.0]
+tags:
+  - techdebt
+  - phase-5
+  - backend
+  - rel-v2.0
 relevant_files:
   - src/execution/providerCommand.ts
   - src/execution/cliRunner.ts
@@ -13,10 +17,15 @@ relevant_files:
 must_not_touch:
   - src/extension.ts
   - src/config/providerTypes.ts
-depends_on: [SDD-078-BUGFIX, SDD-090-NEW, SDD-092-NEW]
+depends_on:
+  - SDD-078-BUGFIX
+  - SDD-090-NEW
+  - SDD-092-NEW
 agent_skills: backend
 created: 2026-10-15
 ---
+
+
 
 ## Context
 SDD-091 and SDD-092 made providers data-driven, but `CliRunner._buildCommand()`, `buildCliCommand()` (used for the requirements AI) and `isInteractiveMode()`/`requireFullPermissionForBulk()` in `executeSpec.ts` still branch on `'claude'`/`'copilot'`. This spec replaces those branches with one generic builder so custom providers work end to end. Built-in providers must produce byte-identical commands to today.

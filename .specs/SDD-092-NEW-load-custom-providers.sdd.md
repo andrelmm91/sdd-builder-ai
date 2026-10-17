@@ -1,10 +1,14 @@
 ---
 spec_id: SDD-092-NEW
 title: Load custom provider definitions from project config
-status: draft
+status: ready
 priority: medium
 complexity: low
-tags: [feature, phase-5, backend, rel-v2.0]
+tags:
+  - feature
+  - phase-5
+  - backend
+  - rel-v2.0
 relevant_files:
   - src/config/aiConfig.ts
   - src/config/aiConfigTypes.ts
@@ -12,10 +16,13 @@ relevant_files:
 must_not_touch:
   - src/extension.ts
   - src/execution/cliRunner.ts
-depends_on: [SDD-091-NEW]
+depends_on:
+  - SDD-091-NEW
 agent_skills: backend
 created: 2026-10-15
 ---
+
+
 
 ## Context
 With `ProviderDefinition` from SDD-091, builders can declare their own agent CLIs. AI settings live under the `ai` key in `.sdd/config.json` (`readAIConfig` and `writeAIConfig` in `src/config/aiConfig.ts`). This spec adds a `customProviders` array there and exposes the merged provider list.

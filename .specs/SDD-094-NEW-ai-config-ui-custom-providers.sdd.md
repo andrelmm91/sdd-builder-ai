@@ -1,10 +1,14 @@
 ---
 spec_id: SDD-094-NEW
 title: List custom providers and their modes in the AI Config webview
-status: draft
+status: ready
 priority: low
 complexity: medium
-tags: [feature, phase-5, ui, rel-v2.0]
+tags:
+  - feature
+  - phase-5
+  - ui
+  - rel-v2.0
 relevant_files:
   - src/views/webviews/aiConfig/AiConfigPanel.ts
   - webview-ui/src/aiConfig/AiConfig.svelte
@@ -13,10 +17,14 @@ must_not_touch:
   - src/extension.ts
   - src/config/providerTypes.ts
   - webview-ui/src/lib/vscode.ts
-depends_on: [SDD-093-TECHDEBT, SDD-103-NEW]
+depends_on:
+  - SDD-093-TECHDEBT
+  - SDD-103-NEW
 agent_skills: frontend
 created: 2026-10-15
 ---
+
+
 
 ## Context
 The AI Config webview (`AiConfig.svelte`) hard-codes the provider dropdown (Claude and Copilot) and derives permission modes and models from constants in `aiConfigTypes.ts`. After SDD-092 and SDD-093, providers come from `getAvailableProviders()`, so the UI must render them dynamically.
