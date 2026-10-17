@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-089-TECHDEBT
 title: Refactor contextAssembler into the execution prompt document builder
-status: review
+status: done
 priority: medium
 complexity: medium
 tags:
