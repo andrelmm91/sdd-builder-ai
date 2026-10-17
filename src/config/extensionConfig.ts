@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { readProjectConfig } from './projectConfig';
 import { DEFAULT_BUDGET } from '../utils/constants';
 import type { AIConfig } from './aiConfigTypes';
+import { resolveProviderBinary, resolveProviderDefinition } from '../execution/providerCommand';
 
 export function getExtensionConfig(): vscode.WorkspaceConfiguration {
   return vscode.workspace.getConfiguration('sdd');
@@ -38,20 +39,21 @@ export function getClaudeCliBinary(): string {
 }
 
 /**
- * Returns the CLI binary for the configured AI provider: `gh` for Copilot,
- * the Claude binary otherwise. `claudeBinary` lets callers pass an already-resolved value.
+ * Returns the CLI binary for the configured AI provider (built-in or custom definition).
+ * `claudeBinary` is the `sdd.claudeCliBinary` override and only applies to the `claude` provider.
  */
 export function getProviderBinary(
   aiConfig: Partial<AIConfig> | undefined,
   claudeBinary: string = getClaudeCliBinary(),
 ): string {
-  return aiConfig?.provider === 'copilot' ? 'gh' : claudeBinary;
+  return resolveProviderBinary(resolveProviderDefinition(aiConfig), claudeBinary);
 }
 
 /** Builds the pre-flight error shown when the provider CLI is missing. */
 export function getCliNotFoundMessage(aiConfig: Partial<AIConfig> | undefined, binary: string): string {
-  const label = aiConfig?.provider === 'copilot' ? 'Copilot' : 'Claude';
-  const hint = aiConfig?.provider === 'copilot' ? '' : ' (setting: sdd.claudeCliBinary)';
+  const def = resolveProviderDefinition(aiConfig);
+  const label = def.id === 'claude' ? 'Claude' : def.id === 'copilot' ? 'Copilot' : def.label;
+  const hint = def.id === 'claude' ? ' (setting: sdd.claudeCliBinary)' : '';
   return `${label} CLI not found: "${binary}". Install it or update your AI configuration.${hint}`;
 }
 

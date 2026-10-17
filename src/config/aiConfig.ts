@@ -1,8 +1,15 @@
 import * as vscode from 'vscode';
 import { readWorkspaceFile, writeWorkspaceFile, getWorkspaceRoot } from '../utils/fileSystem';
 import { CONFIG_FILE, SPECS_FOLDER, SPEC_FILE_EXTENSION } from '../utils/constants';
-import { DEFAULT_AI_CONFIG, DEFAULT_REQUIREMENTS_AI_CONFIG, BUILTIN_MODELS, MODEL_ID_PATTERN, LEGACY_PRE_PROMPT } from './aiConfigTypes';
+import { DEFAULT_AI_CONFIG, DEFAULT_REQUIREMENTS_AI_CONFIG, MODEL_ID_PATTERN, LEGACY_PRE_PROMPT } from './aiConfigTypes';
 import type { AIConfig, RequirementsAIConfig } from './aiConfigTypes';
+import {
+  BUILTIN_PROVIDERS,
+  resolveProviderModels,
+  validateProviderDefinition,
+  validateProviderList,
+} from './providerTypes';
+import type { ProviderDefinition } from './providerTypes';
 import { listAvailableSkills } from '../execution/skillsLoader';
 
 function sanitizeModels(raw: unknown): Record<string, string[]> | undefined {
@@ -24,12 +31,48 @@ function sanitizeModels(raw: unknown): Record<string, string[]> | undefined {
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
-export function getModelsForProvider(provider: string, aiConfig?: AIConfig): string[] {
-  const custom = aiConfig?.models?.[provider];
-  if (custom && custom.length > 0) {
-    return [...custom];
+function sanitizeCustomProviders(raw: unknown): ProviderDefinition[] | undefined {
+  if (raw === undefined || raw === null) {
+    return undefined;
   }
-  return [...(BUILTIN_MODELS[provider] ?? [])];
+  if (!Array.isArray(raw)) {
+    console.warn('[SDD] Ignoring ai.customProviders: expected an array');
+    return undefined;
+  }
+  const result: ProviderDefinition[] = [];
+  raw.forEach((entry, i) => {
+    const errors = validateProviderDefinition(entry);
+    if (errors.length > 0) {
+      const detail = errors.map((e) => `${e.path}: ${e.message}`).join('; ');
+      console.warn(`[SDD] Ignoring ai.customProviders[${i}]: ${detail}`);
+      return;
+    }
+    const def = entry as ProviderDefinition;
+    if (result.some((p) => p.id === def.id)) {
+      console.warn(`[SDD] Ignoring ai.customProviders[${i}]: duplicate provider id "${def.id}"`);
+      return;
+    }
+    result.push(def);
+  });
+  return result.length > 0 ? result : undefined;
+}
+
+/** Built-ins merged with valid custom providers (custom overrides by `id`), with models resolved. */
+export function getAvailableProviders(aiConfig?: AIConfig): ProviderDefinition[] {
+  const merged = [...BUILTIN_PROVIDERS];
+  for (const custom of aiConfig?.customProviders ?? []) {
+    const index = merged.findIndex((p) => p.id === custom.id);
+    if (index >= 0) {
+      merged[index] = custom;
+    } else {
+      merged.push(custom);
+    }
+  }
+  return merged.map((def) => ({ ...def, models: resolveProviderModels(def, aiConfig?.models) }));
+}
+
+export function getModelsForProvider(provider: string, aiConfig?: AIConfig): string[] {
+  return getAvailableProviders(aiConfig).find((p) => p.id === provider)?.models ?? [];
 }
 
 export async function readAIConfig(): Promise<AIConfig | undefined> {
@@ -43,8 +86,15 @@ export async function readAIConfig(): Promise<AIConfig | undefined> {
     // File exists but no ai key yet — return defaults so the form is usable
     const ai = parsed.ai ?? {};
     const models = sanitizeModels(ai.models);
+    const customProviders = sanitizeCustomProviders(ai.customProviders);
+    let provider = ai.provider ?? DEFAULT_AI_CONFIG.provider;
+    const known = [...BUILTIN_PROVIDERS, ...(customProviders ?? [])];
+    if (!known.some((p) => p.id === provider)) {
+      console.warn(`[SDD] Unknown ai.provider "${provider}"; falling back to "${DEFAULT_AI_CONFIG.provider}"`);
+      provider = DEFAULT_AI_CONFIG.provider;
+    }
     return {
-      provider: ai.provider ?? DEFAULT_AI_CONFIG.provider,
+      provider,
       permissionMode: ai.permissionMode ?? DEFAULT_AI_CONFIG.permissionMode,
       model: ai.model ?? DEFAULT_AI_CONFIG.model,
       effort: (ai as Partial<AIConfig>).effort ?? DEFAULT_AI_CONFIG.effort,
@@ -58,6 +108,7 @@ export async function readAIConfig(): Promise<AIConfig | undefined> {
       prCommand: ai.prCommand ?? DEFAULT_AI_CONFIG.prCommand,
       prCommandEnabled: ai.prCommandEnabled ?? DEFAULT_AI_CONFIG.prCommandEnabled,
       ...(models ? { models } : {}),
+      ...(customProviders ? { customProviders } : {}),
     };
   } catch {
     return undefined;
@@ -74,12 +125,17 @@ export async function writeAIConfig(config: AIConfig): Promise<void> {
       // keep existing as empty
     }
   }
-  // ai.models is owned by writeAIModels(); always keep whatever is on disk.
-  const previousModels = (existing['ai'] as { models?: unknown } | undefined)?.models;
+  // ai.models is owned by writeAIModels() and ai.customProviders by writeCustomProviders();
+  // always keep whatever is on disk.
+  const previous = (existing['ai'] as { models?: unknown; customProviders?: unknown } | undefined) ?? {};
   const next: Record<string, unknown> = { ...config };
   delete next['models'];
-  if (previousModels !== undefined) {
-    next['models'] = previousModels;
+  delete next['customProviders'];
+  if (previous.models !== undefined) {
+    next['models'] = previous.models;
+  }
+  if (previous.customProviders !== undefined) {
+    next['customProviders'] = previous.customProviders;
   }
   existing['ai'] = next;
   await writeWorkspaceFile(CONFIG_FILE, JSON.stringify(existing, null, 2));
@@ -121,6 +177,90 @@ export async function writeAIModels(models: Record<string, string[]>): Promise<v
     ai['models'] = cleaned;
   } else {
     delete ai['models'];
+  }
+  existing['ai'] = ai;
+  await writeWorkspaceFile(CONFIG_FILE, JSON.stringify(existing, null, 2));
+}
+
+function cleanProvider(def: ProviderDefinition): ProviderDefinition {
+  const nonEmpty = (list?: string[]) => (list && list.length > 0 ? [...list] : undefined);
+  const cleaned: ProviderDefinition = {
+    id: def.id.trim(),
+    label: def.label.trim(),
+    binary: def.binary.trim(),
+    fileRefFormat: def.fileRefFormat.trim(),
+    permissionModes: def.permissionModes.map((pm) => {
+      const extraArgs = nonEmpty(pm.extraArgs);
+      return {
+        id: pm.id.trim(),
+        label: pm.label.trim(),
+        mode: pm.mode,
+        ...(extraArgs ? { extraArgs } : {}),
+      };
+    }),
+  };
+  const modelArgs = nonEmpty(def.modelArgs);
+  const models = nonEmpty(def.models?.map((m) => m.trim()));
+  if (def.batch) cleaned.batch = { args: [...def.batch.args] };
+  if (def.interactive) cleaned.interactive = { args: [...def.interactive.args] };
+  if (modelArgs) cleaned.modelArgs = modelArgs;
+  if (models) cleaned.models = models;
+  return cleaned;
+}
+
+/** Replace only `ai.customProviders`. Removing a provider also prunes its `ai.models` entry. */
+export async function writeCustomProviders(defs: ProviderDefinition[]): Promise<void> {
+  const errors = validateProviderList(defs);
+  if (errors.length > 0) {
+    throw new Error(`Invalid provider definitions:\n${errors.map((e) => `${e.path}: ${e.message}`).join('\n')}`);
+  }
+  const cleaned = defs.map(cleanProvider);
+
+  const content = await readWorkspaceFile(CONFIG_FILE);
+  let existing: Record<string, unknown> = {};
+  if (content) {
+    try {
+      existing = JSON.parse(content) as Record<string, unknown>;
+    } catch {
+      // keep existing as empty
+    }
+  }
+  const ai: Record<string, unknown> = { ...((existing['ai'] as Record<string, unknown> | undefined) ?? {}) };
+
+  const remaining = new Set([...BUILTIN_PROVIDERS.map((p) => p.id), ...cleaned.map((p) => p.id)]);
+  const references: Array<[string, unknown]> = [
+    ['ai.provider', ai['provider']],
+    ['requirementsAi.provider', (existing['requirementsAi'] as { provider?: unknown } | undefined)?.provider],
+  ];
+  for (const [setting, id] of references) {
+    if (typeof id === 'string' && !remaining.has(id)) {
+      throw new Error(`Cannot remove provider "${id}": it is used by ${setting}`);
+    }
+  }
+
+  const previousIds = Array.isArray(ai['customProviders'])
+    ? (ai['customProviders'] as Array<{ id?: unknown }>)
+        .map((p) => p?.id)
+        .filter((id): id is string => typeof id === 'string')
+    : [];
+  const removedIds = previousIds.filter((id) => !remaining.has(id));
+  const models = ai['models'];
+  if (removedIds.length > 0 && typeof models === 'object' && models !== null && !Array.isArray(models)) {
+    const pruned = { ...(models as Record<string, unknown>) };
+    for (const id of removedIds) {
+      delete pruned[id];
+    }
+    if (Object.keys(pruned).length > 0) {
+      ai['models'] = pruned;
+    } else {
+      delete ai['models'];
+    }
+  }
+
+  if (cleaned.length > 0) {
+    ai['customProviders'] = cleaned;
+  } else {
+    delete ai['customProviders'];
   }
   existing['ai'] = ai;
   await writeWorkspaceFile(CONFIG_FILE, JSON.stringify(existing, null, 2));

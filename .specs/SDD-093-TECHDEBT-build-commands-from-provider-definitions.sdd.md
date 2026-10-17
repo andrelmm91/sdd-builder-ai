@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-093-TECHDEBT
 title: Build CLI commands from provider definitions
-status: ready
+status: review
 priority: medium
 complexity: high
 tags:
@@ -27,6 +27,8 @@ created: 2026-10-15
 
 
 
+
+
 ## Context
 SDD-091 and SDD-092 made providers data-driven, but `CliRunner._buildCommand()`, `buildCliCommand()` (used for the requirements AI) and `isInteractiveMode()`/`requireFullPermissionForBulk()` in `executeSpec.ts` still branch on `'claude'`/`'copilot'`. This spec replaces those branches with one generic builder so custom providers work end to end. Built-in providers must produce byte-identical commands to today.
 
@@ -46,9 +48,9 @@ SDD-091 and SDD-092 made providers data-driven, but `CliRunner._buildCommand()`,
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/execution/providerCommand.test.ts` covers built-in snapshots for all permission modes and platforms, a custom provider, a model inserted only when set, and an unknown permission mode (falls back to the first mode).
-- [ ] Existing `cliRunner.test.ts`, `executeSpec.test.ts`, `createSddCards.test.ts` and `idealizeRequirements.test.ts` pass unchanged or with snapshot-equivalent updates.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] `src/execution/providerCommand.test.ts` covers built-in snapshots for all permission modes and platforms, a custom provider, a model inserted only when set, and an unknown permission mode (falls back to the first mode).
+- [x] Existing `cliRunner.test.ts`, `executeSpec.test.ts`, `createSddCards.test.ts` and `idealizeRequirements.test.ts` pass unchanged or with snapshot-equivalent updates.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
 - [ ] A custom provider configured as in the SDD-092 example appears in the terminal with the expected command.

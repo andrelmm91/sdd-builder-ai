@@ -1,5 +1,6 @@
 import type { AIConfig, RequirementsAIConfig, ClaudeEffort } from '../config/aiConfigTypes';
-import { quoteForShell } from '../utils/shellQuote';
+import type { ProviderDefinition } from '../config/providerTypes';
+import { buildProviderCommand, resolveProviderBinary, resolveProviderDefinition } from './providerCommand';
 
 export interface CliCommandOptions {
   cliBinary: string;
@@ -8,48 +9,36 @@ export interface CliCommandOptions {
   prompt: string;
   /** When provided, adds `--max-tokens <n>` alongside `--print` (used by CliRunner for captured output). */
   maxTokens?: number;
+  /** Provider definition to use; defaults to the built-in or `aiConfig.customProviders` match. */
+  providerDef?: ProviderDefinition;
 }
 
 /**
- * Builds a CLI command string from the given options.
- * Handles both the claude and copilot providers, including model, permission mode, and prompt argument.
+ * Builds a CLI command string from the given options, using the provider definition
+ * for the binary, model, permission mode and prompt arguments.
  * The prompt is shell-escaped automatically — callers should pass raw text.
  */
 export function buildCliCommand(options: CliCommandOptions): string {
   const { cliBinary, aiConfig, prompt, maxTokens } = options;
-  const provider = aiConfig?.provider ?? 'claude';
+  const def = options.providerDef ?? resolveProviderDefinition(aiConfig);
 
   // Normalize newlines to spaces so the shell argument never triggers readline's
   // `quote>` continuation prompt when the command is sent to the terminal.
   const normalizedPrompt = prompt.replace(/\n+/g, ' ').trim();
 
-  if (provider === 'copilot') {
-    const parts = ['gh', 'copilot'];
-    // Note: gh copilot does not support a --model flag; model selection is not available here.
-    if (aiConfig?.permissionMode === 'yolo') parts.push('--yolo');
-    parts.push('-p', quoteForShell(normalizedPrompt));
-    return parts.join(' ');
+  // Claude-only flags; other providers have no equivalent.
+  const extraArgs: string[] = [];
+  if (def.id === 'claude') {
+    if (maxTokens !== undefined) extraArgs.push('--max-tokens', String(maxTokens));
+    const effort = (aiConfig as AIConfig | undefined)?.effort ?? (aiConfig as RequirementsAIConfig | undefined)?.effort;
+    if (effort) extraArgs.push('--effort', effort as ClaudeEffort);
   }
 
-  // Claude provider (default)
-  // Only dangerously-skip-permissions uses --print (one-shot, non-interactive).
-  // Default and plan modes are interactive REPL — adding --print would put Claude into
-  // one-shot mode without a way to approve tool use, causing it to hang or fail silently.
-  const parts = [cliBinary];
-  const isAutoMode = aiConfig?.permissionMode === 'dangerously-skip-permissions';
-  if (isAutoMode) {
-    parts.push('--print');
-  }
-  if (maxTokens !== undefined) {
-    parts.push('--max-tokens', String(maxTokens));
-  }
-  if (aiConfig?.model) parts.push('--model', aiConfig.model);
-  const effort = (aiConfig as AIConfig | undefined)?.effort ?? (aiConfig as RequirementsAIConfig | undefined)?.effort;
-  if (effort) parts.push('--effort', effort as ClaudeEffort);
-  if (isAutoMode) {
-    parts.push('--dangerously-skip-permissions');
-  }
-  // plan mode: no extra flag — Claude's default interactive mode asks for tool approval
-  parts.push(quoteForShell(normalizedPrompt));
-  return parts.join(' ');
+  return buildProviderCommand(def, {
+    permissionModeId: aiConfig?.permissionMode ?? 'default',
+    prompt: normalizedPrompt,
+    model: aiConfig?.model,
+    binaryOverride: resolveProviderBinary(def, cliBinary),
+    extraArgs,
+  }).command;
 }

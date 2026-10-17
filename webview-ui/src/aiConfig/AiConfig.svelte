@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { onMessage, postMessage } from '../lib/vscode';
+  import type { ProviderOption, ProviderDefinition } from '../lib/types';
+  import ProviderEditor from './ProviderEditor.svelte';
 
-  type AIProvider = 'claude' | 'copilot';
-  type PermissionMode = 'default' | 'dangerously-skip-permissions' | 'plan' | 'yolo';
+  type AIProvider = string;
+  type PermissionMode = string;
 
   interface TagSkillMapping {
     tag: string;
@@ -38,37 +40,39 @@
   const DEFAULT_IDEALIZE_PROMPT = 'You are acting as a Senior Tech Lead and Software Architect. Follow the skill instructions in {file_prefix}.sdd/skills/idealize-requirements/SKILL.md. Analyze the feature description in {file_prefix}{feature_path} and produce a complete technical idealization. Create idealization.md in the same folder as the feature file, following the output format defined in the skill. The idealization must include: technical architecture, implementation plan with ordered phases, automated and manual acceptance criteria, technical risks with mitigations, concrete recommendations grounded in the existing codebase, and all open questions that must be resolved before implementation.';
   const DEFAULT_CREATE_SDD_PROMPT = 'Create new phases and SDDs in {file_prefix}{specs_folder}/ to fulfill the requirements in {file_prefix}{idealization_path} by using skills in {file_prefix}.sdd/skills/sdd-planner/SKILL.md. Add dependency from the other SDDs if needed.';
 
-  const PROVIDER_OPTIONS: { value: AIProvider; label: string }[] = [
-    { value: 'claude', label: 'Claude' },
-    { value: 'copilot', label: 'Copilot' },
-  ];
+  // Available providers (built-in + custom) with resolved models, sent in `configData`.
+  // Single state so a later refresh (e.g. after editing custom providers) updates every dropdown.
+  let providers = $state<ProviderOption[]>([]);
+  // Raw `ai.customProviders` and the built-in definitions (copy sources) for the provider editor.
+  let customProviders = $state<ProviderDefinition[]>([]);
+  let builtinProviders = $state<ProviderDefinition[]>([]);
 
-  const PERMISSION_MODES: Record<AIProvider, { value: PermissionMode; label: string }[]> = {
-    claude: [
-      { value: 'default', label: 'Default (ask)' },
-      { value: 'dangerously-skip-permissions', label: 'Full permissions (--dangerously-skip-permissions)' },
-      { value: 'plan', label: 'Plan mode (--plan)' },
-    ],
-    copilot: [
-      { value: 'default', label: 'Default (ask)' },
-      { value: 'yolo', label: 'Full permissions (--yolo)' },
-    ],
-  };
+  function modelsOf(id: string): string[] {
+    return providers.find((p) => p.id === id)?.models ?? [];
+  }
 
-  // Per-provider model lists, sent by the extension in `configData`.
-  let models = $state<Record<string, string[]>>({});
+  function modesOf(id: string): ProviderOption['permissionModes'] {
+    return providers.find((p) => p.id === id)?.permissionModes ?? [];
+  }
 
   /** Keep the saved model selectable even when it is in no list. */
   function withSaved(list: string[], current: string): string[] {
     return current && !list.includes(current) ? [...list, current] : list;
   }
 
+  /** Keep the saved permission mode selectable even when the provider no longer offers it. */
+  function withSavedMode(list: ProviderOption['permissionModes'], current: string): ProviderOption['permissionModes'] {
+    return current && !list.some((m) => m.id === current) ? [...list, { id: current, label: current, mode: 'interactive' }] : list;
+  }
+
+  /** Same default as before: the first unattended (batch) mode, else the first mode. */
+  function defaultModeFor(id: string): string {
+    const modes = modesOf(id);
+    return (modes.find((m) => m.mode === 'batch') ?? modes[0])?.id ?? '';
+  }
+
   // Keep in sync with MODEL_ID_PATTERN in src/config/aiConfigTypes.ts.
   const MODEL_ID_PATTERN = /^[A-Za-z0-9._:@/[\]-]{1,100}$/;
-  const MODEL_PROVIDERS: { value: AIProvider; label: string }[] = [
-    { value: 'claude', label: 'Claude' },
-    { value: 'copilot', label: 'Copilot' },
-  ];
 
   // Model Lists editor: draft is null for a provider in built-in mode.
   let builtinModels = $state<Record<string, string[]>>({});
@@ -80,21 +84,21 @@
   let modelsJustSaved = $state(false);
 
   function draftFromCustom(custom: Record<string, string[]>): Record<string, string[] | null> {
-    return Object.fromEntries(MODEL_PROVIDERS.map((p) => [p.value, custom[p.value]?.length ? [...custom[p.value]] : null]));
+    return Object.fromEntries(providers.map((p) => [p.id, custom[p.id]?.length ? [...custom[p.id]] : null]));
   }
 
   function normalizedDraft(): Record<string, string[]> {
     const out: Record<string, string[]> = {};
-    for (const p of MODEL_PROVIDERS) {
-      const list = draft[p.value];
-      if (list && list.length > 0) out[p.value] = [...list];
+    for (const p of providers) {
+      const list = draft[p.id];
+      if (list && list.length > 0) out[p.id] = [...list];
     }
     return out;
   }
 
   const modelsDirty = $derived(
     JSON.stringify(normalizedDraft()) !== JSON.stringify(
-      Object.fromEntries(MODEL_PROVIDERS.filter((p) => savedCustom[p.value]?.length).map((p) => [p.value, savedCustom[p.value]])),
+      Object.fromEntries(providers.filter((p) => savedCustom[p.id]?.length).map((p) => [p.id, savedCustom[p.id]])),
     ),
   );
 
@@ -144,7 +148,7 @@
   }
 
   function missingModelWarning(selected: string, p: string): string {
-    const list = models[p];
+    const list = modelsOf(p);
     if (!selected || !list || list.length === 0 || list.includes(selected)) return '';
     return `"${selected}" is not in the ${p} list; it will still be used.`;
   }
@@ -177,21 +181,28 @@
   let reqSaved = $state(false);
   let reqSaveError = $state(false);
 
-  const permissionOptions = $derived(PERMISSION_MODES[provider]);
-  const modelOptions = $derived(withSaved(models[provider] ?? [], model));
-  const reqPermissionOptions = $derived(PERMISSION_MODES[reqProvider]);
-  const reqModelOptions = $derived(withSaved(models[reqProvider] ?? [], reqModel));
+  const providerOptions = $derived(withSavedProvider(provider));
+  const reqProviderOptions = $derived(withSavedProvider(reqProvider));
+  const permissionOptions = $derived(withSavedMode(modesOf(provider), permissionMode));
+  const modelSuggestions = $derived(modelsOf(provider));
+  const reqPermissionOptions = $derived(withSavedMode(modesOf(reqProvider), reqPermissionMode));
+  const reqModelOptions = $derived(withSaved(modelsOf(reqProvider), reqModel));
+
+  /** Keep a saved provider selectable even if its definition is gone. */
+  function withSavedProvider(current: string): { id: string; label: string }[] {
+    return providers.some((p) => p.id === current) || !current ? providers : [...providers, { id: current, label: current }];
+  }
 
   function onProviderChange(newProvider: AIProvider) {
     provider = newProvider;
-    permissionMode = PERMISSION_MODES[newProvider][1].value;
-    model = models[newProvider]?.[0] ?? '';
+    permissionMode = defaultModeFor(newProvider);
+    model = modelsOf(newProvider)[0] ?? '';
   }
 
   function onReqProviderChange(newProvider: AIProvider) {
     reqProvider = newProvider;
-    reqPermissionMode = PERMISSION_MODES[newProvider][1].value;
-    reqModel = models[newProvider]?.[0] ?? '';
+    reqPermissionMode = defaultModeFor(newProvider);
+    reqModel = modelsOf(newProvider)[0] ?? '';
   }
 
   function addMapping() {
@@ -256,9 +267,11 @@
       } else if (msg.type === 'configData') {
         const d = msg.data as {
           config: AIConfig; tags: string[]; skills: string[];
-          models: Record<string, string[]>;
+          providers: ProviderOption[];
           customModels?: Record<string, string[]>;
           builtinModels?: Record<string, string[]>;
+          customProviders?: ProviderDefinition[];
+          builtinProviders?: ProviderDefinition[];
         };
         const c = d.config;
         notInitialized = false;
@@ -274,18 +287,35 @@
         prCommandEnabled = c.prCommandEnabled;
         availableTags = d.tags;
         availableSkills = d.skills;
-        models = d.models ?? {};
+        providers = d.providers ?? [];
+        customProviders = d.customProviders ?? [];
+        builtinProviders = d.builtinProviders ?? [];
         builtinModels = d.builtinModels ?? {};
         savedCustom = d.customModels ?? {};
         draft = draftFromCustom(savedCustom);
       } else if (msg.type === 'modelsSaved') {
-        const d = msg.data as { models: Record<string, string[]>; customModels: Record<string, string[]> };
-        models = d.models ?? {};
+        const d = msg.data as { providers: ProviderOption[]; customModels: Record<string, string[]> };
+        providers = d.providers ?? providers;
         savedCustom = d.customModels ?? {};
         draft = draftFromCustom(savedCustom);
         modelsSaveMessage = '';
         modelsJustSaved = true;
         setTimeout(() => (modelsJustSaved = false), 2000);
+      } else if (msg.type === 'providersSaved') {
+        const d = msg.data as {
+          providers: ProviderOption[];
+          customProviders: ProviderDefinition[];
+          customModels?: Record<string, string[]>;
+          builtinModels?: Record<string, string[]>;
+        };
+        // Keep unsaved Model Lists drafts for providers that still exist.
+        const previous = draft;
+        providers = d.providers ?? providers;
+        customProviders = d.customProviders ?? [];
+        builtinModels = d.builtinModels ?? builtinModels;
+        savedCustom = d.customModels ?? savedCustom;
+        const fresh = draftFromCustom(savedCustom);
+        draft = Object.fromEntries(providers.map((p) => [p.id, p.id in previous ? previous[p.id] : fresh[p.id]]));
       } else if (msg.type === 'modelsSaveError') {
         modelsSaveMessage = (msg.data as { message: string }).message;
       } else if (msg.type === 'requirementsConfigData') {
@@ -336,28 +366,30 @@
         value={provider}
         onchange={(e) => onProviderChange((e.currentTarget as HTMLSelectElement).value as AIProvider)}
       >
-        {#each PROVIDER_OPTIONS as opt}
-          <option value={opt.value}>{opt.label}</option>
+        {#each providerOptions as opt}
+          <option value={opt.id}>{opt.label}</option>
         {/each}
       </select>
+      <p class="field-hint">Add or edit custom providers in the "Custom Providers" section below.</p>
     </section>
 
     <section class="form-section">
       <label class="field-label" for="permission-select">Permission Mode</label>
       <select id="permission-select" class="form-select" bind:value={permissionMode}>
         {#each permissionOptions as opt}
-          <option value={opt.value}>{opt.label}</option>
+          <option value={opt.id}>{opt.label}</option>
         {/each}
       </select>
     </section>
 
     <section class="form-section">
       <label class="field-label" for="model-select">Model</label>
-      <select id="model-select" class="form-select" bind:value={model}>
-        {#each modelOptions as m}
-          <option value={m}>{m}</option>
+      <input id="model-select" class="form-input" type="text" list="model-suggestions" bind:value={model} />
+      <datalist id="model-suggestions">
+        {#each modelSuggestions as m}
+          <option value={m}></option>
         {/each}
-      </select>
+      </datalist>
       {#if missingModelWarning(model, provider)}
         <p class="field-warning">{missingModelWarning(model, provider)}</p>
       {/if}
@@ -535,8 +567,8 @@
         value={reqProvider}
         onchange={(e) => onReqProviderChange((e.currentTarget as HTMLSelectElement).value as AIProvider)}
       >
-        {#each PROVIDER_OPTIONS as opt}
-          <option value={opt.value}>{opt.label}</option>
+        {#each reqProviderOptions as opt}
+          <option value={opt.id}>{opt.label}</option>
         {/each}
       </select>
     </section>
@@ -545,7 +577,7 @@
       <label class="field-label" for="req-permission-select">Permission Mode</label>
       <select id="req-permission-select" class="form-select" bind:value={reqPermissionMode}>
         {#each reqPermissionOptions as opt}
-          <option value={opt.value}>{opt.label}</option>
+          <option value={opt.id}>{opt.label}</option>
         {/each}
       </select>
     </section>
@@ -616,8 +648,8 @@
     <div class="section-group-heading">Model Lists</div>
     <p class="field-hint">Shared by the execution and requirements model dropdowns. A custom list replaces the built-in list for that provider; the first entry is the default when switching provider.</p>
 
-    {#each MODEL_PROVIDERS as p}
-      {@const list = draft[p.value]}
+    {#each providers as p (p.id)}
+      {@const list = draft[p.id]}
       <section class="model-card">
         <div class="label-row">
           <span class="field-label">{p.label}</span>
@@ -629,9 +661,9 @@
             {#each list as m, i (m)}
               <li class="chip">
                 <span class="chip-text">{m}</span>
-                <button class="chip-btn" aria-label="Move {m} up" disabled={i === 0} onclick={() => moveModel(p.value, i, -1)}>↑</button>
-                <button class="chip-btn" aria-label="Move {m} down" disabled={i === list.length - 1} onclick={() => moveModel(p.value, i, 1)}>↓</button>
-                <button class="chip-btn chip-remove" aria-label="Remove {m}" onclick={() => removeModel(p.value, i)}>×</button>
+                <button class="chip-btn" aria-label="Move {m} up" disabled={i === 0} onclick={() => moveModel(p.id, i, -1)}>↑</button>
+                <button class="chip-btn" aria-label="Move {m} down" disabled={i === list.length - 1} onclick={() => moveModel(p.id, i, 1)}>↓</button>
+                <button class="chip-btn chip-remove" aria-label="Remove {m}" onclick={() => removeModel(p.id, i)}>×</button>
               </li>
             {/each}
           </ul>
@@ -641,23 +673,23 @@
               type="text"
               placeholder="Model id"
               aria-label="New {p.label} model id"
-              bind:value={newModel[p.value]}
-              onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addModel(p.value); } }}
+              bind:value={newModel[p.id]}
+              onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addModel(p.id); } }}
             />
-            <button class="btn-add" onclick={() => addModel(p.value)} disabled={!(newModel[p.value] ?? '').trim()}>Add</button>
-            <button class="btn-reset" onclick={() => resetToBuiltin(p.value)}>Reset to built-in</button>
+            <button class="btn-add" onclick={() => addModel(p.id)} disabled={!(newModel[p.id] ?? '').trim()}>Add</button>
+            <button class="btn-reset" onclick={() => resetToBuiltin(p.id)}>Reset to built-in</button>
           </div>
-          {#if modelInputError[p.value]}
-            <p class="field-error">{modelInputError[p.value]}</p>
+          {#if modelInputError[p.id]}
+            <p class="field-error">{modelInputError[p.id]}</p>
           {/if}
         {:else}
           <ul class="chip-list">
-            {#each builtinModels[p.value] ?? [] as m}
+            {#each builtinModels[p.id] ?? [] as m}
               <li class="chip readonly"><span class="chip-text">{m}</span></li>
             {/each}
           </ul>
           <div>
-            <button class="btn-reset" onclick={() => customize(p.value)}>Customize</button>
+            <button class="btn-reset" onclick={() => customize(p.id)}>Customize</button>
           </div>
         {/if}
       </section>
@@ -672,6 +704,15 @@
         {modelsJustSaved && !modelsDirty ? 'Saved!' : 'Save model lists'}
       </button>
     </div>
+
+    <hr class="section-divider" />
+    <div class="section-group-heading">Custom Providers</div>
+    <p class="field-hint">Define other agent CLIs, or override Claude or Copilot, in <code>ai.customProviders</code>. Providers are checked before they are saved.</p>
+    <ProviderEditor
+      saved={customProviders}
+      builtins={builtinProviders}
+      usedBy={{ 'ai.provider': provider, 'requirementsAi.provider': reqProvider }}
+    />
   </div>
 </div>
 

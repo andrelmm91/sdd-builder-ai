@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-091-NEW
 title: Define data-driven AI provider definitions with built-in Claude and Copilot
-status: ready
+status: review
 priority: medium
 complexity: medium
 tags:
@@ -21,8 +21,6 @@ depends_on:
 agent_skills: backend
 created: 2026-10-15
 ---
-
-
 
 ## Context
 Providers are hard-coded as `'claude' | 'copilot'`, with `if (provider === 'copilot')` branches in `cliRunner.ts`, `cliCommandBuilder.ts` and `executeSpec.ts`. Supporting another agent CLI (Codex, Gemini CLI, Cursor agent, Aider, OpenCode and so on) requires code changes and a release.
@@ -62,8 +60,8 @@ This spec introduces a declarative `ProviderDefinition` and expresses the two bu
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/config/providerTypes.test.ts` covers the shape of the built-ins (models equal to `BUILTIN_MODELS`), `resolveProviderModels` with and without user models, custom definitions overriding built-ins, an unknown id, and validation errors with their `path` (missing binary, a binary with a space, a bad id, `fileRefFormat` without `{path}`, an invocation without `{prompt}`, an unknown placeholder, `{prompt}` in `extraArgs`, a mode without a matching invocation, duplicate mode ids, a non-string arg, an invalid model id) and `validateProviderList` reporting duplicate provider ids. Both built-ins pass validation.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] `src/config/providerTypes.test.ts` covers the shape of the built-ins (models equal to `BUILTIN_MODELS`), `resolveProviderModels` with and without user models, custom definitions overriding built-ins, an unknown id, and validation errors with their `path` (missing binary, a binary with a space, a bad id, `fileRefFormat` without `{path}`, an invocation without `{prompt}`, an unknown placeholder, `{prompt}` in `extraArgs`, a mode without a matching invocation, duplicate mode ids, a non-string arg, an invalid model id) and `validateProviderList` reporting duplicate provider ids. Both built-ins pass validation.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
 - [ ] None.

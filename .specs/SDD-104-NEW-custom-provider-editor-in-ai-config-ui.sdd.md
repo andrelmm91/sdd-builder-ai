@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-104-NEW
 title: Create, edit and delete custom providers from the AI Config UI
-status: ready
+status: review
 priority: medium
 complexity: high
 tags:
@@ -72,9 +72,9 @@ Facts this spec relies on:
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/views/webviews/aiConfig/AiConfigPanel.test.ts` (create if missing) covers: `configData` includes raw `customProviders`; `validateProvider` returns field errors for an invalid definition and previews for a valid one; `saveProviders` success posts `providersSaved` with the refreshed provider list; a rejected save posts `providersSaveError` and leaves the file unchanged.
-- [ ] `npm run build:webview` succeeds.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] `src/views/webviews/aiConfig/AiConfigPanel.test.ts` (create if missing) covers: `configData` includes raw `customProviders`; `validateProvider` returns field errors for an invalid definition and previews for a valid one; `saveProviders` success posts `providersSaved` with the refreshed provider list; a rejected save posts `providersSaveError` and leaves the file unchanged.
+- [x] `npm run build:webview` succeeds.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
 - [ ] Adding a provider from "Copy of Claude", renaming it and saving writes a valid entry under `ai.customProviders`; it appears at once in the provider dropdown and in "Model Lists".

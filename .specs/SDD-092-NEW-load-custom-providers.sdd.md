@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-092-NEW
 title: Load custom provider definitions from project config
-status: ready
+status: review
 priority: medium
 complexity: low
 tags:
@@ -21,8 +21,6 @@ depends_on:
 agent_skills: backend
 created: 2026-10-15
 ---
-
-
 
 ## Context
 With `ProviderDefinition` from SDD-091, builders can declare their own agent CLIs. AI settings live under the `ai` key in `.sdd/config.json` (`readAIConfig` and `writeAIConfig` in `src/config/aiConfig.ts`). This spec adds a `customProviders` array there and exposes the merged provider list.
@@ -46,11 +44,11 @@ With `ProviderDefinition` from SDD-091, builders can declare their own agent CLI
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `src/config/aiConfig.test.ts` covers: no custom providers, a valid custom provider, `ai.models` overriding a custom provider's `models`, an invalid one filtered out, a custom override of `claude`, an unknown provider id falling back, `writeAIConfig` keeping on-disk `customProviders` even when the payload carries a different list, and `writeCustomProviders` for: a valid save, a rejected invalid list (file unchanged), a rejected duplicate id, a rejected removal of the provider used by `ai.provider` or `requirementsAi.provider`, removal pruning `ai.models[id]`, and an empty list deleting the key.
-- [ ] `npm test`, `npm run type-check` and `npm run lint` pass.
+- [x] `src/config/aiConfig.test.ts` covers: no custom providers, a valid custom provider, `ai.models` overriding a custom provider's `models`, an invalid one filtered out, a custom override of `claude`, an unknown provider id falling back, `writeAIConfig` keeping on-disk `customProviders` even when the payload carries a different list, and `writeCustomProviders` for: a valid save, a rejected invalid list (file unchanged), a rejected duplicate id, a rejected removal of the provider used by `ai.provider` or `requirementsAi.provider`, removal pruning `ai.models[id]`, and an empty list deleting the key.
+- [x] `npm test`, `npm run type-check` and `npm run lint` pass.
 
 ### Manual
-- [ ] None.
+- [x] None.
 
 ## Examples
 ```json

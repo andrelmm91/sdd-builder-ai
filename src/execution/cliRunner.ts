@@ -12,6 +12,12 @@ import { getSkillsPath } from './skillsLoader';
 import { EXECUTIONS_FOLDER, SPECS_FOLDER } from '../utils/constants';
 import { buildExecutionPrompt } from './contextAssembler';
 import { quoteBash, quoteForShell } from '../utils/shellQuote';
+import {
+  buildProviderCommand,
+  formatFileRef,
+  resolveProviderBinary,
+  resolveProviderDefinition,
+} from './providerCommand';
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const SENTINEL_POLL_MS = 500;
@@ -301,8 +307,8 @@ export class CliRunner implements ExecutionRunner {
     ts: number,
   ): Promise<{ relativePath: string; fileRef: string }> {
     const fm = spec.frontmatter;
-    const provider = aiConfig?.provider ?? 'claude';
-    const toRef = (p: string) => (provider === 'copilot' ? `#file:${p}` : `@${p}`);
+    const def = resolveProviderDefinition(aiConfig);
+    const toRef = (p: string) => formatFileRef(def, p);
 
     // Use the actual file path (with slug) if provided; fall back to ID-only name
     const resolvedSpecPath = (specFilePath ?? `${SPECS_FOLDER}/${fm.spec_id}.sdd.md`).split('\\').join('/');
@@ -342,45 +348,19 @@ export class CliRunner implements ExecutionRunner {
     aiConfig: Partial<AIConfig> | undefined,
     promptFileRef: string,
   ): { command: string; terminalInput?: string; interactive?: boolean } {
-    const provider = aiConfig?.provider ?? 'claude';
+    const def = resolveProviderDefinition(aiConfig);
 
     // The whole prompt lives in the instructions file; the CLI only gets this one line.
     const prompt = `Read and follow all instructions in ${promptFileRef}.`;
 
-    // --- Build CLI command ---
-
-    if (provider === 'copilot') {
-      const parts = ['gh', 'copilot'];
-      // Note: gh copilot does not support a --model flag; model selection is not available here.
-
-      if (aiConfig?.permissionMode === 'yolo') {
-        // Yolo mode: pass prompt via -p flag for non-interactive batch execution.
-        parts.push('--yolo');
-        parts.push('-p', quoteForShell(prompt));
-        return { command: parts.join(' ') };
-      }
-
-      // Default (ask) mode: interactive, analogous to Claude's ask/plan mode.
-      // Pass the prompt as a positional argument (not -p which is for batch/non-interactive).
-      // Without --yolo the agent will pause for permission on each tool use.
-      parts.push(quoteForShell(prompt));
-      return { command: parts.join(' '), interactive: true };
-    }
-
-    // Claude provider
-    const parts = [config.claudeCliBinary];
-    if (aiConfig?.model) parts.push('--model', aiConfig.model);
-    if (aiConfig?.permissionMode === 'dangerously-skip-permissions') {
-      // -p (print mode) makes Claude one-shot: execute and exit.
-      // Without it, Claude enters REPL mode and the sentinel never runs.
-      parts.push('-p', '--dangerously-skip-permissions');
-    }
-    parts.push(quoteForShell(prompt));
-
-    // Default and plan modes are interactive — Claude stays in REPL,
-    // user approves/denies tools. Sentinel won't work; use terminal close.
-    const interactive = aiConfig?.permissionMode !== 'dangerously-skip-permissions';
-    return { command: parts.join(' '), interactive };
+    // Batch modes are one-shot (the sentinel runs afterwards); interactive modes stay in
+    // the REPL and completion is signalled by closing the terminal.
+    return buildProviderCommand(def, {
+      permissionModeId: aiConfig?.permissionMode ?? 'default',
+      prompt,
+      model: aiConfig?.model,
+      binaryOverride: resolveProviderBinary(def, config.claudeCliBinary),
+    });
   }
 
   private _fail(startTime: number, error: string): ExecutionResult {
