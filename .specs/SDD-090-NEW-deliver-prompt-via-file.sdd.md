@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-090-NEW
 title: Deliver the execution prompt to the CLI through an instructions file
-status: review
+status: done
 priority: high
 complexity: medium
 tags:
