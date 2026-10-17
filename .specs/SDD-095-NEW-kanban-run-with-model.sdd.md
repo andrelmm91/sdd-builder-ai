@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-095-NEW
 title: Run a single spec with a different model from the Kanban Execute button
-status: review
+status: done
 priority: medium
 complexity: medium
 tags:
@@ -25,8 +25,6 @@ depends_on:
 agent_skills: frontend
 created: 2026-10-15
 ---
-
-
 
 ## Context
 Every spec runs with the model set in AI Configuration. Builders often want to run one simple spec on a cheaper or faster model without opening AI Configuration, changing the model, running and changing it back.

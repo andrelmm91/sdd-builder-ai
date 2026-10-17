@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-096-NEW
 title: Derive execution timeout from spec complexity
-status: review
+status: done
 priority: low
 complexity: low
 tags:
@@ -21,12 +21,6 @@ depends_on: []
 agent_skills: backend
 created: 2026-10-15
 ---
-
-
-
-
-
-
 
 ## Context
 `CliRunner` uses a fixed 10-minute timeout (`DEFAULT_TIMEOUT_MS`) unless `ExecutionConfig.timeoutMs` is set, and nothing sets it. High-complexity specs (planned at 4–8 hours of human effort) are often killed mid-run, while low-complexity specs that hang wait too long. `budgetEnforcer.ts` already maps complexity to a token budget, which is the natural home for a timeout mapping.

@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-100-TECHDEBT
 title: Timeout multiplier in AI Configuration UI and remove stray scripts
-status: review
+status: done
 priority: low
 complexity: low
 tags:
