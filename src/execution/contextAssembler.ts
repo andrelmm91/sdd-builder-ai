@@ -5,13 +5,34 @@ import type { AIConfig } from '../config/aiConfigTypes';
 
 const MAX_CONTEXT_BYTES = 100 * 1024;
 
+const TRUNCATION_NOTICE = '\n\n[truncated by SDD]';
+
 export type ContextOptions = {
+  /** Provider-specific reference to the spec file, e.g. `@.specs/X.sdd.md`. */
+  specFileRef: string;
   conventions?: string;
-  skills?: string;
+  /** Resolved skill file paths, listed for the agent to read. */
+  skillPaths?: string[];
   feedback?: string;
   previousOutput?: string;
+  /** Appended as `## Additional Instructions` (e.g. retry feedback). */
+  extraInstructions?: string;
   aiConfig?: AIConfig;
 };
+
+/** Truncates to at most `maxBytes` UTF-8 bytes (notice included) without splitting a character. */
+function truncateUtf8(text: string, maxBytes: number): string {
+  const buf = Buffer.from(text, 'utf8');
+  if (buf.length <= maxBytes) {
+    return text;
+  }
+  let end = maxBytes - Buffer.byteLength(TRUNCATION_NOTICE, 'utf8');
+  // Back up while `end` points at a continuation byte (10xxxxxx), i.e. mid-character.
+  while (end > 0 && (buf[end] & 0xc0) === 0x80) {
+    end--;
+  }
+  return buf.subarray(0, end).toString('utf8') + TRUNCATION_NOTICE;
+}
 
 function buildRawSpec(spec: SpecDocument): string {
   const fm = spec.frontmatter;
@@ -54,65 +75,63 @@ function buildRawSpec(spec: SpecDocument): string {
 }
 
 /**
- * Assembles a full execution context document for the Claude CLI agent.
+ * Builds the execution instructions document handed to the AI agent.
  *
- * The returned string contains everything the agent needs to implement the
- * spec: the spec itself, relevant file contents, project conventions, agent
- * skills, scope constraints, and any prior feedback.
+ * Sections, in order: Instructions, Spec, Relevant Files, Conventions, Agent
+ * Skills, Scope Constraints, Post-Execution Commands, Previous Feedback and
+ * Additional Instructions.
  */
-export async function assembleExecutionContext(
+export async function buildExecutionPrompt(
   spec: SpecDocument,
   options: ContextOptions,
 ): Promise<string> {
   const sections: string[] = [];
   const fm = spec.frontmatter;
 
-  // 0. Custom Pre-prompt (from AIConfig)
+  // 1. Instructions (pre-prompt from AIConfig)
   if (options.aiConfig?.prePromptTemplate) {
-    const specFileName = `${fm.spec_id}.sdd.md`;
-    const prompt = options.aiConfig.prePromptTemplate.replace(/\{spec_file\}/g, specFileName);
+    const specFile = options.specFileRef || `${fm.spec_id}.sdd.md`;
+    const prompt = options.aiConfig.prePromptTemplate.replace(/\{spec_file\}/g, () => specFile);
     sections.push(`## Instructions\n\n${prompt}`);
   }
 
-  // 1. Spec
-  sections.push(`## Spec\n\n${buildRawSpec(spec)}`);
-
-  // 2. Relevant Files
-  const relevantFiles = fm.relevant_files ?? [];
-  if (relevantFiles.length > 0) {
-    const fileBlocks: string[] = [];
-    for (const filePath of relevantFiles) {
-      const content = await readWorkspaceFile(filePath);
-      if (content === undefined) {
-        fileBlocks.push(`### ${filePath}\n\nFile not found: ${filePath}`);
-      } else {
-        fileBlocks.push(`### ${filePath}\n\n\`\`\`\n${content}\n\`\`\``);
-      }
-    }
-    sections.push(`## Relevant Files\n\n${fileBlocks.join('\n\n')}`);
+  // 2. Spec reference (inline the body only when no reference is available)
+  if (options.specFileRef) {
+    sections.push(`## Spec\n\nRead the spec file before starting: ${options.specFileRef}`);
+  } else {
+    sections.push(`## Spec\n\n${buildRawSpec(spec)}`);
   }
 
-  // 3. Conventions
+  // 3. Relevant Files (paths only; the agent reads them itself)
+  const relevantFiles = fm.relevant_files ?? [];
+  if (relevantFiles.length > 0) {
+    const list = relevantFiles.map((f) => `- ${f}`).join('\n');
+    sections.push(`## Relevant Files\n\nRead these files before making changes:\n\n${list}`);
+  }
+
+  // 4. Conventions
   const conventionsContent =
     options.conventions ?? (await readWorkspaceFile(CONVENTIONS_FILE));
   if (conventionsContent) {
     sections.push(`## Conventions\n\n${conventionsContent}`);
   }
 
-  // 3.5. Agent Skills
-  if (options.skills) {
-    sections.push(`## Agent Skills\n\n${options.skills}`);
+  // 5. Agent Skills (paths)
+  if (options.skillPaths && options.skillPaths.length > 0) {
+    const list = options.skillPaths.map((p) => `- ${p}`).join('\n');
+    sections.push(`## Agent Skills\n\nRead and follow these skill files:\n\n${list}`);
   }
 
-  // 4. Scope Constraints
+  // 6. Scope Constraints
   const mustNotTouch = fm.must_not_touch ?? [];
   const scopeLines = [`Only modify files listed in relevant_files.`];
   if (mustNotTouch.length > 0) {
     scopeLines.push(`Do NOT modify: ${mustNotTouch.join(', ')}`);
   }
+  scopeLines.push('SDD verifies scope after the run; changes outside the allowed files are flagged.');
   sections.push(`## Scope Constraints\n\n${scopeLines.join('\n')}`);
 
-  // 5.5. Post-Execution Commands
+  // 7. Post-Execution Commands
   if (options.aiConfig) {
     const { commitCommand, commitCommandEnabled, prCommand, prCommandEnabled } = options.aiConfig;
     const enabledCommands: string[] = [];
@@ -134,7 +153,7 @@ export async function assembleExecutionContext(
     }
   }
 
-  // 6. Previous Feedback
+  // 8. Previous Feedback
   if (options.feedback) {
     const feedbackParts = [`### Feedback\n\n${options.feedback}`];
     if (options.previousOutput) {
@@ -143,11 +162,18 @@ export async function assembleExecutionContext(
     sections.push(`## Previous Feedback\n\n${feedbackParts.join('\n\n')}`);
   }
 
-  const document = sections.join('\n\n---\n\n');
-
-  if (Buffer.byteLength(document, 'utf8') > MAX_CONTEXT_BYTES) {
-    return Buffer.from(document, 'utf8').slice(0, MAX_CONTEXT_BYTES).toString('utf8');
+  // 9. Additional Instructions
+  if (options.extraInstructions) {
+    sections.push(`## Additional Instructions\n\n${options.extraInstructions}`);
   }
 
-  return document;
+  return truncateUtf8(sections.join('\n\n---\n\n'), MAX_CONTEXT_BYTES);
+}
+
+/** @deprecated Use {@link buildExecutionPrompt}. Kept as an alias for one release. */
+export async function assembleExecutionContext(
+  spec: SpecDocument,
+  options: Omit<ContextOptions, 'specFileRef'> & { specFileRef?: string },
+): Promise<string> {
+  return buildExecutionPrompt(spec, { ...options, specFileRef: options.specFileRef ?? '' });
 }

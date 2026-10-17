@@ -71,6 +71,7 @@ export async function captureResults(
     testsPassed: null,
     prUrl: null,
     changedFiles,
+    ...(executionResult.promptFile ? { promptFile: executionResult.promptFile } : {}),
     ...(checkpoint ? { checkpoint } : {}),
   };
 

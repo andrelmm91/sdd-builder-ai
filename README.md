@@ -159,6 +159,16 @@ Each spec enforces hard boundaries:
 
 ---
 
+### Instructions File — See Exactly What the AI Was Asked
+Every execution writes its full set of instructions to a Markdown file, and the AI CLI is simply told to read and follow it.
+
+- **No more broken commands** — long specs, quotes, apostrophes and multi-line text are never squeezed into a terminal command, so nothing gets mangled or cut off on macOS, Linux or Windows
+- **Leaner prompts** — the AI gets a reference to the spec and the paths of the relevant files instead of copies of their contents, keeping prompts short and saving tokens
+- **Full audit trail** — each run's instructions are kept in `.sdd/executions/<specId>/prompt-<timestamp>.md`, so you can open them later and see exactly what the AI received
+- Very large instructions are trimmed cleanly and marked with `[truncated by SDD]`
+
+---
+
 ### AI Configuration
 Separate configuration for requirements AI and execution AI.
 

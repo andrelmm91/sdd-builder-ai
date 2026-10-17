@@ -25,6 +25,9 @@ vi.mock('vscode', () => ({
     showInformationMessage: (...args: unknown[]) => mockShowInformationMessage(...args),
   },
   workspace: {
+    getConfiguration: () => ({
+      get: (_key: string, def: unknown) => def,
+    }),
     fs: {
       delete: vi.fn().mockResolvedValue(undefined),
     },
@@ -37,6 +40,7 @@ vi.mock('vscode', () => ({
 vi.mock('../utils/fileSystem', () => ({
   fileExists: vi.fn().mockResolvedValue(false),
   getWorkspaceRoot: vi.fn().mockReturnValue('/workspace'),
+  readWorkspaceFile: (...args: unknown[]) => mockReadFile(...args),
 }));
 
 vi.mock('../utils/shell', () => ({
@@ -47,7 +51,8 @@ vi.mock('./skillsLoader', () => ({
   getSkillsPath: vi.fn().mockResolvedValue(null),
 }));
 
-const { mockAccess, mockReadFile, mockUnlink, mockWriteFile } = vi.hoisted(() => ({
+const { mockAccess, mockReadFile, mockUnlink, mockWriteFile, mockMkdir } = vi.hoisted(() => ({
+  mockMkdir: vi.fn().mockResolvedValue(undefined),
   mockAccess: vi.fn().mockRejectedValue(new Error('ENOENT')),
   mockReadFile: vi.fn().mockResolvedValue('0'),
   mockUnlink: vi.fn().mockResolvedValue(undefined),
@@ -62,6 +67,7 @@ vi.mock('fs/promises', async (importOriginal) => {
     readFile: mockReadFile,
     unlink: mockUnlink,
     writeFile: mockWriteFile,
+    mkdir: mockMkdir,
   };
 });
 
@@ -71,6 +77,17 @@ import { getWorkspaceRoot } from '../utils/fileSystem';
 
 const mockIsCommandAvailable = vi.mocked(isCommandAvailable);
 const mockGetWorkspaceRoot = vi.mocked(getWorkspaceRoot);
+
+/** Content of the bash launcher script (the only non-markdown file written). */
+function scriptWrite(): string {
+  const call = mockWriteFile.mock.calls.find((c) => String(c[0]).endsWith('-cmd.sh'));
+  return call![1] as string;
+}
+
+function promptWrite(): { path: string; content: string } {
+  const call = mockWriteFile.mock.calls.find((c) => String(c[0]).endsWith('.md'));
+  return { path: String(call![0]).split('\\').join('/'), content: call![1] as string };
+}
 
 function makeSpec(overrides: Partial<SpecDocument> = {}): SpecDocument {
   return {
@@ -259,7 +276,7 @@ describe('CliRunner.execute — terminal commands (POSIX)', () => {
       shellPath: '/bin/bash',
     }));
     // The script written to disk should include -p and --dangerously-skip-permissions
-    const scriptContent = mockWriteFile.mock.calls[0][1] as string;
+    const scriptContent = scriptWrite();
     expect(scriptContent).toContain('-p');
     expect(scriptContent).toContain('--dangerously-skip-permissions');
     // Non-interactive: wrapped with group + tee for output capture
@@ -294,7 +311,7 @@ describe('CliRunner.execute — terminal commands (POSIX)', () => {
       shellPath: '/bin/bash',
     }));
     // Script content should NOT include sentinel or tee (interactive mode)
-    const scriptContent = mockWriteFile.mock.calls[0][1] as string;
+    const scriptContent = scriptWrite();
     expect(scriptContent).not.toContain('echo $?');
     expect(scriptContent).not.toContain('tee');
     // Runner no longer shows a notification — that's executeSpec.ts's responsibility
@@ -327,7 +344,7 @@ describe('CliRunner.execute — terminal commands (POSIX)', () => {
       shellPath: '/bin/bash',
     }));
     // Script content should use gh copilot
-    const scriptContent = mockWriteFile.mock.calls[0][1] as string;
+    const scriptContent = scriptWrite();
     expect(scriptContent).toContain('gh copilot');
     // Prompt is passed as a positional arg — NOT via -p (which would be batch/non-interactive)
     expect(scriptContent).not.toContain(' -p ');
@@ -338,6 +355,86 @@ describe('CliRunner.execute — terminal commands (POSIX)', () => {
 
     // Runner no longer shows a notification — that's executeSpec.ts's responsibility
     expect(mockShowInformationMessage).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CliRunner.execute — instructions file delivery
+// ---------------------------------------------------------------------------
+describe('CliRunner.execute — prompt delivered via file', () => {
+  const actualPlatform = process.platform;
+  const prePrompt = 'SECRET-PRE-PROMPT implement {spec_file} carefully';
+
+  beforeEach(() => {
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+    vi.useFakeTimers();
+    mockWriteFile.mockClear();
+    mockMkdir.mockClear();
+    mockOnDidCloseTerminal.mockImplementation((cb: (t: unknown) => void) => {
+      setTimeout(() => cb(mockTerminal), 1000);
+      return { dispose: vi.fn() };
+    });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: actualPlatform, configurable: true });
+    vi.useRealTimers();
+  });
+
+  async function run(provider: 'claude' | 'copilot', extra: Record<string, unknown> = {}) {
+    const runner = new CliRunner();
+    const promise = runner.execute(makeSpec(), makeConfig(), {
+      provider,
+      permissionMode: 'default',
+      prePromptTemplate: prePrompt,
+      commitCommandEnabled: true,
+      commitCommand: 'git commit -m "{spec_id}"',
+      ...extra,
+    }, '.specs/SDD-026-slug.sdd.md');
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(500);
+    return promise;
+  }
+
+  it('writes the instructions document with the expected sections', async () => {
+    const result = await run('claude');
+
+    const { path: filePath, content } = promptWrite();
+    expect(filePath).toMatch(/\/workspace\/\.sdd\/executions\/SDD-026\/prompt-\d+\.md$/);
+    expect(mockMkdir).toHaveBeenCalledWith(expect.stringContaining('SDD-026'), { recursive: true });
+    expect(content).toContain('## Instructions');
+    expect(content).toContain('SECRET-PRE-PROMPT implement @.specs/SDD-026-slug.sdd.md carefully');
+    expect(content).toContain('## Spec');
+    expect(content).toContain('## Relevant Files');
+    expect(content).toContain('## Scope Constraints');
+    expect(content).toContain('## Post-Execution Commands');
+    expect(content).toContain('git commit -m "SDD-026"');
+    expect(result.promptFile).toMatch(/^\.sdd\/executions\/SDD-026\/prompt-\d+\.md$/);
+    // File is kept as an audit trail
+    expect(mockUnlink).not.toHaveBeenCalledWith(expect.stringMatching(/prompt-.*\.md$/));
+  });
+
+  it('Claude: command carries only the short instruction with an @ file reference', async () => {
+    await run('claude');
+
+    const script = scriptWrite();
+    expect(script).toMatch(/claude 'Read and follow all instructions in @\.sdd\/executions\/SDD-026\/prompt-\d+\.md\.'/);
+    expect(script).not.toContain('SECRET-PRE-PROMPT');
+    expect(script).not.toContain('git commit');
+  });
+
+  it('Copilot: command carries only the short instruction with a #file: reference', async () => {
+    await run('copilot');
+
+    const script = scriptWrite();
+    expect(script).toMatch(/gh copilot 'Read and follow all instructions in #file:\.sdd\/executions\/SDD-026\/prompt-\d+\.md\.'/);
+    expect(script).not.toContain('SECRET-PRE-PROMPT');
+    expect(script).not.toContain('git commit');
+  });
+
+  it('lists relevant files as paths in the instructions document', async () => {
+    await run('claude');
+    expect(promptWrite().content).toContain('Read these files before making changes');
   });
 });
 
@@ -397,7 +494,7 @@ describe('CliRunner.execute — terminal commands (Windows)', () => {
     expect(sent).not.toContain('#!/bin/bash');
   });
 
-  it("doubles single quotes in the spec title substituted into the commit command", async () => {
+  it("keeps the spec title out of the command line and in the prompt file", async () => {
     mockAccess.mockResolvedValue(undefined);
     mockReadFile.mockResolvedValue('0');
 
@@ -418,9 +515,9 @@ describe('CliRunner.execute — terminal commands (Windows)', () => {
     await promise;
 
     const sent = mockSendText.mock.calls[0][0] as string;
-    expect(sent).toContain("Fix user''s profile");
-    expect(sent).not.toContain("'\\''");
-    expect(sent).toContain('\\"SDD-026: Fix');
+    expect(sent).not.toContain('Fix user');
+    expect(sent).toMatch(/Read and follow all instructions in @\.sdd\/executions\/SDD-026\/prompt-\d+\.md\./);
+    expect(promptWrite().content).toContain('git commit -m "SDD-026: Fix user\'s profile"');
   });
 
   it('Claude default mode: plain terminal + sendText, interactive (no sentinel)', async () => {

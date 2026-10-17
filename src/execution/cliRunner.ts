@@ -7,10 +7,10 @@ import { isCommandAvailable } from '../utils/shell';
 import type { SpecDocument } from '../specs/types';
 import type { ExecutionConfig, ExecutionResult, ExecutionRunner } from './types';
 import type { AIConfig } from '../config/aiConfigTypes';
-import { DEFAULT_PRE_PROMPT } from '../config/aiConfigTypes';
 import { getProviderBinary, getCliNotFoundMessage } from '../config/extensionConfig';
 import { getSkillsPath } from './skillsLoader';
-import { SPECS_FOLDER } from '../utils/constants';
+import { EXECUTIONS_FOLDER, SPECS_FOLDER } from '../utils/constants';
+import { buildExecutionPrompt } from './contextAssembler';
 import { quoteBash, quoteForShell } from '../utils/shellQuote';
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
@@ -74,7 +74,8 @@ export class CliRunner implements ExecutionRunner {
         return this._fail(startTime, 'No workspace folder is open');
       }
 
-      const { command, terminalInput, interactive } = await this._buildCommand(spec, config, aiConfig, specFilePath);
+      const promptFile = await this._writePromptFile(root, spec, aiConfig, specFilePath, ts);
+      const { command, terminalInput, interactive } = this._buildCommand(config, aiConfig, promptFile.fileRef);
 
       // Interactive commands stay in REPL — the user signals completion by closing
       // the terminal ("Complete & Close Terminal" button in the Kanban UI).
@@ -138,9 +139,10 @@ export class CliRunner implements ExecutionRunner {
             output: '',
             duration: Date.now() - startTime,
             error: `Process exited with code ${closeCode}`,
+            promptFile: promptFile.relativePath,
           };
         }
-        return { success: true, output: '', duration: Date.now() - startTime };
+        return { success: true, output: '', duration: Date.now() - startTime, promptFile: promptFile.relativePath };
       }
 
       // Non-interactive: poll for sentinel file
@@ -170,10 +172,11 @@ export class CliRunner implements ExecutionRunner {
           output: logOutput,
           duration,
           error: `Process exited with code ${exitCode}`,
+          promptFile: promptFile.relativePath,
         };
       }
 
-      return { success: true, output: logOutput, duration };
+      return { success: true, output: logOutput, duration, promptFile: promptFile.relativePath };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return this._fail(startTime, message);
@@ -285,30 +288,26 @@ export class CliRunner implements ExecutionRunner {
     });
   }
 
-  private async _buildCommand(
+  /**
+   * Writes the full execution instructions document to
+   * `.sdd/executions/<specId>/prompt-<timestamp>.md` and returns its workspace-relative
+   * path plus the provider-specific file reference. The file is kept as an audit trail.
+   */
+  private async _writePromptFile(
+    root: string,
     spec: SpecDocument,
-    config: ExecutionConfig,
     aiConfig: Partial<AIConfig> | undefined,
-    specFilePath?: string,
-  ): Promise<{ command: string; terminalInput?: string; interactive?: boolean }> {
+    specFilePath: string | undefined,
+    ts: number,
+  ): Promise<{ relativePath: string; fileRef: string }> {
     const fm = spec.frontmatter;
     const provider = aiConfig?.provider ?? 'claude';
+    const toRef = (p: string) => (provider === 'copilot' ? `#file:${p}` : `@${p}`);
 
     // Use the actual file path (with slug) if provided; fall back to ID-only name
-    const resolvedSpecPath = specFilePath ?? `${SPECS_FOLDER}/${fm.spec_id}.sdd.md`;
-    const fileRef = provider === 'copilot'
-      ? `#file:${resolvedSpecPath}`
-      : `@${resolvedSpecPath}`;
+    const resolvedSpecPath = (specFilePath ?? `${SPECS_FOLDER}/${fm.spec_id}.sdd.md`).split('\\').join('/');
 
-    // --- Build prompt ---
-    const promptParts: string[] = [];
-
-    // 1. Pre-prompt: {spec_file} resolves to the provider-appropriate file reference
-    const prePrompt = (aiConfig?.prePromptTemplate ?? DEFAULT_PRE_PROMPT)
-      .replace(/\{spec_file\}/g, fileRef);
-    promptParts.push(prePrompt);
-
-    // 2. Tag-skill mappings: only for tags present on this spec
+    const skillPaths: string[] = [];
     if (aiConfig?.tagSkillMappings?.length) {
       const specTags = new Set(fm.tags ?? []);
       const matchedSkills = [
@@ -320,29 +319,33 @@ export class CliRunner implements ExecutionRunner {
       ];
       for (const skillName of matchedSkills) {
         const skillPath = await getSkillsPath(skillName);
-        if (skillPath) {
-          promptParts.push(`Use skills in ${skillPath}`);
-        }
+        if (skillPath) skillPaths.push(skillPath);
       }
     }
 
-    // 3. Post-execution commands (only when enabled and non-empty)
-    if (aiConfig?.commitCommandEnabled && aiConfig.commitCommand) {
-      const cmd = aiConfig.commitCommand
-        .replace(/\{spec_id\}/g, fm.spec_id)
-        .replace(/\{title\}/g, fm.title);
-      promptParts.push(`After completion run: \`${cmd}\``);
-    }
-    if (aiConfig?.prCommandEnabled && aiConfig.prCommand) {
-      const cmd = aiConfig.prCommand
-        .replace(/\{spec_id\}/g, fm.spec_id)
-        .replace(/\{title\}/g, fm.title);
-      promptParts.push(`After completion run: \`${cmd}\``);
-    }
+    const document = await buildExecutionPrompt(spec, {
+      specFileRef: toRef(resolvedSpecPath),
+      skillPaths,
+      aiConfig: aiConfig as AIConfig | undefined,
+    });
 
-    // Normalize newlines to spaces so the shell argument never triggers readline's
-    // `quote>` continuation prompt when the command is sent to the terminal.
-    const prompt = promptParts.join(' ').replace(/\n+/g, ' ').trim();
+    const relativePath = `${EXECUTIONS_FOLDER}/${fm.spec_id}/prompt-${ts}.md`;
+    const absolutePath = path.join(root, ...relativePath.split('/'));
+    await fs.mkdir(path.dirname(absolutePath), { recursive: true });
+    await fs.writeFile(absolutePath, document, 'utf8');
+
+    return { relativePath, fileRef: toRef(relativePath) };
+  }
+
+  private _buildCommand(
+    config: ExecutionConfig,
+    aiConfig: Partial<AIConfig> | undefined,
+    promptFileRef: string,
+  ): { command: string; terminalInput?: string; interactive?: boolean } {
+    const provider = aiConfig?.provider ?? 'claude';
+
+    // The whole prompt lives in the instructions file; the CLI only gets this one line.
+    const prompt = `Read and follow all instructions in ${promptFileRef}.`;
 
     // --- Build CLI command ---
 
