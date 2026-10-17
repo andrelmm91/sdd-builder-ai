@@ -1,7 +1,7 @@
 ---
 spec_id: SDD-099-NEW
 title: Add SDD Doctor environment check with a readiness banner on the Dashboard
-status: review
+status: done
 priority: medium
 complexity: high
 tags:
