@@ -187,6 +187,19 @@ The `conventions.md` file is especially important — anything you write here (n
 
 Run `SDD: Open AI Config` to choose your provider and model, set the permission mode, and optionally configure tag-to-skill mappings and post-execution git/PR commands.
 
+#### Add a custom AI provider
+
+Use this to run specs with an agent CLI other than Claude or Copilot.
+
+1. Run `SDD: Open AI Config` and scroll to **Custom Providers**.
+2. Click **Add provider** and choose **Blank** or a copy of Claude or Copilot.
+3. Fill in the id, label, binary (the CLI command), file reference format, and the arguments for batch and/or interactive runs. Use `{prompt}` exactly once in each, and `{model}` where the model goes.
+4. Add permission modes and, optionally, suggested models.
+5. Check the command preview for each permission mode. Fix any error shown next to a field; Save stays disabled until everything is valid.
+6. Click **Save**. The provider now appears in the provider, permission mode and model dropdowns.
+
+You can't delete a provider that is currently selected. Switch to another provider first.
+
 ### 4. Add Feature Ideas
 
 Open `SDD: Open Requirement Board` to add feature ideas. Fill in a name, description, acceptance criteria, and notes. Then:
@@ -224,6 +237,15 @@ When execution completes, the spec moves to **Review**. Click it in the sidebar 
 - **Bottom:** execution summary (tokens, duration, test results, list of changed files)
 
 Then approve, request changes, or reject.
+
+#### Discard an execution
+
+Before every run, SDD takes a git checkpoint (git is required). To undo what the AI did:
+
+1. On the Kanban board, find the card in **Review** and click **Reject**, then confirm. The AI's files go back to how they were and the card returns to Draft. Your own unrelated edits are left alone.
+2. To undo the files without moving the card, run `SDD: Discard AI Changes` instead.
+
+**Request Changes** keeps the AI's work so the next run builds on it. A later Reject still undoes every attempt. If the AI made commits, the files are restored but the commits remain.
 
 > **Note:** Post-execution git operations (commit, branch, PR) are performed by the agent itself if you configure the commands in AI Config. The Approve action only transitions the spec status.
 
@@ -326,7 +348,9 @@ Output: 200 {message: "Reset email sent"}
 | `SDD: Review Spec` | Open split view: spec + diff (available for `in_progress` and `review` specs) |
 | `SDD: Approve Spec` | Mark review as approved → status → `done` |
 | `SDD: Request Changes` | Write feedback → appended to spec Context → status → `ready` for re-execution |
-| `SDD: Reject Spec` | Revert agent changes via `git checkout` → status → `draft` |
+| `SDD: Reject Spec` | Discard the agent's changes (back to the pre-run checkpoint) → status → `draft` |
+| `SDD: Discard AI Changes` | Undo the AI's file changes without changing the spec status |
+| `SDD: Run Doctor` | Check AI CLI, Git, conventions and permission mode, and show fixes |
 | `SDD: Open AI Config` | Configure provider, model, permission mode, tag-skill mappings, and git/PR commands |
 | `SDD: Open SDD Kanban` | Open the 5-column visual kanban board |
 | `SDD: Open Requirement Board` | Open the 3-column feature idealization board |

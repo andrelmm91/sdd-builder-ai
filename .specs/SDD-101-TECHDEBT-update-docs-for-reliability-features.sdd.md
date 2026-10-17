@@ -1,10 +1,14 @@
 ---
 spec_id: SDD-101-TECHDEBT
 title: Update README, HOW-TO and planner skill for the reliability features
-status: draft
+status: review
 priority: low
 complexity: low
-tags: [techdebt, phase-6, docs, rel-v2.0]
+tags:
+  - techdebt
+  - phase-6
+  - docs
+  - rel-v2.0
 relevant_files:
   - README.md
   - HOW-TO.md
@@ -13,13 +17,21 @@ relevant_files:
 must_not_touch:
   - src/extension.ts
   - package.json
-depends_on: [SDD-087-NEW, SDD-088-NEW, SDD-094-NEW, SDD-104-NEW, SDD-095-NEW, SDD-098-NEW, SDD-099-NEW, SDD-100-TECHDEBT]
+depends_on:
+  - SDD-087-NEW
+  - SDD-088-NEW
+  - SDD-094-NEW
+  - SDD-104-NEW
+  - SDD-095-NEW
+  - SDD-098-NEW
+  - SDD-099-NEW
+  - SDD-100-TECHDEBT
 agent_skills: docs
 created: 2026-10-15
 ---
 
 ## Context
-SDD-078 to SDD-100 change how execution, review and configuration behave. Parts of the README currently promise behavior that was not enforced before these specs (for example "AI that respects your architecture"), and the Kanban board now lets the builder run a single spec with a different model (SDD-095). The documentation must describe the product as it now works.
+Update Readme, HOW-TO and planner skill for the reliability features implemented in rel-v2.0, including the "Safety net" section, "Bring Your Own AI" section, and the `SDD: Run Doctor` command.
 
 ## Requirements
 ### Functional
@@ -30,14 +42,14 @@ SDD-078 to SDD-100 change how execution, review and configuration behave. Parts 
   - Note that git is required for change tracking and discard.
 - `HOW-TO.md`: add step-by-step guides for adding a custom provider through the AI Configuration editor and for discarding an execution.
 - `resources/skills/sdd-planner/SKILL.md`: fix the inconsistency between "Maximum 4 files" and "Do not create specs that modify more than 3 files" by standardizing on 4.
-- `CHANGELOG.md`: add an "Unreleased" entry summarizing the changes.
+- `CHANGELOG.md`: check release 2.0.0 description and make sure it is user friendly.
 
 ### Non-Functional
 - Plain, beginner-friendly language; no claims beyond implemented behavior.
 
 ## Acceptance Criteria
 ### Automated
-- [ ] `npm test` passes (no code changes expected).
+- [x] `npm test` passes (no code changes expected).
 
 ### Manual
 - [ ] Every feature described in the README can be found in the extension.

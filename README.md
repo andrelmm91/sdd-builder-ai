@@ -46,6 +46,35 @@ SDD Builder AI does **not** manage API keys or subscriptions. It orchestrates th
 
 Install and authenticate with your own account. Your keys, your billing, your model choice — the extension assembles context and delegates execution. It never touches your credentials.
 
+**Other AI CLIs.** Open **AI Configuration → Custom Providers** and click **Add provider** to use any other agent CLI (Codex, Gemini CLI, Aider, OpenCode...). The form checks your input as you type and previews the exact command for each permission mode. Providers are saved in `.sdd/config.json`, for example:
+
+```json
+{
+  "ai": {
+    "customProviders": [
+      {
+        "id": "my-agent",
+        "label": "My Agent",
+        "binary": "my-agent",
+        "fileRefFormat": "@{path}",
+        "batch": { "args": ["--yes", "{prompt}"] },
+        "interactive": { "args": ["{prompt}"] },
+        "modelArgs": ["--model", "{model}"],
+        "models": ["fast", "smart"],
+        "permissionModes": [
+          { "id": "default", "label": "Default (ask)", "mode": "interactive" },
+          { "id": "auto", "label": "Auto", "mode": "batch" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Your own model lists.** In **AI Configuration → Model Lists** you can edit the models offered for each provider. They are stored in `ai.models` and replace the built-in suggestions for that provider.
+
+**One-off model.** Click the **▾** next to **Execute** on a Ready card to run that spec with a different model, without changing your configuration.
+
 ## Key Features
 
 ### Project Initialization
@@ -157,7 +186,7 @@ Requires the workspace to be a git repository.
 
 Each spec enforces hard boundaries:
 
-- **3 files max** to create or edit (excluding tests) — no surprise rewrites
+- **4 files max** to create or edit (excluding tests) — no surprise rewrites
 - **`relevant_files`** gives the agent exactly the context it needs — zero context overflow
 - **`must_not_touch`** protects sensitive files — auth, config, database schemas stay safe
 - **`conventions.md`** injects your project's coding standards into every execution
@@ -197,7 +226,7 @@ Separate configuration for requirements AI and execution AI.
 
 | | Freeform Prompting | Spec-Driven Development |
 |---|---|---|
-| **Scope** | Unbounded — AI decides what to touch | Explicit — 3 files max, list of relevant files |
+| **Scope** | Unbounded — AI decides what to touch | Explicit — 4 files max, list of relevant files |
 | **Context** | Entire codebase or none | Precisely scoped — only what the agent needs |
 | **Review** | Massive, unstructured diff | Small, focused diff with acceptance criteria |
 | **Progress** | Not measurable | Tracked per spec — percentages, counts |
@@ -224,12 +253,13 @@ Separate configuration for requirements AI and execution AI.
 1. Install the extension from the VS Code Marketplace
 2. Open a project folder in VS Code
 3. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and run **SDD: Initialize Project**
-4. Click the SDD icon in the Activity Bar to open the sidebar
-5. Click **Open Dashboard** to see the SDD Builder AI dashboard
-6. Go to the **Requirement Board** and add your first feature idea
-7. Click **Idealize** to let the AI structure your requirement
-8. Click **Create SDD Cards** to generate spec files
-9. Open the **Kanban Board**, move a spec to Ready, and execute
+4. Run **SDD: Run Doctor** to check that your AI CLI, Git and settings are ready (it also runs automatically on init and on VS Code start)
+5. Click the SDD icon in the Activity Bar to open the sidebar
+6. Click **Open Dashboard** to see the SDD Builder AI dashboard
+7. Go to the **Requirement Board** and add your first feature idea
+8. Click **Idealize** to let the AI structure your requirement
+9. Click **Create SDD Cards** to generate spec files
+10. Open the **Kanban Board**, move a spec to Ready, and execute
 
 ---
 
