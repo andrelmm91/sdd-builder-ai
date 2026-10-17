@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 
 vi.mock('vscode', () => ({
   window: {
@@ -150,7 +150,7 @@ Wire execution engine into VS Code.
 }
 
 describe('createExecuteSpecCommand', () => {
-  let refresh: ReturnType<typeof vi.fn>;
+  let refresh: Mock<() => void>;
   let command: ReturnType<typeof createExecuteSpecCommand>;
 
   beforeEach(() => {

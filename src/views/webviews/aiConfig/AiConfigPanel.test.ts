@@ -10,18 +10,29 @@ vi.mock('vscode', () => ({
   workspace: { workspaceFolders: [{ uri: { fsPath: '/workspace' } }] },
 }));
 
-const posted: Array<{ type: string; data: any }> = [];
+/** Union of the payload fields the assertions below read from posted messages. */
+interface PostedData {
+  customProviders: ProviderDefinition[];
+  providers: ProviderDefinition[];
+  index: number;
+  errors: unknown[];
+  previews: { modeId: string; command: string }[];
+  binaryFound: boolean;
+  message: string;
+}
+
+const posted: Array<{ type: string; data: PostedData }> = [];
 let messageHandler: ((msg: { type: string; data: unknown }) => void) | undefined;
 
 vi.mock('../BaseWebviewPanel', () => ({
   BaseWebviewPanel: class {
     protected panel = { dispose: vi.fn(), reveal: vi.fn() };
     constructor() {
-      messageHandler = (msg) => void (this as any).handleMessage(msg);
+      messageHandler = (msg) => void (this as unknown as { handleMessage(m: unknown): Promise<void> }).handleMessage(msg);
     }
     reveal(): void {}
     protected post(type: string, data: unknown): void {
-      posted.push({ type, data });
+      posted.push({ type, data: data as PostedData });
     }
     dispose(): void {}
   },
@@ -70,8 +81,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   posted.length = 0;
   mockRead.mockResolvedValue(JSON.stringify({ ai: { customProviders: [aider] } }));
-  (AiConfigPanel as any).instance = undefined;
-  AiConfigPanel.createOrShow({ fsPath: '/ext' } as any);
+  (AiConfigPanel as unknown as { instance: unknown }).instance = undefined;
+  AiConfigPanel.createOrShow({ fsPath: '/ext' } as unknown as vscode.Uri);
 });
 
 describe('AiConfigPanel', () => {
@@ -79,7 +90,7 @@ describe('AiConfigPanel', () => {
     await send('requestConfig');
     const data = last('configData')!.data;
     expect(data.customProviders).toEqual([aider]);
-    expect(data.providers.map((p: { id: string }) => p.id)).toEqual(['claude', 'copilot', 'aider']);
+    expect(data.providers.map((p) => p.id)).toEqual(['claude', 'copilot', 'aider']);
   });
 
   it('validateProvider returns field errors for an invalid definition', async () => {
@@ -123,8 +134,8 @@ describe('AiConfigPanel', () => {
     await send('saveProviders', { providers: [aider, added] });
 
     const res = last('providersSaved')!.data;
-    expect(res.customProviders.map((p: { id: string }) => p.id)).toEqual(['aider', 'aider-2']);
-    expect(res.providers.map((p: { id: string }) => p.id)).toEqual(['claude', 'copilot', 'aider', 'aider-2']);
+    expect(res.customProviders.map((p) => p.id)).toEqual(['aider', 'aider-2']);
+    expect(res.providers.map((p) => p.id)).toEqual(['claude', 'copilot', 'aider', 'aider-2']);
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('Custom providers saved.');
   });
 

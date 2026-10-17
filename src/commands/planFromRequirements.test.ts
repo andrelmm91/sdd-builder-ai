@@ -173,7 +173,7 @@ describe('planFromRequirements', () => {
     mockShowInputBox.mockResolvedValue('Build something.');
 
     vi.mocked(vscode.window.withProgress).mockImplementationOnce(
-      async (_opts: unknown, task: (p: unknown, t: unknown) => Promise<void>) => {
+      (async (_opts: unknown, task: (p: unknown, t: unknown) => Promise<void>) => {
         const progress = { report: vi.fn() };
         const token = {
           isCancellationRequested: true,
@@ -181,7 +181,7 @@ describe('planFromRequirements', () => {
         };
         mockPlanFn.mockReturnValue(new Promise(() => { /* never resolves */ }));
         await task(progress, token);
-      }
+      }) as never
     );
 
     await planFromRequirements();

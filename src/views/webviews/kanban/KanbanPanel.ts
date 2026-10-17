@@ -16,6 +16,7 @@ import { getLatestExecution } from '../../../execution/resultCapture';
 import { applyRequestChanges } from '../../../commands/reviewCommands';
 import type { SpecData, SpecStatus } from '../../../specs/types';
 import { readAIConfig, getAvailableProviders } from '../../../config/aiConfig';
+import { isBatchMode, resolveProviderDefinition } from '../../../execution/providerCommand';
 
 interface CardActionMessage {
   action: 'markReady' | 'execute' | 'approve' | 'requestChanges';
@@ -165,10 +166,9 @@ export class KanbanPanel extends BaseWebviewPanel {
 
   private async sendSpecs(): Promise<void> {
     const [specs, aiConfig] = await Promise.all([this.loadSpecs(), readAIConfig()]);
+    // Same rule as requireFullPermissionForBulk, so custom providers' batch modes count too.
     const isFullPermission = aiConfig
-      ? aiConfig.provider === 'copilot'
-        ? aiConfig.permissionMode === 'yolo'
-        : aiConfig.permissionMode === 'dangerously-skip-permissions'
+      ? isBatchMode(resolveProviderDefinition(aiConfig), aiConfig.permissionMode)
       : false;
     // Models offered by the Execute button's "run with model" menu: the current provider's list.
     const provider = aiConfig ? getAvailableProviders(aiConfig).find((p) => p.id === aiConfig.provider) : undefined;

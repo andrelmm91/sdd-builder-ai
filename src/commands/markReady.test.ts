@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 
 vi.mock('vscode', () => ({
   window: {
@@ -62,7 +62,7 @@ ${extraBody}`;
 }
 
 describe('createMarkReadyCommand', () => {
-  let refresh: ReturnType<typeof vi.fn>;
+  let refresh: Mock<() => void>;
   let command: ReturnType<typeof createMarkReadyCommand>;
 
   beforeEach(() => {

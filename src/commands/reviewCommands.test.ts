@@ -8,6 +8,7 @@ vi.mock('vscode', () => ({
     showWarningMessage: vi.fn(),
     showInformationMessage: vi.fn(),
     showQuickPick: vi.fn(),
+    showInputBox: vi.fn(),
   },
   Uri: { file: (p: string) => ({ fsPath: p }) },
   workspace: { fs: { readFile: vi.fn(), writeFile: vi.fn() } },
@@ -22,11 +23,27 @@ vi.mock('../utils/fileSystem', () => ({
 
 vi.mock('../execution/resultCapture', () => ({ getLatestExecution: vi.fn() }));
 vi.mock('../execution/gitCheckpoint', () => ({ restoreCheckpoint: vi.fn() }));
-vi.mock('../review/reviewManager', () => ({ ReviewManager: class {} }));
+const review = vi.hoisted(() => ({ openReview: vi.fn(), submitDecision: vi.fn() }));
+vi.mock('../review/reviewManager', () => ({
+  ReviewManager: class {
+    openReview = review.openReview;
+    submitDecision = review.submitDecision;
+  },
+}));
 vi.mock('../review/diffProvider', () => ({ DiffProvider: class {} }));
 
 import * as vscode from 'vscode';
-import { discardExecutionChanges, applyRequestChanges, resolveSpec } from './reviewCommands';
+import {
+  discardExecutionChanges,
+  applyRequestChanges,
+  resolveSpec,
+  createApproveSpecCommand,
+  createRejectSpecCommand,
+  createRequestChangesCommand,
+  createReviewSpecCommand,
+  createDiscardChangesCommand,
+} from './reviewCommands';
+import type { SpecTreeItem } from '../views/sidebar/specTreeItem';
 import { getWorkspaceRoot, writeWorkspaceFile, listFiles, readWorkspaceFile } from '../utils/fileSystem';
 import { getLatestExecution } from '../execution/resultCapture';
 import { restoreCheckpoint } from '../execution/gitCheckpoint';
@@ -158,6 +175,227 @@ describe('resolveSpec', () => {
   it('returns undefined when the pick is cancelled', async () => {
     vi.mocked(vscode.window.showQuickPick).mockResolvedValue(undefined);
     expect(await resolveSpec(undefined)).toBeUndefined();
+  });
+});
+
+describe('discardExecutionChanges — edge cases', () => {
+  it('lists files it could not revert', async () => {
+    mockLatest.mockResolvedValue(record);
+    mockRestore.mockResolvedValue({ restored: ['a.ts'], deleted: [], skipped: [{ path: 'b.ts', reason: 'locked' }], headMoved: false });
+    expect(await discardExecutionChanges('SDD-1', { confirm: false })).toBe(true);
+    expect(mockWarn).toHaveBeenCalledWith('Discarded 1 file(s) for SDD-1; could not revert: b.ts (locked)');
+    expect(mockInfo).not.toHaveBeenCalled();
+  });
+
+  it('errors without a workspace', async () => {
+    mockLatest.mockResolvedValue(record);
+    vi.mocked(getWorkspaceRoot).mockReturnValue(undefined);
+    expect(await discardExecutionChanges('SDD-1', { confirm: false })).toBe(false);
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('No workspace folder is open.');
+    expect(mockRestore).not.toHaveBeenCalled();
+  });
+
+  it('treats a record without changedFiles as zero changes', async () => {
+    mockLatest.mockResolvedValue({ ...record, changedFiles: undefined });
+    mockWarn.mockResolvedValue(undefined as never);
+    await discardExecutionChanges('SDD-1');
+    expect(mockWarn.mock.calls[0][0]).toContain('Discard 0 file change(s)');
+  });
+});
+
+describe('applyRequestChanges — spec body', () => {
+  async function apply(spec: string, feedback = 'Please fix X') {
+    vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(Buffer.from(spec));
+    await applyRequestChanges('/ws/spec.sdd.md', feedback);
+    const [uri, bytes] = vi.mocked(vscode.workspace.fs.writeFile).mock.calls[0];
+    expect(uri).toEqual({ fsPath: '/ws/spec.sdd.md' });
+    return Buffer.from(bytes as Uint8Array).toString('utf8');
+  }
+
+  it('inserts feedback at the end of Context, before the next section, and sets status ready', async () => {
+    const out = await apply('---\nspec_id: SDD-1\nstatus: review\n---\n\n## Context\n\nOriginal.\n\n## Requirements\n\n### Functional\n- a\n');
+    expect(out).toBe(
+      '---\nspec_id: SDD-1\nstatus: ready\n---\n\n## Context\n\nOriginal.\n\nFeedback for re-execution: Please fix X\n\n## Requirements\n\n### Functional\n- a'.trimEnd() + '\n'
+    );
+  });
+
+  it('keeps ### sub-headings inside Context', async () => {
+    const out = await apply('---\nspec_id: SDD-1\nstatus: review\n---\n\n## Context\nIntro\n### Notes\nn\n## Constraints\n- c\n');
+    expect(out).toContain('### Notes\nn\n\nFeedback for re-execution: Please fix X\n\n## Constraints');
+  });
+
+  it('appends at the end when Context is the last section', async () => {
+    const out = await apply('---\nspec_id: SDD-1\nstatus: review\n---\n\n## Requirements\n- a\n\n## Context\nlast\n\n\n');
+    expect(out.endsWith('## Context\nlast\n\nFeedback for re-execution: Please fix X')).toBe(true);
+  });
+
+  it('appends at the end when there is no Context section', async () => {
+    const out = await apply('---\nspec_id: SDD-1\nstatus: review\n---\n\n## Requirements\n- a\n');
+    expect(out.endsWith('- a\n\nFeedback for re-execution: Please fix X')).toBe(true);
+  });
+
+  it('accumulates feedback across repeated requests', async () => {
+    const first = await apply('---\nspec_id: SDD-1\nstatus: review\n---\n\n## Context\nx\n\n## Constraints\n- c\n', 'one');
+    vi.mocked(vscode.workspace.fs.writeFile).mockClear();
+    const second = await apply(first.replace('status: ready', 'status: review'), 'two');
+    expect(second).toContain('Feedback for re-execution: one\n\nFeedback for re-execution: two\n\n## Constraints');
+  });
+
+  it('skips the execution record update when there is no spec_id or no execution', async () => {
+    await apply('---\nstatus: review\n---\n\n## Context\nx\n');
+    expect(mockLatest).not.toHaveBeenCalled();
+
+    vi.mocked(vscode.workspace.fs.writeFile).mockClear();
+    mockLatest.mockResolvedValue(undefined);
+    await apply('---\nspec_id: SDD-1\nstatus: review\n---\n\n## Context\nx\n');
+    expect(writeWorkspaceFile).not.toHaveBeenCalled();
+  });
+});
+
+describe('resolveSpec — other inputs', () => {
+  it('uses a sidebar spec item directly', async () => {
+    const item = { kind: 'spec', spec: { spec_id: 'SDD-7' }, filePath: '/ws/x.sdd.md' } as unknown as SpecTreeItem;
+    expect(await resolveSpec(item)).toEqual({ specId: 'SDD-7', filePath: '/ws/x.sdd.md' });
+    expect(listFiles).not.toHaveBeenCalled();
+  });
+
+  it('returns undefined for an unreadable or id-less spec path', async () => {
+    vi.mocked(vscode.workspace.fs.readFile).mockRejectedValue(new Error('ENOENT'));
+    expect(await resolveSpec('/ws/missing.sdd.md')).toBeUndefined();
+    vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(Buffer.from('---\ntitle: x\n---\n'));
+    expect(await resolveSpec('nested/no-id.sdd.md')).toBeUndefined();
+  });
+
+  it('tells the user when no spec has a pickable status', async () => {
+    vi.mocked(listFiles).mockResolvedValue(['.specs/a.sdd.md', '.specs/empty.sdd.md', '.specs/noid.sdd.md']);
+    vi.mocked(readWorkspaceFile).mockImplementation(async (f) =>
+      f === '.specs/a.sdd.md' ? '---\nspec_id: SDD-1\nstatus: done\n---\n' : f === '.specs/noid.sdd.md' ? '---\ntitle: x\n---\n' : undefined
+    );
+    expect(await resolveSpec(undefined, ['in_progress', 'review'])).toBeUndefined();
+    expect(mockInfo).toHaveBeenCalledWith('No specs in in_progress or review.');
+    expect(vscode.window.showQuickPick).not.toHaveBeenCalled();
+  });
+
+  it('returns no entries without a workspace', async () => {
+    vi.mocked(getWorkspaceRoot).mockReturnValue(undefined);
+    expect(await resolveSpec('SDD-1')).toBeUndefined();
+  });
+});
+
+describe('review commands', () => {
+  const refresh = vi.fn();
+  const SPEC = '---\nspec_id: SDD-1\nstatus: review\n---\n\n## Context\nx\n';
+
+  beforeEach(() => {
+    refresh.mockReset();
+    vi.mocked(listFiles).mockResolvedValue(['.specs/a.sdd.md']);
+    vi.mocked(readWorkspaceFile).mockResolvedValue(SPEC);
+  });
+
+  it('reports an explicit spec ID that cannot be found', async () => {
+    await createApproveSpecCommand(refresh)('SDD-404');
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('Spec not found: SDD-404');
+    expect(review.submitDecision).not.toHaveBeenCalled();
+  });
+
+  it('reports an unresolvable tree item', async () => {
+    await createRejectSpecCommand(refresh)({ kind: 'group' } as unknown as SpecTreeItem);
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('No spec selected.');
+  });
+
+  describe('approve', () => {
+    it('submits the decision after confirmation', async () => {
+      mockInfo.mockResolvedValueOnce('Approve' as never);
+      await createApproveSpecCommand(refresh)('SDD-1');
+      expect(mockInfo).toHaveBeenNthCalledWith(1, 'Approve spec SDD-1?', { modal: true }, 'Approve');
+      expect(review.submitDecision).toHaveBeenCalledWith('SDD-1', 'approve');
+      expect(refresh).toHaveBeenCalledOnce();
+      expect(mockInfo).toHaveBeenLastCalledWith('SDD-1 approved.');
+    });
+
+    it('does nothing when not confirmed', async () => {
+      mockInfo.mockResolvedValueOnce(undefined as never);
+      await createApproveSpecCommand(refresh)('SDD-1');
+      expect(review.submitDecision).not.toHaveBeenCalled();
+      expect(refresh).not.toHaveBeenCalled();
+    });
+
+    it('shows an error when the decision fails', async () => {
+      mockInfo.mockResolvedValueOnce('Approve' as never);
+      review.submitDecision.mockRejectedValueOnce(new Error('disk full'));
+      await createApproveSpecCommand(refresh)('SDD-1');
+      expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('Approve failed: disk full');
+      expect(refresh).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reject', () => {
+    it('submits the decision and refreshes', async () => {
+      await createRejectSpecCommand(refresh)('SDD-1');
+      expect(review.submitDecision).toHaveBeenCalledWith('SDD-1', 'reject');
+      expect(refresh).toHaveBeenCalledOnce();
+    });
+
+    it('shows an error when the decision fails', async () => {
+      review.submitDecision.mockRejectedValueOnce('boom');
+      await createRejectSpecCommand(refresh)('SDD-1');
+      expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('Reject failed: boom');
+    });
+  });
+
+  describe('request changes', () => {
+    it('does nothing when the feedback prompt is cancelled', async () => {
+      vi.mocked(vscode.window.showInputBox).mockResolvedValue(undefined);
+      await createRequestChangesCommand(refresh)('SDD-1');
+      expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+      expect(refresh).not.toHaveBeenCalled();
+    });
+
+    it('applies the feedback to the spec file and refreshes', async () => {
+      vi.mocked(vscode.window.showInputBox).mockResolvedValue('needs tests');
+      vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(Buffer.from(SPEC));
+      await createRequestChangesCommand(refresh)('SDD-1');
+      const [uri, bytes] = vi.mocked(vscode.workspace.fs.writeFile).mock.calls[0];
+      expect(uri).toEqual({ fsPath: path.join('/ws', '.specs/a.sdd.md') });
+      expect(Buffer.from(bytes as Uint8Array).toString('utf8')).toContain('Feedback for re-execution: needs tests');
+      expect(refresh).toHaveBeenCalledOnce();
+      expect(mockInfo).toHaveBeenCalledWith('SDD-1 moved back to Ready with feedback.');
+    });
+
+    it('shows an error when the spec cannot be updated', async () => {
+      vi.mocked(vscode.window.showInputBox).mockResolvedValue('x');
+      vi.mocked(vscode.workspace.fs.readFile).mockRejectedValue(new Error('EACCES'));
+      await createRequestChangesCommand(refresh)('SDD-1');
+      expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('Request changes failed: EACCES');
+      expect(refresh).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('review', () => {
+    it('opens the review for the resolved spec', async () => {
+      await createReviewSpecCommand(refresh)('SDD-1');
+      expect(review.openReview).toHaveBeenCalledWith('SDD-1');
+    });
+  });
+
+  describe('discard', () => {
+    it('refreshes only when something was discarded', async () => {
+      mockLatest.mockResolvedValue(record);
+      mockWarn.mockResolvedValue('Discard' as never);
+      mockRestore.mockResolvedValueOnce(restoreOk);
+      await createDiscardChangesCommand(refresh)('SDD-1');
+      expect(refresh).toHaveBeenCalledOnce();
+
+      mockRestore.mockResolvedValueOnce({ restored: [], deleted: [], skipped: [], headMoved: false });
+      await createDiscardChangesCommand(refresh)('SDD-1');
+      expect(refresh).toHaveBeenCalledOnce();
+    });
+
+    it('shows an error when restoring throws', async () => {
+      mockLatest.mockRejectedValue(new Error('git failed'));
+      await createDiscardChangesCommand(refresh)('SDD-1');
+      expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('Discard failed: git failed');
+    });
   });
 });
 
