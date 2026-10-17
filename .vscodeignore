@@ -38,3 +38,5 @@ HOW-TO.md
 .specs/
 .claude/
 .copilot/
+# Docs images (README uses absolute URLs)
+docs/

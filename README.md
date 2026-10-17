@@ -1,6 +1,6 @@
 # SDD Builder AI — Govern AI Coding with Spec-Driven Development
 
-**v1.2.0** | **Stop losing control of AI-generated code. Ship with confidence.**
+**v2.0.0** | **Stop losing control of AI-generated code. Ship with confidence.**
 
 SDD Builder AI is a VS Code extension that brings **Spec-Driven Development** to your AI coding workflow. It sits between your ideas and your AI agent: creates specification documentation and breaks them into small, scoped, reviewable specs that keep every execution focused, traceable, and under your control.
 
@@ -86,10 +86,10 @@ Run **SDD: Initialize Project** to scaffold the standard `.sdd/` folder structur
 ```
 .sdd/
   product_requirements/   # Feature requirements and idealizations
-  execution/              # Execution logs and audit records
+  executions/             # Execution logs, prompts and audit records
+  reviews/                # Review records
   skills/                 # Agent skill files (.md) per technology tag
-  ai-config.json          # AI provider and execution configuration
-  config.json             # Project settings
+  config.json             # Project settings and AI configuration (under "ai")
   conventions.md          # Your coding standards (optional but recommended)
 .specs/                   # All .sdd.md spec files
 ```
@@ -103,7 +103,7 @@ High-level view of your project's development health at a glance.
 - Completion percentage across all specs
 - SDD tags overview and recent activity feed
 - **Readiness banner:** SDD Doctor checks your AI CLI, Git, conventions and permission mode on init and on VS Code start, and lists what to fix (re-run anytime with **SDD: Run Doctor**)
-- All execution logs saved in `.sdd/execution/` for full audit after development
+- All execution logs saved in `.sdd/executions/` for full audit after development
 
 ![Dashboard](https://github.com/user-attachments/assets/4fc326fa-c668-408b-895d-2f66bdf62a02)
 
@@ -207,9 +207,9 @@ Every execution writes its full set of instructions to a Markdown file, and the 
 ### AI Configuration
 Separate configuration for requirements AI and execution AI.
 
-- Choose your AI provider: **Claude CLI** or **GitHub Copilot CLI**
+- Choose your AI provider: **Claude CLI**, **GitHub Copilot CLI**, or any custom provider
 - Set permission modes per provider
-- Create, edit and delete custom providers in the **Custom Providers** section of the AI Configuration panel (start blank or from a copy of Claude/Copilot; fields are validated as you type, with a command preview per permission mode), or write them by hand: add other agent CLIs as custom providers under `ai.customProviders` in `.sdd/config.json` (binary, file reference format, batch/interactive arguments, model arguments, permission modes); they are used for spec execution like the built-in ones; they appear in the provider, permission-mode and model controls of the AI Configuration panel, and the model field accepts any model id
+- Add other agent CLIs in the **Custom Providers** section (see [Bring Your Own AI](#bring-your-own-ai-byok)); they work everywhere the built-in providers do
   - Full permission: a terminal is created and the AI CLI executes all commands. The watch sentinel monitors when the AI finishes and update the SDD card for review.
   - Plan mode: a terminal opens and the AI CLI executes in plan mode. The user should press the complete button to move it to review phase. If no file changes were detected (e.g. you closed the terminal right away), SDD asks whether to send the spec to Review anyway or move it back to Ready.
 - Pick a model per provider. Manage the offered models in the **Model Lists** section of the AI Configuration panel (Customize, add, remove, reorder, Reset to built-in, then Save). They are stored in `.sdd/config.json`, e.g. `"ai": { "models": { "claude": ["fable", "opus"] } }`; a custom list replaces the built-in one for that provider.
@@ -270,14 +270,14 @@ Separate configuration for requirements AI and execution AI.
 | Extension | TypeScript |
 | Webview UI | Svelte 5 + Vite |
 | Spec format | YAML frontmatter + Markdown |
-| AI execution | Claude CLI / GitHub Copilot CLI |
+| AI execution | Claude CLI / GitHub Copilot CLI / custom agent CLIs |
 | Version control | Git CLI + gh CLI |
 
 ---
 
 ## Feedback & Issues
 
-Report bugs and feature requests at [GitHub Issues](https://github.com/andrelmm91/sdd-agentic/issues).
+Report bugs and feature requests at [GitHub Issues](https://github.com/andrelmm91/sdd-builder-ai/issues).
 
 ---
 
